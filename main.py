@@ -1,10 +1,11 @@
-# main.py - 手机无线充电监控系统
+# main.py - 手机无线充电监控系统 (PyQtGraph 高性能优化 + 完整协议解析版)
 import sys, time, datetime, sqlite3, serial, csv, os, math, re
 import queue
 import serial.tools.list_ports
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog, QToolTip, QSizePolicy
 from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer, QEvent
 from ui_monitor import Ui_MonitorWindow
+import pyqtgraph as pg
 
 # ================== 数据库初始化 ==================
 def init_db():
@@ -41,10 +42,18 @@ class DBWorker(QThread):
                                 (task['rel_time'], d['v_in'], d['i_in'], d['v_out'], d['i_out'], d['v_bat'], d['i_bat'], d['eff'], d['p'], d['t'], d['b']))
                 elif task['type'] == 'log':
                     cur.execute("INSERT INTO tx0_logs (message) VALUES (?)", (task['msg'],))
-                conn.commit()
+                
+                # 优化：队列为空时才提交，极大降低 I/O 耗时
+                if self.queue.empty():
+                    conn.commit()
             except queue.Empty: continue
             except Exception: pass
+            
+        # 确保线程退出时保存最后一批数据
+        try: conn.commit() 
+        except: pass
         conn.close()
+        
     def stop(self): self.running = False; self.wait()
 
 class FetchWorker(QThread):
@@ -52,10 +61,8 @@ class FetchWorker(QThread):
     log_fetched = pyqtSignal(str, bool, str) 
     def __init__(self):
         super().__init__()
-        self.running = True
-        self.log_queue = queue.Queue()
-        self.latest_xlim = None
-        self.chart_request = False
+        self.running = True; self.log_queue = queue.Queue()
+        self.latest_xlim = None; self.chart_request = False
 
     def run(self):
         conn = sqlite3.connect('charging_data.db', check_same_thread=False)
@@ -73,9 +80,7 @@ class FetchWorker(QThread):
                     rows = cur.fetchall()
                     if rows:
                         limit_points = 2000
-                        if len(rows) > limit_points:
-                            step = len(rows) // limit_points
-                            rows = rows[::step]
+                        if len(rows) > limit_points: step = len(rows) // limit_points; rows = rows[::step]
                         self.chart_fetched.emit(tuple(zip(*rows)))
                     else: self.chart_fetched.emit(([],[],[],[],[],[],[],[]))
                 except Exception: pass
@@ -84,17 +89,17 @@ class FetchWorker(QThread):
                 r = cur.execute("SELECT message FROM (SELECT id, message FROM tx0_logs ORDER BY id DESC LIMIT 1000 OFFSET ?) ORDER BY id ASC", (log_task['offset'],)).fetchall()
                 if r: self.log_fetched.emit("\n".join([row[0] for row in r]), True, log_task['direction'])
                 else: self.log_fetched.emit("", False, log_task['direction'])
-            except queue.Empty: 
-                pass
-
+            except queue.Empty: pass
         conn.close()
-    def stop(self): 
-        self.running = False
-        self.wait()
+    def stop(self): self.running = False; self.wait()
 
 class SerialWorker(QThread):
     data_ready = pyqtSignal(dict)
     log_ready = pyqtSignal(str) 
+    
+    # 将未知指令过滤放在子线程，避免阻塞 UI
+    KNOWN_ASK = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x09, 0x22, 0x31, 0x51, 0x71, 0x13, 0x18, 0x19, 0x1A, 0x1B, 0x20, 0x23, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x36, 0x37, 0x38, 0x39, 0x46, 0x47, 0x48, 0x49, 0x50, 0x56, 0x57, 0x58, 0x59, 0x66, 0x67, 0x78, 0x76, 0x77, 0x79, 0x81, 0x84, 0x85, 0x88, 0x90, 0x96, 0xA8}
+    KNOWN_FSK = {0x00, 0x55, 0x33, 0xFF, 0x01, 0x0A, 0x14, 0x1C, 0x1B, 0x1D, 0x1E, 0x1F, 0x23, 0x26, 0x27, 0x2C, 0x2D, 0x2E, 0x2F, 0x34, 0x36, 0x37, 0x3E, 0x3F, 0x40, 0x43, 0x46, 0x47, 0x4E, 0x4F, 0x54, 0x56, 0x57, 0x5A, 0x5E, 0x5F, 0x61, 0x66, 0x67, 0x76, 0x77, 0x88, 0x8E, 0x8F, 0xA0}
 
     def __init__(self, port, baudrate):
         super().__init__()
@@ -102,12 +107,14 @@ class SerialWorker(QThread):
         self.baudrate = baudrate
         self.running = True
         self.last_log_time = datetime.datetime.now() 
+        self._unknown_cmd_cache = set()
 
     def get_strict_timestamp(self):
         now = datetime.datetime.now()
         if now <= self.last_log_time: now = self.last_log_time + datetime.timedelta(milliseconds=1)
         self.last_log_time = now
         return f"[{now.strftime('%H:%M:%S')}.{now.microsecond // 1000:03d}]"
+        
     def run(self):
         try:
             self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0); self.serial_conn.reset_input_buffer()
@@ -115,10 +122,13 @@ class SerialWorker(QThread):
             while self.running:
                 time.sleep(0.05); t = time.time(); ts = self.get_strict_timestamp()
                 self.parse_line(f"AA55:9000:1500:8500:1400:4000:3000:45:80:EDED")
-                if int(t)%3==0: self.log_ready.emit(f"{ts} ASK 51 3E 00 00 00 00 F ") 
-                elif int(t)%3==1: self.log_ready.emit(f"{ts} ASK 71 22 12 34 00 00 00 00 F ")
-                else: self.log_ready.emit(f"{ts} FSK 40 03 F")
+                if int(t)%3==0: msg = f"{ts} ASK 51 3E 00 00 00 00 F "
+                elif int(t)%3==1: msg = f"{ts} ASK 71 22 12 34 00 00 00 00 F "
+                else: msg = f"{ts} FSK 40 03 F"
+                self.log_ready.emit(msg)
+                self.check_and_log_unknown(msg)
             return
+            
         buffer = ""
         while self.running:
             try:
@@ -126,9 +136,7 @@ class SerialWorker(QThread):
                 if waiting > 0:
                     buffer += self.serial_conn.read(waiting).decode('ascii', errors='ignore')
                     while "AA55" in buffer and "EDED" in buffer:
-                        start = buffer.find("AA55") 
-                        end = buffer.find("EDED", start)
-                        
+                        start = buffer.find("AA55"); end = buffer.find("EDED", start)
                         if end != -1: 
                             self.parse_line(buffer[start:end+4])
                             buffer = buffer[end+4:] 
@@ -140,14 +148,13 @@ class SerialWorker(QThread):
                         line, buffer = buffer.split('\n', 1); line = line.strip()
                         if line.startswith("TX0"):
                             clean = line[3:].strip().strip(':').strip()
-                            self.log_ready.emit(f"{self.get_strict_timestamp()} {clean}")
+                            msg = f"{self.get_strict_timestamp()} {clean}"
+                            self.log_ready.emit(msg)
+                            self.check_and_log_unknown(msg)
                         elif "AA55" in line and "EDED" in line: 
                             self.parse_line(line)
-
-                else: 
-                    time.sleep(0.001)
-            except: 
-                break
+                else: time.sleep(0.001)
+            except: break
 
     def parse_line(self, line):
         try:
@@ -157,6 +164,37 @@ class SerialWorker(QThread):
                 p_out = v_out * i_out; p_bat = v_bat * i_bat; eff = min(100.0, (p_bat/p_out*100.0) if p_out > 0.1 else 0.0)
                 self.data_ready.emit({'ts':time.time(),'v_in':v_in,'i_in':i_in,'v_out':v_out,'i_out':i_out,'v_bat':v_bat,'i_bat':i_bat,'eff':eff,'p':p_out,'t':int(p[7]),'b':int(p[8])})
         except: pass
+        
+    def check_and_log_unknown(self, line):
+        if "ASK " not in line and "FSK " not in line: return
+        try:
+            p_type = "ASK" if "ASK " in line else "FSK"
+            start = line.find(f"{p_type} ") + 4
+            if p_type == "ASK":
+                end = line.find(" F ", start)
+                hex_str = line[start:end].strip() if end != -1 else line[start:].strip()
+            else:
+                end = line.find("(", start)
+                hex_str = line[start:end].strip() if end != -1 else line[start:].strip()
+            
+            raw = [int(x, 16) for x in hex_str.replace('0x','').replace(',',' ').split() if x.isalnum()]
+            if not raw: return
+            header = raw[0]
+            
+            is_unknown = (p_type == "ASK" and header not in self.KNOWN_ASK) or (p_type == "FSK" and header not in self.KNOWN_FSK)
+                
+            if is_unknown:
+                cache_key = f"{p_type}_0x{header:02X}"
+                if cache_key not in self._unknown_cmd_cache:
+                    self._unknown_cmd_cache.add(cache_key)
+                    log_file = "Unknown_Qi_Commands_Log.txt"
+                    ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+                    with open(log_file, "a", encoding="utf-8-sig") as f:
+                        if not os.path.exists(log_file) or os.path.getsize(log_file) == 0:
+                            f.write("=== Qi 2.2.1 未知指令拦截对照表 ===\n\n")
+                        f.write(f"[{ts}] 发现未知 {p_type} | Header: 0x{header:02X} | 示例: {hex_str}\n")
+        except: pass
+        
     def stop(self): self.running = False; self.wait()
 
 # ================== 主窗口：核心业务逻辑 ==================
@@ -179,7 +217,9 @@ class MonitorWindow(QMainWindow):
         
         self.auto_scroll_chart, self.log_mode, self.log_offset, self.is_fetching_logs = True, 'live', 0, False
         self.log_buffer, self.ui_lock, self.last_hovered_line = [], False, -1
-        self.is_dragging = False 
+        
+        # 增加窗口尺寸变量，用于记忆缩放
+        self.current_window_size = 60.0
         
         self.db_worker = DBWorker(); self.db_worker.start()
         self.fetch_worker = FetchWorker(); self.fetch_worker.chart_fetched.connect(self.on_chart_fetched)
@@ -192,50 +232,57 @@ class MonitorWindow(QMainWindow):
         self.ui.text_log.viewport().installEventFilter(self); self.ui.text_log.verticalScrollBar().installEventFilter(self)
         
         self.ui.btn_start.clicked.connect(self.start_mon); self.ui.btn_stop.clicked.connect(self.stop_mon)
-        # self.ui.btn_refresh_port.clicked.connect(self.scan_ports); 
         self.ui.btn_export.clicked.connect(self.export_csv)
         self.ui.btn_rollback.clicked.connect(self.toggle_log_mode); self.ui.btn_export_log.clicked.connect(self.export_tx0_logs)
-        self.ui.canvas.mpl_connect('scroll_event', self.on_chart_scroll); self.ui.canvas.mpl_connect('button_press_event', self.on_chart_press)
-        self.ui.canvas.mpl_connect('motion_notify_event', self.on_chart_motion); self.ui.canvas.mpl_connect('button_release_event', self.on_chart_release)
         self.ui.text_log.verticalScrollBar().valueChanged.connect(self.on_log_scroll)
+
+        for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]:
+            p.vb.sigRangeChangedManually.connect(self.on_chart_manual_interaction)
+        for p, vb in self.ui.vbs:
+            vb.sigRangeChangedManually.connect(self.on_chart_manual_interaction)
+        
+        self.ui.graph_widget.scene().sigMouseClicked.connect(self.on_chart_clicked)
         
         self.scan_ports(); self.auto_scroll_chart = False
         try:
             conn = sqlite3.connect('charging_data.db'); max_t = conn.execute("SELECT MAX(rel_time) FROM charging_metrics").fetchone()[0]; conn.close()
-            if max_t: self.ui.ax_p.set_xlim(max_t-60, max_t+5); self.request_chart_fetch()
+            if max_t: 
+                self.ui.p_p.setXRange(max_t-60, max_t+5, padding=0)
+                self.fetch_worker.latest_xlim = [max_t-60, max_t+5]
+                self.fetch_worker.chart_request = True
         except: pass
 
-    # ========================== 全局自适应引擎 (完美比例 3:11:6) ==========================
+    # def adjust_panel_widths(self):
+    #     try:
+    #         center_point = self.geometry().center(); current_screen = QApplication.screenAt(center_point)
+    #         if not current_screen: current_screen = QApplication.primaryScreen()
+    #         screen_width = current_screen.geometry().width()
+    #         left_target_width = int(screen_width * 3 / 20)
+    #         mid_target_width = int(screen_width * 11 / 20)
+    #         right_target_width = screen_width - left_target_width - mid_target_width
+    #         if hasattr(self.ui, 'splitter'): self.ui.splitter.setSizes([left_target_width, mid_target_width, right_target_width])
+    #     except Exception: pass
+
     def adjust_panel_widths(self):
-        """严格按照 左侧(3):中间(11):右侧(6) 的物理像素比例进行首屏分割"""
-        try:
-            center_point = self.geometry().center()
-            current_screen = QApplication.screenAt(center_point)
-            if not current_screen:
-                current_screen = QApplication.primaryScreen()
+            try:
+                # 🟢 修复核心：获取当前软件窗口自身的实际宽度，而不是整个显示屏幕的宽度！
+                window_width = self.width() 
                 
-            screen_width = current_screen.geometry().width()
-            
-            # 计算比例因子 (3 + 11 + 6 = 20)
-            left_target_width = int(screen_width * 3 / 20)
-            mid_target_width = int(screen_width * 11 / 20)
-            # 剩余的给右侧，防止浮点数精度截断导致的像素缝隙
-            right_target_width = screen_width - left_target_width - mid_target_width
+                # 按照 3:11:6 的比例精准切分
+                left_target_width = int(window_width * 3 / 20)
+                mid_target_width = int(window_width * 11 / 20)
+                right_target_width = window_width - left_target_width - mid_target_width
+                
+                if hasattr(self.ui, 'splitter'): 
+                    self.ui.splitter.setSizes([left_target_width, mid_target_width, right_target_width])
+            except Exception: 
+                pass
 
-            if hasattr(self.ui, 'splitter'):
-                self.ui.splitter.setSizes([left_target_width, mid_target_width, right_target_width])
 
-        except Exception as e:
-            pass
 
     def showEvent(self, event):
         super().showEvent(event)
-        if not hasattr(self, '_initial_layout_done'):
-            self.adjust_panel_widths()
-            self._initial_layout_done = True
-
-    def moveEvent(self, event):
-        super().moveEvent(event)
+        if not hasattr(self, '_initial_layout_done'): self.adjust_panel_widths(); self._initial_layout_done = True
 
     # ========================== WPC Qi 2.2.1 深度字段解析引擎 ==========================
     def parse_qi_message(self, line):
@@ -317,7 +364,7 @@ class MonitorWindow(QMainWindow):
             0x48:("SADC", " Simultaneous Auxiliary Data Control"),
             0x49:("PROP/49", " MPP PRx Proprietary Packet"),
             0x50:("KEST-COEFF", " K-est Coefficients"),
-            0x56:("SADT/4e", " Simultaneous Auxiliary Data Transport (even)"),
+            0x56:("SADT/4e", " Simultaneous Auxiliary Data Transport (even)"),
             0x57:("SADT/4o", " Simultaneous Auxiliary Data Transport (odd)"),
             0x58:("REPORT/PLA", " Report/Power Loss Accounting"),
             0x59:("PROP/59", " MPP PRx Proprietary Packet"),
@@ -334,8 +381,6 @@ class MonitorWindow(QMainWindow):
             0x90:("PLAP_2", " Power Loss Accounting Parameters"),
             0x96:("CAL_CAPTURE", " Calibration Capture"),
             0xA8:("MATEDQ-COEFF", " Mated-Q Coefficients"),
-
-
         }
         name, _ = d.get(header, (f"UNK_0x{header:02X}", "未知/专有指令"))
         desc = ""
@@ -527,7 +572,7 @@ class MonitorWindow(QMainWindow):
         
         return name, desc
 
-    # ========================== 交互逻辑：出口函数与 Y 轴自适应 ==========================
+    # ========================== 交互逻辑 ==========================
     def export_csv(self):
         p, _ = QFileDialog.getSaveFileName(self, "导出表格数据", f"Qi_Monitor_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", "CSV (*.csv)")
         if p:
@@ -540,15 +585,6 @@ class MonitorWindow(QMainWindow):
                     csv.writer(f).writerows(r)
                 QMessageBox.information(self, "成功", "数据导出成功！")
             except Exception as e: QMessageBox.critical(self, "错误", f"导出失败: {e}")
-
-    @staticmethod
-    def apply_strict_smart_ylim(ax, y_data, min_span):
-        if not y_data: return
-        ymin, ymax = min(y_data), max(y_data)
-        if (ymax - ymin) < min_span:
-            center = (ymax + ymin) / 2.0; ax.set_ylim(center - min_span / 2.0, center + min_span / 2.0)
-        else:
-            span = ymax - ymin; ax.set_ylim(ymin - span * 0.1, ymax + span * 0.1)
 
     def eventFilter(self, obj, event):
         if obj == self.ui.text_log.viewport():
@@ -565,45 +601,65 @@ class MonitorWindow(QMainWindow):
             elif event.type() == QEvent.Leave: QToolTip.hideText(); self.last_hovered_line = -1
         return super().eventFilter(obj, event)
 
-    # ========================== UI 调度引擎 ==========================
+    # ========================== UI 调度引擎 (基于 PyQtGraph) ==========================
     def render_ui(self):
         if self.log_buffer:
             if self.log_mode == 'live':
                 self.ui_lock = True; self.ui.text_log.appendPlainText("\n".join(self.log_buffer)); self.ui_lock = False
             self.log_buffer.clear()
+            
         if self.latest_data:
             d = self.latest_data
             for k,lcd in zip(['v_in','i_in','v_out','i_out','p','v_bat','i_bat','t','b'], 
                              [self.ui.lcd_v_in, self.ui.lcd_i_in, self.ui.lcd_v_out, self.ui.lcd_i_out, self.ui.lcd_power, self.ui.lcd_v_bat, self.ui.lcd_i_bat, self.ui.lcd_temp, self.ui.lcd_battery]):
                 lcd.display(f"{d[k]:.2f}" if isinstance(d[k], float) else d[k])
-        if self.auto_scroll_chart and self.worker and self.worker.isRunning():
-            if not self.x_data: return
-            self.ui.line_power.set_data(self.x_data, self.y_p)
-            self.ui.line_v_in.set_data(self.x_data, self.y_vi); self.ui.line_i_in.set_data(self.x_data, self.y_ii)
-            self.ui.line_v_out.set_data(self.x_data, self.y_vo); self.ui.line_i_out.set_data(self.x_data, self.y_io)
-            self.ui.line_v_bat.set_data(self.x_data, self.y_vb); self.ui.line_i_bat.set_data(self.x_data, self.y_ib)
-            for ax,y,span in [(self.ui.ax_p,self.y_p,1.0),(self.ui.ax_in,self.y_vi,1.0),(self.ui.ax_in_i,self.y_ii,0.5),(self.ui.ax_out,self.y_vo,1.0),(self.ui.ax_out_i,self.y_io,0.5),(self.ui.ax_bat,self.y_vb,1.0),(self.ui.ax_bat_i,self.y_ib,0.5)]: self.apply_strict_smart_ylim(ax,y,span)
-            cur_t, win = self.x_data[-1], 60
-            self.ui.ax_p.set_xlim(cur_t-win, cur_t+win*0.05) if cur_t > win else self.ui.ax_p.set_xlim(0, max(cur_t+1,10))
-            self.ui.canvas.draw_idle()
+                
+        if self.worker and self.worker.isRunning():
+            if self.auto_scroll_chart:
+                if not self.x_data: return
+                
+                self.ui.line_power.setData(self.x_data, self.y_p)
+                self.ui.line_v_in.setData(self.x_data, self.y_vi); self.ui.line_i_in.setData(self.x_data, self.y_ii)
+                self.ui.line_v_out.setData(self.x_data, self.y_vo); self.ui.line_i_out.setData(self.x_data, self.y_io)
+                self.ui.line_v_bat.setData(self.x_data, self.y_vb); self.ui.line_i_bat.setData(self.x_data, self.y_ib)
+                
+                cur_t = self.x_data[-1]
+                win = getattr(self, 'current_window_size', 60.0)
+                if cur_t > win: 
+                    self.last_forced_xlim = [cur_t-win, cur_t+win*0.05]
+                else: 
+                    self.last_forced_xlim = [0, max(cur_t+1, win)]
+                    
+                self.ui.p_p.setXRange(self.last_forced_xlim[0], self.last_forced_xlim[1], padding=0)
+            else:
+                self.request_chart_fetch()
 
     # ========================== 其他逻辑分支 ==========================
     def start_mon(self):
         if self.ui.cb_port.currentText() == "无设备": return
         self.ui.btn_start.setEnabled(False); self.ui.btn_stop.setEnabled(True); self.ui.cb_port.setEnabled(False)
+        self.ui.btn_start.setText("▶ 监控中")
         try:
             conn = sqlite3.connect('charging_data.db'); max_t = conn.execute("SELECT MAX(rel_time) FROM charging_metrics").fetchone()[0]; conn.close()
             self.time_offset = (max_t if max_t is not None else 0.0) + 1.0 
         except: self.time_offset = 0.0
         self.start_time, self.ui_lock = time.time(), True
         self.ui.text_log.clear(); self.ui_lock = False; self.log_buffer.clear()
+        
         self.auto_scroll_chart, self.log_mode = True, 'live'
-        [a.clear() for a in [self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b]]
+        self.current_window_size = 60.0
+        
+        [a.clear() for a in [self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b]]
+        
+        for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]: p.enableAutoRange(axis='y')
+        for p, vb in self.ui.vbs: vb.enableAutoRange(axis='y')
+            
         self.worker = SerialWorker(self.ui.cb_port.currentText(), int(self.ui.cb_baudrate.currentText()))
         self.worker.data_ready.connect(self.process_data); self.worker.log_ready.connect(self.append_log); self.worker.start()
 
     def stop_mon(self):
         self.ui.btn_start.setEnabled(True); self.ui.btn_stop.setEnabled(False); self.ui.cb_port.setEnabled(True)
+        self.ui.btn_start.setText("▶ 开始")
         if self.worker: self.worker.stop(); self.worker = None
         self.log_interaction_timer.stop()
 
@@ -651,13 +707,10 @@ class MonitorWindow(QMainWindow):
 
     def on_chart_fetched(self, data):
         hx, hp, hvi, hii, hvo, hio, hvb, hib = data
-        self.ui.line_power.set_data(hx, hp)
-        self.ui.line_v_in.set_data(hx, hvi); self.ui.line_i_in.set_data(hx, hii)
-        self.ui.line_v_out.set_data(hx, hvo); self.ui.line_i_out.set_data(hx, hio)
-        self.ui.line_v_bat.set_data(hx, hvb); self.ui.line_i_bat.set_data(hx, hib)
-        if hx:
-            for ax,y,span in [(self.ui.ax_p,hp,1.0),(self.ui.ax_in,hvi,1.0),(self.ui.ax_in_i,hii,0.5),(self.ui.ax_out,hvo,1.0),(self.ui.ax_out_i,hio,0.5),(self.ui.ax_bat,hvb,1.0),(self.ui.ax_bat_i,hib,0.5)]: self.apply_strict_smart_ylim(ax,y,span)
-        self.ui.canvas.draw_idle()
+        self.ui.line_power.setData(hx, hp)
+        self.ui.line_v_in.setData(hx, hvi); self.ui.line_i_in.setData(hx, hii)
+        self.ui.line_v_out.setData(hx, hvo); self.ui.line_i_out.setData(hx, hio)
+        self.ui.line_v_bat.setData(hx, hvb); self.ui.line_i_bat.setData(hx, hib)
 
     def process_data(self, data):
         self.latest_data = data; t = data['ts'] - self.start_time + self.time_offset
@@ -671,48 +724,53 @@ class MonitorWindow(QMainWindow):
     def append_log(self, full_msg):
         self.db_worker.queue.put({'type': 'log', 'msg': full_msg})
         self.log_buffer.append(full_msg)
-        self.check_and_log_unknown(full_msg)
 
-    def check_and_log_unknown(self, line):
-        if "ASK " not in line and "FSK " not in line: 
-            return
-        try:
-            p_type = "ASK" if "ASK " in line else "FSK"
-            start = line.find(f"{p_type} ") + 4
-            if p_type == "ASK":
-                end = line.find(" F ", start)
-                hex_str = line[start:end].strip() if end != -1 else line[start:].strip()
-            else:
-                end = line.find("(", start)
-                hex_str = line[start:end].strip() if end != -1 else line[start:].strip()
+    # 🟢 完美修复：动态边缘唤醒算法。不管你现在是不是在历史模式，
+    # 只要图表右边缘接触到最新数据，就立刻唤醒并恢复向左滚动更新！
+    def on_chart_manual_interaction(self, *args, **kwargs):
+        ranges = self.ui.p_p.viewRange()
+        xlim = ranges[0]
+        
+        # 1. 过滤掉系统内部强制刷新触发的事件
+        if self.auto_scroll_chart and hasattr(self, 'last_forced_xlim'):
+            if abs(xlim[0] - self.last_forced_xlim[0]) < 0.5 and abs(xlim[1] - self.last_forced_xlim[1]) < 0.5:
+                return 
+        
+        # 2. 智能边缘吸附与窗口捕获
+        if getattr(self, 'x_data', None) and len(self.x_data) > 0:
+            latest_t = self.x_data[-1]
+            view_width = xlim[1] - xlim[0]
+            tolerance = max(1.0, view_width * 0.05) # 容差：视野的5%或最小1秒
             
-            raw = [int(x, 16) for x in hex_str.replace('0x','').replace(',',' ').split() if x.isalnum()]
-            if not raw: return
-            header = raw[0]
-            
-            is_unknown = False
-            if p_type == "ASK":
-                name, _ = self.ask_qi22_map(header, []) 
-                if name.startswith("UNK_"): is_unknown = True
-            else:
-                name, _ = self.fsk_qi22_map(header, [])
-                if name.startswith("UNK_"): is_unknown = True
+            # 如果图表右侧边缘被拉到了最新数据的附近
+            if xlim[1] >= latest_t - tolerance:
+                self.current_window_size = max(2.0, view_width) # 记住你设定的新缩放宽度
                 
-            if is_unknown:
-                if not hasattr(self, '_unknown_cmd_cache'): self._unknown_cmd_cache = set()
-                cache_key = f"{p_type}_0x{header:02X}"
-                if cache_key not in self._unknown_cmd_cache:
-                    self._unknown_cmd_cache.add(cache_key)
-                    log_file = "Unknown_Qi_Commands_Log.txt"
-                    ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-                    with open(log_file, "a", encoding="utf-8-sig") as f:
-                        if not os.path.exists(log_file) or os.path.getsize(log_file) == 0:
-                            f.write("=== Qi 2.2.1 未知指令拦截对照表 ===\n\n")
-                        f.write(f"[{ts}] 发现未知 {p_type} | Header: 0x{header:02X} | 示例: {hex_str}\n")
-        except Exception: pass
+                # 如果此时处于“历史冻结”状态，立刻自动将其唤醒！
+                if not self.auto_scroll_chart:
+                    self.auto_scroll_chart = True
+                    self.ui.btn_start.setText("▶ 监控中")
+                return # 保持向左滚动，放行操作
+        
+        # 3. 如果明确向左拉动，离开了最新数据，则彻底进入历史冻结模式
+        if self.auto_scroll_chart:
+            self.auto_scroll_chart = False
+            self.ui.btn_start.setText("⏸ 历史浏览 (双击恢复)")
+            
+        self.request_chart_fetch()
+
+    def on_chart_clicked(self, event):
+        if event.double() and not self.auto_scroll_chart:
+            self.auto_scroll_chart = True
+            self.current_window_size = 60.0
+            self.ui.btn_start.setText("▶ 监控中")
+            for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]: p.enableAutoRange(axis='y')
+            for p, vb in self.ui.vbs: vb.enableAutoRange(axis='y')
 
     def request_chart_fetch(self):
-        if not self.auto_scroll_chart: self.fetch_worker.latest_xlim, self.fetch_worker.chart_request = self.ui.ax_p.get_xlim(), True
+        if not self.auto_scroll_chart: 
+            ranges = self.ui.p_p.viewRange()
+            self.fetch_worker.latest_xlim, self.fetch_worker.chart_request = ranges[0], True
 
     def toggle_log_mode(self):
         if self.log_mode == 'live':
@@ -730,23 +788,6 @@ class MonitorWindow(QMainWindow):
                     for row in r: f.write(row[0] + '\n')
                 QMessageBox.information(self, "成功", f"导出 {len(r)} 条记录！")
             except: pass
-
-    def on_chart_scroll(self, event):
-        if event.inaxes is None: return
-        self.auto_scroll_chart = False; cur_xlim = self.ui.ax_p.get_xlim(); scale = 0.8 if event.button == 'up' else 1.2
-        new_w = (cur_xlim[1] - cur_xlim[0]) * scale
-        self.ui.ax_p.set_xlim([event.xdata - new_w * (event.xdata - cur_xlim[0]) / (cur_xlim[1] - cur_xlim[0]), event.xdata + new_w * (1 - (event.xdata - cur_xlim[0]) / (cur_xlim[1] - cur_xlim[0]))])
-        self.request_chart_fetch() 
-
-    def on_chart_press(self, event):
-        if event.inaxes is None or event.button != 1: return
-        if event.dblclick: self.auto_scroll_chart = True; self.ui.canvas.draw_idle(); return
-        self.auto_scroll_chart, self.is_dragging, self.press_x, self.orig_xlim = False, True, event.xdata, self.ui.ax_p.get_xlim()
-
-    def on_chart_motion(self, event):
-        if self.is_dragging and event.xdata: dx = event.xdata - self.press_x; self.ui.ax_p.set_xlim([self.orig_xlim[0]-dx, self.orig_xlim[1]-dx]); self.ui.canvas.draw_idle(); self.request_chart_fetch() 
-
-    def on_chart_release(self, event): self.is_dragging = False; self.request_chart_fetch()
 
     def closeEvent(self, event):
         self.stop_mon()
