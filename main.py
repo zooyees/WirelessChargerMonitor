@@ -1,15 +1,43 @@
-# main.py - 手机无线充电监控系统 (PyQtGraph 高性能优化 + 完整协议解析版)
-import sys, time, datetime, sqlite3, serial, csv, os, math, re
+# ==========================================
+# Project: 手机无线充电监控系统 (专业工业级上位机)
+# Author: Roy Zhao @ 御风智联
+# Date: 2026-04-14 (v3.0 Final - 全功能完美集成版)
+# ==========================================
+import sys, time, datetime, sqlite3, serial, csv, os, math, re, json, bisect
 import queue
+import traceback
 import serial.tools.list_ports
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog, QToolTip, QSizePolicy
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog, QToolTip, QSizePolicy, QLabel, QTextEdit
+from PyQt5.QtGui import QCursor, QTextCursor, QTextCharFormat, QColor  
 from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer, QEvent
 from ui_monitor import Ui_MonitorWindow
 import pyqtgraph as pg
+import pyqtgraph.exporters 
 
-# ================== 数据库初始化 ==================
+# PDF 报表生成引擎
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+
+from qi_parser import Qi22Parser
+
+def load_config():
+    try:
+        with open('config.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "system": {"db_name": "charging_data.db"},
+            "ui": {"render_interval_ms": 100, "chart_max_points": 500, "default_window_size_sec": 60.0},
+            "alerts": {"temp_warning_threshold": 60, "temp_recovery_threshold": 55, "ovp_threshold": 25.0, "ocp_threshold": 3.0, "full_charge_debounce_sec": 20.0},
+            "serial": {"default_baudrates": ["115200", "921600", "2000000"]}
+        }
+
+CONFIG = load_config()
+
 def init_db():
-    conn = sqlite3.connect('charging_data.db')
+    db_name = CONFIG['system']['db_name']
+    conn = sqlite3.connect(db_name)
     conn.execute('PRAGMA journal_mode=WAL;') 
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS charging_metrics (
@@ -19,19 +47,95 @@ def init_db():
                         v_bat REAL, i_bat REAL, eff REAL, power REAL, temp REAL, battery REAL)''')
     try: cursor.execute('CREATE INDEX idx_rel_time ON charging_metrics(rel_time)')
     except: pass
+    
     cursor.execute('''CREATE TABLE IF NOT EXISTS tx0_logs (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        rel_time REAL,
                         message TEXT)''')
+    try: cursor.execute('ALTER TABLE tx0_logs ADD COLUMN rel_time REAL')
+    except: pass
+    try: cursor.execute('CREATE INDEX idx_tx0_rel_time ON tx0_logs(rel_time)')
+    except: pass
+    
     conn.commit(); conn.close()
+
+# ================== 核心报表引擎 ==================
+class ReportEngine:
+    @staticmethod
+    def generate(filename, summary_data, alert_logs, chart_images):
+        c = canvas.Canvas(filename, pagesize=A4)
+        w, h = A4
+        
+        # 1. 标题与分割线
+        c.setFont("Helvetica-Bold", 20)
+        c.drawCentredString(w/2, h - 50, "Wireless Charging Test Analysis Report")
+        c.setStrokeColor(colors.dodgerblue)
+        c.line(50, h - 60, w - 50, h - 60)
+        
+        # 2. 基础元数据
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(50, h - 90, "1. Test Execution Summary")
+        c.setFont("Helvetica", 11)
+        y = h - 110
+        items = [
+            f"Test Start Time: {summary_data['start']}",
+            f"Test End Time:   {summary_data['end']}",
+            f"Total Duration:  {summary_data['duration']}",
+            f"Total Samples:   {summary_data['samples']} points",
+            f"Max Output Pwr:  {summary_data['max_p']:.2f} W",
+            f"Peak Temperature: {summary_data['max_t']:.1f} C"
+        ]
+        for item in items:
+            c.drawString(70, y, item); y -= 18
+            
+        # 3. 异常监控日志
+        y -= 20
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(50, y, "2. Safety Alerts & Protection Events")
+        y -= 20
+        c.setFont("Helvetica", 10)
+        if not alert_logs:
+            c.setFillOpacity(0.5)
+            c.drawString(70, y, "No critical alerts triggered during this session.")
+            c.setFillOpacity(1.0); y -= 20
+        else:
+            c.setFillColor(colors.red)
+            for log in alert_logs[:8]:
+                c.drawString(70, y, f"• {log}"); y -= 15
+            c.setFillColor(colors.black)
+            if len(alert_logs) > 8:
+                c.drawString(70, y, f"... and {len(alert_logs)-8} more events (see full log)."); y -= 15
+
+        # 4. 波形图渲染
+        y -= 30
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(50, y, "3. Complete Cycle Waveforms")
+        
+        # 第一页图表
+        chart_positions = [[50, h/2 - 20, 500, 200], [50, h/2 - 240, 500, 200]]
+        for i, img_path in enumerate(chart_images[:2]):
+            if os.path.exists(img_path): c.drawImage(img_path, *chart_positions[i], preserveAspectRatio=True)
+        
+        c.showPage() 
+        
+        # 第二页图表
+        chart_positions_p2 = [[50, h - 250, 500, 200], [50, h - 480, 500, 200]]
+        for i, img_path in enumerate(chart_images[2:]):
+            if os.path.exists(img_path): c.drawImage(img_path, *chart_positions_p2[i], preserveAspectRatio=True)
+
+        c.setFont("Helvetica-Oblique", 9)
+        c.drawRightString(w - 50, 30, f"Generated by Yufeng Zhilian Monitoring System - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        c.save()
 
 # ================== 异步工作线程 ==================
 class DBWorker(QThread):
     def __init__(self):
         super().__init__(); self.queue = queue.Queue(); self.running = True
+        self.db_name = CONFIG['system']['db_name']
+        
     def run(self):
-        conn = sqlite3.connect('charging_data.db', check_same_thread=False)
-        conn.execute('PRAGMA journal_mode=WAL;')
+        conn = sqlite3.connect(self.db_name, check_same_thread=False); conn.execute('PRAGMA journal_mode=WAL;')
         cur = conn.cursor()
         while self.running:
             try:
@@ -41,46 +145,36 @@ class DBWorker(QThread):
                     cur.execute("INSERT INTO charging_metrics (rel_time, v_in, i_in, v_out, i_out, v_bat, i_bat, eff, power, temp, battery) VALUES (?,?,?,?,?,?,?,?,?,?,?)", 
                                 (task['rel_time'], d['v_in'], d['i_in'], d['v_out'], d['i_out'], d['v_bat'], d['i_bat'], d['eff'], d['p'], d['t'], d['b']))
                 elif task['type'] == 'log':
-                    cur.execute("INSERT INTO tx0_logs (message) VALUES (?)", (task['msg'],))
-                
-                if self.queue.empty():
-                    conn.commit()
+                    cur.execute("INSERT INTO tx0_logs (rel_time, message) VALUES (?, ?)", (task.get('rel_time', 0.0), task['msg']))
+                if self.queue.empty(): conn.commit()
             except queue.Empty: continue
             except Exception: pass
-            
         try: conn.commit() 
         except: pass
         conn.close()
-        
     def stop(self): self.running = False; self.wait()
 
 class FetchWorker(QThread):
     chart_fetched = pyqtSignal(tuple)
     log_fetched = pyqtSignal(str, bool, str) 
     def __init__(self):
-        super().__init__()
-        self.running = True; self.log_queue = queue.Queue()
-        self.latest_xlim = None; self.chart_request = False
+        super().__init__(); self.running = True; self.log_queue = queue.Queue()
+        self.latest_xlim = None; self.chart_request = False; self.db_name = CONFIG['system']['db_name']
 
     def run(self):
-        conn = sqlite3.connect('charging_data.db', check_same_thread=False)
-        conn.execute('PRAGMA journal_mode=WAL;')
+        conn = sqlite3.connect(self.db_name, check_same_thread=False); conn.execute('PRAGMA journal_mode=WAL;')
         cur = conn.cursor()
-
         while self.running:
             if self.chart_request and self.latest_xlim:
-                self.chart_request = False
-                xlim = self.latest_xlim
-                margin = (xlim[1] - xlim[0]) * 0.1
-
+                self.chart_request = False; xlim = self.latest_xlim; margin = (xlim[1] - xlim[0]) * 0.1
                 try:
-                    cur.execute('''SELECT rel_time, power, v_in, i_in, v_out, i_out, v_bat, i_bat FROM charging_metrics WHERE rel_time BETWEEN ? AND ? ORDER BY rel_time ASC''', (xlim[0]-margin, xlim[1]+margin))
+                    cur.execute('''SELECT rel_time, power, v_in, i_in, v_out, i_out, v_bat, i_bat, temp, battery 
+                                   FROM charging_metrics WHERE rel_time BETWEEN ? AND ? ORDER BY rel_time ASC''', (xlim[0]-margin, xlim[1]+margin))
                     rows = cur.fetchall()
                     if rows:
-                        limit_points = 2000
-                        if len(rows) > limit_points: step = len(rows) // limit_points; rows = rows[::step]
+                        if len(rows) > 2000: step = len(rows) // 2000; rows = rows[::step]
                         self.chart_fetched.emit(tuple(zip(*rows)))
-                    else: self.chart_fetched.emit(([],[],[],[],[],[],[],[]))
+                    else: self.chart_fetched.emit(([],[],[],[],[],[],[],[],[],[]))
                 except Exception: pass
             try:
                 log_task = self.log_queue.get(timeout=0.05)
@@ -92,19 +186,13 @@ class FetchWorker(QThread):
     def stop(self): self.running = False; self.wait()
 
 class SerialWorker(QThread):
-    data_ready = pyqtSignal(dict)
-    log_ready = pyqtSignal(str) 
-    
+    data_ready = pyqtSignal(dict); log_ready = pyqtSignal(float, str) 
     KNOWN_ASK = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x09, 0x22, 0x31, 0x51, 0x71, 0x13, 0x18, 0x19, 0x1A, 0x1B, 0x20, 0x23, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x36, 0x37, 0x38, 0x39, 0x46, 0x47, 0x48, 0x49, 0x50, 0x56, 0x57, 0x58, 0x59, 0x66, 0x67, 0x78, 0x76, 0x77, 0x79, 0x81, 0x84, 0x85, 0x88, 0x90, 0x96, 0xA8}
     KNOWN_FSK = {0x00, 0x55, 0x33, 0xFF, 0x01, 0x0A, 0x14, 0x1C, 0x1B, 0x1D, 0x1E, 0x1F, 0x23, 0x26, 0x27, 0x2C, 0x2D, 0x2E, 0x2F, 0x34, 0x36, 0x37, 0x3E, 0x3F, 0x40, 0x43, 0x46, 0x47, 0x4E, 0x4F, 0x54, 0x56, 0x57, 0x5A, 0x5E, 0x5F, 0x61, 0x66, 0x67, 0x76, 0x77, 0x88, 0x8E, 0x8F, 0xA0}
 
     def __init__(self, port, baudrate):
-        super().__init__()
-        self.port = port
-        self.baudrate = baudrate
-        self.running = True
-        self.last_log_time = datetime.datetime.now() 
-        self._unknown_cmd_cache = set()
+        super().__init__(); self.port = port; self.baudrate = baudrate; self.running = True
+        self.last_log_time = datetime.datetime.now(); self._unknown_cmd_cache = set()
 
     def get_strict_timestamp(self):
         now = datetime.datetime.now()
@@ -118,20 +206,12 @@ class SerialWorker(QThread):
             self.serial_conn.reset_input_buffer()
         except Exception:
             while self.running:
-                time.sleep(0.05) 
-                t = time.time(); 
-                ts = self.get_strict_timestamp()
+                time.sleep(0.05); t = time.time(); ts = self.get_strict_timestamp()
                 self.parse_line(f"AA55:9000:1500:8500:1400:4000:3000:45:80:EDED")
-
-                if int(t)%3==0: 
-                    msg = f"{ts} ASK 51 3E 00 00 00 00 F "
-                elif int(t)%3==1: 
-                    msg = f"{ts} ASK 71 22 12 34 00 00 00 00 F "
-                else: 
-                    msg = f"{ts} FSK 40 03 F"
-
-                self.log_ready.emit(msg)
-                self.check_and_log_unknown(msg)
+                if int(t)%3==0: msg = f"{ts} ASK 51 3E 00 00 00 00 F "
+                elif int(t)%3==1: msg = f"{ts} ASK 71 22 12 34 00 00 00 00 F "
+                else: msg = f"{ts} FSK 40 03 F"
+                self.log_ready.emit(time.time(), msg); self.check_and_log_unknown(msg)
             return
             
         buffer = ""
@@ -143,27 +223,17 @@ class SerialWorker(QThread):
                     while "AA55" in buffer and "EDED" in buffer:
                         start = buffer.find("AA55"); end = buffer.find("EDED", start)
                         if end != -1: 
-                            self.parse_line(buffer[start:end+4])
-                            buffer = buffer[end+4:] 
-                        else: 
-                            buffer = buffer[start:]
-                            break 
-
+                            self.parse_line(buffer[start:end+4]); buffer = buffer[end+4:] 
+                        else: buffer = buffer[start:]; break 
                     while '\n' in buffer:
                         line, buffer = buffer.split('\n', 1) 
                         line = line.strip()
                         if line.startswith("TX0"):
-                            clean = line[3:].strip().strip(':').strip()
-                            msg = f"{self.get_strict_timestamp()} {clean}"
-                            self.log_ready.emit(msg)
-                            self.check_and_log_unknown(msg)
-                        elif "AA55" in line and "EDED" in line: 
-                            self.parse_line(line)
-                else: 
-                    time.sleep(0.001)
-
-            except: 
-                break
+                            msg = f"{self.get_strict_timestamp()} {line[3:].strip().strip(':').strip()}"
+                            self.log_ready.emit(time.time(), msg); self.check_and_log_unknown(msg)
+                        elif "AA55" in line and "EDED" in line: self.parse_line(line)
+                else: time.sleep(0.001)
+            except: break
 
     def parse_line(self, line):
         try:
@@ -178,36 +248,23 @@ class SerialWorker(QThread):
     def check_and_log_unknown(self, line):
         if "ASK " not in line and "FSK " not in line: return
         try:
-            p_type = "ASK" if "ASK " in line else "FSK"
-            start = line.find(f"{p_type} ") + 4
-            if p_type == "ASK":
-                end = line.find(" F ", start)
-                hex_str = line[start:end].strip() if end != -1 else line[start:].strip()
-            else:
-                end = line.find("(", start)
-                hex_str = line[start:end].strip() if end != -1 else line[start:].strip()
-            
+            p_type = "ASK" if "ASK " in line else "FSK"; start = line.find(f"{p_type} ") + 4
+            end = line.find(" F ", start) if p_type == "ASK" else line.find("(", start)
+            hex_str = line[start:end].strip() if end != -1 else line[start:].strip()
             raw = [int(x, 16) for x in hex_str.replace('0x','').replace(',',' ').split() if x.isalnum()]
             if not raw: return
-            header = raw[0]
-            
-            is_unknown = (p_type == "ASK" and header not in self.KNOWN_ASK) or (p_type == "FSK" and header not in self.KNOWN_FSK)
-                
-            if is_unknown:
-                cache_key = f"{p_type}_0x{header:02X}"
+            if (p_type == "ASK" and raw[0] not in self.KNOWN_ASK) or (p_type == "FSK" and raw[0] not in self.KNOWN_FSK):
+                cache_key = f"{p_type}_0x{raw[0]:02X}"
                 if cache_key not in self._unknown_cmd_cache:
                     self._unknown_cmd_cache.add(cache_key)
-                    log_file = "Unknown_Qi_Commands_Log.txt"
-                    ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-                    with open(log_file, "a", encoding="utf-8-sig") as f:
-                        if not os.path.exists(log_file) or os.path.getsize(log_file) == 0:
+                    with open("Unknown_Qi_Commands_Log.txt", "a", encoding="utf-8-sig") as f:
+                        if not os.path.exists("Unknown_Qi_Commands_Log.txt") or os.path.getsize("Unknown_Qi_Commands_Log.txt") == 0:
                             f.write("=== Qi 2.2.1 未知指令拦截对照表 ===\n\n")
-                        f.write(f"[{ts}] 发现未知 {p_type} | Header: 0x{header:02X} | 示例: {hex_str}\n")
+                        f.write(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}] 发现未知 {p_type} | Header: 0x{raw[0]:02X} | 示例: {hex_str}\n")
         except: pass
-        
     def stop(self): self.running = False; self.wait()
 
-# ================== 主窗口：核心业务逻辑 ==================
+# ================== 主窗口交互与控制中心 ==================
 class MonitorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -215,16 +272,22 @@ class MonitorWindow(QMainWindow):
         self.ui.setupUi(self)
         init_db()
         
+        self.qi_parser = Qi22Parser()
+        self._active_alerts = set() 
+        self._last_cc_cv_state = ""
+        self._full_charge_start_time = None
+        self._full_charge_alerted = False
+        
         for name, min_w in [('cb_port', 150), ('cb_baudrate', 120), ('btn_start', 100), ('btn_stop', 100)]:
             if hasattr(self.ui, name):
                 widget = getattr(self.ui, name)
                 widget.setMinimumWidth(min_w)
                 widget.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
-        
+                
         self.worker = None 
         self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b = [],[],[],[],[],[],[],[],[],[],[]
         self.latest_data, self.start_time, self.time_offset = None, 0.0, 0.0
-        
+        self.view_data = {'x':[], 'p':[], 'vi':[], 'ii':[], 'vo':[], 'io':[], 'vb':[], 'ib':[], 't':[], 'b':[]}
         self.auto_scroll_chart, self.log_mode, self.log_offset, self.is_fetching_logs = True, 'live', 0, False
         self.log_buffer, self.ui_lock, self.last_hovered_line = [], False, -1
         
@@ -232,7 +295,9 @@ class MonitorWindow(QMainWindow):
         self.fetch_worker = FetchWorker(); self.fetch_worker.chart_fetched.connect(self.on_chart_fetched)
         self.fetch_worker.log_fetched.connect(self.on_log_fetched); self.fetch_worker.start()
         
-        self.timer = QTimer(self); self.timer.timeout.connect(self.render_ui); self.timer.start(100)
+        self.setup_crosshair()
+        
+        self.timer = QTimer(self); self.timer.timeout.connect(self.render_ui); self.timer.start(CONFIG['ui']['render_interval_ms'])
         self.log_interaction_timer = QTimer(self); self.log_interaction_timer.setSingleShot(True); self.log_interaction_timer.timeout.connect(self.force_live_mode)
         
         self.ui.text_log.setMouseTracking(True); self.ui.text_log.viewport().setMouseTracking(True)
@@ -243,443 +308,280 @@ class MonitorWindow(QMainWindow):
         self.ui.btn_rollback.clicked.connect(self.toggle_log_mode); self.ui.btn_export_log.clicked.connect(self.export_tx0_logs)
         self.ui.text_log.verticalScrollBar().valueChanged.connect(self.on_log_scroll)
 
+        # 🟢 防御性编程：兼容用户可能忘了在 UI 文件加按钮的情况
+        if hasattr(self.ui, 'btn_report'): 
+            self.ui.btn_report.clicked.connect(self.export_pdf_report)
+
+        self.ui.p_p.vb.sigRangeChanged.connect(self.on_chart_manual_interaction)
+        self.ui.graph_widget.scene().sigMouseClicked.connect(self.on_chart_double_clicked)
+
         self.scan_ports(); self.auto_scroll_chart = False
         try:
-            conn = sqlite3.connect('charging_data.db'); max_t = conn.execute("SELECT MAX(rel_time) FROM charging_metrics").fetchone()[0]; conn.close()
+            conn = sqlite3.connect(CONFIG['system']['db_name']); max_t = conn.execute("SELECT MAX(rel_time) FROM charging_metrics").fetchone()[0]; conn.close()
             if max_t: 
                 self.ui.p_p.setXRange(max_t-60, max_t+5, padding=0)
                 self.fetch_worker.latest_xlim = [max_t-60, max_t+5]
                 self.fetch_worker.chart_request = True
         except: pass
 
-    def adjust_panel_widths(self):
+    # ========================== 核心扩展功能区 ==========================
+    def export_pdf_report(self):
+        filename, _ = QFileDialog.getSaveFileName(self, "导出 PDF 测试报告", f"Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf", "PDF Files (*.pdf)")
+        if not filename: return
         try:
-            center_point = self.geometry().center(); current_screen = QApplication.screenAt(center_point)
-            if not current_screen: current_screen = QApplication.primaryScreen()
-            screen_width = current_screen.geometry().width()
-            left_target_width = int(screen_width * 3 / 20)
-            mid_target_width = int(screen_width * 11 / 20)
-            right_target_width = screen_width - left_target_width - mid_target_width
-            if hasattr(self.ui, 'splitter'): self.ui.splitter.setSizes([left_target_width, mid_target_width, right_target_width])
+            conn = sqlite3.connect(CONFIG['system']['db_name']); cur = conn.cursor()
+            cur.execute("SELECT MIN(timestamp), MAX(timestamp), MAX(rel_time), COUNT(*), MAX(power), MAX(temp) FROM charging_metrics")
+            summary_res = cur.fetchone()
+            
+            cur.execute("SELECT message FROM tx0_logs WHERE message LIKE '%🚨%' OR message LIKE '%⚠️%' ORDER BY id ASC")
+            alert_logs = [r[0] for r in cur.fetchall()]
+            conn.close()
+
+            if not summary_res or summary_res[0] is None:
+                QMessageBox.warning(self, "提示", "当前数据库为空，无法生成报告！"); return
+
+            summary_data = {
+                "start": summary_res[0], "end": summary_res[1], 
+                "duration": f"{summary_res[2]:.2f} s", "samples": summary_res[3],
+                "max_p": summary_res[4] or 0.0, "max_t": summary_res[5] or 0.0
+            }
+
+            temp_imgs = []; plot_configs = [(self.ui.p_p, "power_full.png"), (self.ui.p_in, "input_full.png"), (self.ui.p_out, "output_full.png"), (self.ui.p_bat, "battery_full.png")]
+            
+            # 全量视图截图渲染
+            for plot, img_name in plot_configs:
+                plot.enableAutoRange() 
+                exporter = pg.exporters.ImageExporter(plot); exporter.parameters()['width'] = 1200
+                exporter.export(img_name); temp_imgs.append(img_name)
+
+            ReportEngine.generate(filename, summary_data, alert_logs, temp_imgs)
+            for img in temp_imgs: 
+                if os.path.exists(img): os.remove(img)
+            
+            QMessageBox.information(self, "成功", f"报告已生成至：\n{filename}")
+        except Exception as e:
+            QMessageBox.critical(self, "导出失败", f"报告生成过程中发生错误：\n{str(e)}"); traceback.print_exc()
+
+    def show_full_charge_alert(self, debounce_sec):
+        ts_str = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        self.append_log(time.time(), f"[{ts_str}] 🎉 提示：充电已完成 (稳定维持涓流状态 {debounce_sec} 秒)！")
+        self.msg_full_charge = QMessageBox(self); self.msg_full_charge.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
+        self.msg_full_charge.setIcon(QMessageBox.Information); self.msg_full_charge.setWindowTitle("充电完成 🔋")
+        self.msg_full_charge.setText("<h3>🎉 充电已完成！</h3>")
+        self.msg_full_charge.setInformativeText(f"设备已稳定维持涓流满电状态 {debounce_sec} 秒。<br><span style='color:#94A3B8;'>本提示将在 10 秒后自动关闭。</span>")
+        self.msg_full_charge.setStandardButtons(QMessageBox.Ok); self.msg_full_charge.show()
+        QTimer.singleShot(10000, self.close_full_charge_alert)
+
+    def close_full_charge_alert(self):
+        if hasattr(self, 'msg_full_charge') and self.msg_full_charge.isVisible(): self.msg_full_charge.accept()
+
+    def sync_log_to_time(self, target_time):
+        if self.auto_scroll_chart:
+            self.auto_scroll_chart = False; self.ui.btn_start.setText("⏸ 历史浏览 (点击恢复)"); self.request_chart_fetch()
+        self.log_mode = 'history_jump'; self.ui.btn_rollback.setText("⬇️ 返回最新")
+        try:
+            conn = sqlite3.connect(CONFIG['system']['db_name']); cur = conn.cursor()
+            cur.execute("SELECT id, message FROM tx0_logs WHERE rel_time IS NOT NULL ORDER BY ABS(rel_time - ?) LIMIT 1", (target_time,))
+            res = cur.fetchone()
+            if not res: conn.close(); return
+            target_id, target_msg = res; start_id = max(0, target_id - 500)
+            cur.execute("SELECT message FROM tx0_logs WHERE id >= ? AND id <= ? ORDER BY id ASC", (start_id, target_id + 500))
+            rows = cur.fetchall(); conn.close()
+            if rows:
+                log_text = "\n".join([r[0] for r in rows])
+                self.ui_lock = True; self.ui.text_log.blockSignals(True); self.ui.text_log.document().setMaximumBlockCount(0) 
+                self.ui.text_log.setPlainText(log_text); self.ui.text_log.blockSignals(False); self.ui_lock = False
+                self.log_offset = start_id
+                QTimer.singleShot(50, lambda: self.highlight_log(target_msg))
         except Exception: pass
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not hasattr(self, '_initial_layout_done'): self.adjust_panel_widths(); self._initial_layout_done = True
+    def highlight_log(self, target_msg):
+        doc = self.ui.text_log.document(); cursor = self.ui.text_log.textCursor(); cursor.setPosition(0)
+        found_cursor = doc.find(target_msg, cursor)
+        if not found_cursor.isNull():
+            self.ui.text_log.setTextCursor(found_cursor); self.ui.text_log.centerCursor() 
+            selection = QTextEdit.ExtraSelection(); selection.format.setBackground(QColor("#0284C7")); selection.format.setForeground(QColor("#FFFFFF"))
+            selection.cursor = found_cursor; selection.cursor.select(QTextCursor.BlockUnderCursor)
+            self.ui.text_log.setExtraSelections([selection]); QTimer.singleShot(3000, lambda: self.ui.text_log.setExtraSelections([]))
 
-    # ========================== WPC Qi 2.2.1 深度字段解析引擎 ==========================
-    def parse_qi_message(self, line):
-        line = re.sub(r'\s+', ' ', line).strip() + " "
-        if "ASK " in line:
-            start = line.find("ASK ") + 4
-            end = line.find(" F ", start)
-            if end != -1: return self.decode_mpp_full(line[start:end].strip(), "ASK")
-        if "FSK " in line:
-            start = line.find("FSK ") + 4
-            return self.decode_mpp_full(line[start:].strip().split('(')[0], "FSK")
-        return None
+    # ========================== 基础生命周期区 ==========================
+    def append_log(self, ts, msg):
+        self.log_buffer.append(msg)
+        if hasattr(self, 'db_worker'): 
+            t = (ts - self.start_time + self.time_offset) if self.start_time > 0 else 0.0
+            self.db_worker.queue.put({'type': 'log', 'rel_time': t, 'msg': msg})
 
-    def decode_mpp_full(self, hex_str, p_type):
+    def setup_crosshair(self):
+        self.v_lines = []
+        for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]:
+            v_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(color='#38BDF8', width=1.5, style=Qt.DashLine))
+            v_line.setVisible(False); p.addItem(v_line, ignoreBounds=True)
+            self.v_lines.append(v_line)
+        self.hud_label = QLabel(); self.hud_label.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint); self.hud_label.setAttribute(Qt.WA_TranslucentBackground) 
+        self.hud_label.setStyleSheet("QLabel { background-color: rgba(15, 23, 42, 240); color: #CBD5E1; border: 1px solid #38BDF8; border-radius: 6px; padding: 10px; font-family: Consolas, monospace; }")
+        self.hud_label.hide()
+        self.proxy = pg.SignalProxy(self.ui.graph_widget.scene().sigMouseMoved, rateLimit=60, slot=self.on_mouse_moved)
+
+    def hide_tooltip(self):
+        if hasattr(self, 'hud_label') and self.hud_label.isVisible(): self.hud_label.hide()
+        if hasattr(self, 'v_lines'):
+            for line in self.v_lines: line.setVisible(False)
+
+    def on_mouse_moved(self, evt):
         try:
-            raw = [int(x, 16) for x in hex_str.replace('0x','').replace(',',' ').split()]
-            if not raw: 
-                return None
-            header = raw[0]
-            
-            cs, payload, cs_st = None, raw[1:], "N/A"
-            if len(raw) > 1:
-                calc = 0
-                for b in raw[:-1]: calc ^= b
-                if calc == raw[-1]: 
-                    cs, payload, cs_st = raw[-1], raw[1:-1], "<span style='color:#22C55E;'>✅ OK</span>"
-                else: 
-                    cs, payload, cs_st = raw[-1], raw[1:-1], "<span style='color:#EF4444;'>❌ ERR</span>"
-            
-            if p_type == "ASK": info, detail = self.ask_qi22_map(header, payload)
-            else: info, detail = self.fsk_qi22_map(header, payload)
+            pos = evt[0]
+            if self.auto_scroll_chart or not getattr(self, 'view_data', {}).get('x'):
+                self.hide_tooltip(); return
+            mouse_point = None; active_p = None
+            for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]:
+                if p.sceneBoundingRect().contains(pos): mouse_point = p.vb.mapSceneToView(pos); active_p = p; break
+            if mouse_point and active_p:
+                x_val = mouse_point.x(); x_arr = self.view_data['x']
+                idx = bisect.bisect_left(x_arr, x_val); idx = max(0, min(idx, len(x_arr) - 1))
+                if idx > 0 and abs(x_val - x_arr[idx-1]) < abs(x_val - x_arr[idx]): idx = idx - 1
+                closest_x = x_arr[idx]
+                try: p_val, vi_val, ii_val, vo_val, io_val, vb_val, ib_val = self.view_data['p'][idx], self.view_data['vi'][idx], self.view_data['ii'][idx], self.view_data['vo'][idx], self.view_data['io'][idx], self.view_data['vb'][idx], self.view_data['ib'][idx]
+                except IndexError: self.hide_tooltip(); return
+                for line in self.v_lines: line.setPos(closest_x); line.setVisible(True)
+                html = f"<div style='font-size: 10pt; line-height: 1.4;'><b style='color:#F8FAFC; font-size: 11pt;'>⏱ {closest_x:.2f} s</b><hr style='border: 1px solid #334155; margin: 4px 0;'>"
+                if active_p == self.ui.p_p: html += f"<b>PWR:</b> <span style='color:#A855F7'>{p_val:.2f} W</span>"
+                elif active_p == self.ui.p_in: html += f"<b>IN :</b> <span style='color:#FACC15'>{vi_val:.2f} V</span> / <span style='color:#22C55E'>{ii_val:.2f} A</span>"
+                elif active_p == self.ui.p_out: html += f"<b>OUT:</b> <span style='color:#FACC15'>{vo_val:.2f} V</span> / <span style='color:#22C55E'>{io_val:.2f} A</span>"
+                elif active_p == self.ui.p_bat: html += f"<b>BAT:</b> <span style='color:#FACC15'>{vb_val:.2f} V</span> / <span style='color:#22C55E'>{ib_val:.2f} A</span>"
+                self.hud_label.setText(html + "</div>"); self.hud_label.adjustSize(); self.hud_label.move(QCursor.pos().x() + 15, QCursor.pos().y() + 15); self.hud_label.show()
+            else: self.hide_tooltip()
+        except Exception: self.hide_tooltip()
 
-            title_color = '#38BDF8' if p_type == 'ASK' else '#FB923C'
-            html = f"<div style='min-width: 200px; font-family: Consolas, monospace;'>"
-            html += f"<b style='color:{title_color}; font-size: 11pt;'>{'🔵 ASK (PRx ➔ PTx)' if p_type=='ASK' else '🟠 FSK (PTx ➔ PRx)'}</b>"
-            html += f"<hr style='border:1px solid #334155; margin: 5px 0;'>"
-            html += f"<b>指令 Header:</b> <span style='color:#FACC15;'>0x{header:02X}</span> [{info}]<br>"
-            html += f"<b>原始 Payload:</b> {' '.join([f'{x:02X}' for x in payload]) if payload else 'None'}<br>"
-            if cs is not None: 
-                html += f"<b>XOR 校验和:</b> 0x{cs:02X} ({cs_st})<br>"
-            html += f"<hr style='border:1px dashed #334155; margin: 5px 0;'>"
-            html += f"<b>📑 字节/位级深度破译:</b><br><div style='color:#E2E8F0; padding-top: 5px; line-height: 1.4;'>{detail}</div>"
-            html += "</div>"
-            return html
-        except Exception as e: return f"解析异常: {e}"
+    def adjust_panel_widths(self):
+        try:
+            current_screen = QApplication.screenAt(self.geometry().center()) or QApplication.primaryScreen()
+            w = current_screen.geometry().width()
+            if hasattr(self.ui, 'splitter'): self.ui.splitter.setSizes([int(w * 3 / 20), int(w * 11 / 20), w - int(w * 3 / 20) - int(w * 11 / 20)])
+        except Exception: pass
 
-    def ask_qi22_map(self, header, payload):
-        d = {
-            0x01: ("SIG", "信号强度 (Signal Strength)"),
-            0x02: ("EPT", "停止充电 (End Power Transfer)"),
-            0x03: ("CE", "控制误差 (Control Error)"),
-            0x04: ("RP8", "接收功率 (8-bit Received Power)"),
-            0x05: ("CHS", "充电状态 (Charge Status)"),
-            0x06: ("PCH", "功率控制保持 (Power Control Hold-off)"),
-            0x07: ("GRQ", "通用请求 (General Request)"),
-            0x09: ("RENEG", "重新协商 (Renegotiate)"),
-            0x22: ("FOD", "异物检测状态 (FOD Status)"),
-            0x31: ("RP24", "接收功率 (24-bit Received Power)"),
-            0x51: ("CFG", "配置数据包 (Configuration)"),
-            0x71: ("ID", "身份识别数据包 (Identification)"),
-            0x13:("MSR", " Mode Select Request"),
-            0x18:("CLOAK", " Cloak Request"),
-            0x19:("XCE", " Extended Control Error"),
-            0x1A:("PROP/1a", " MPP PRx Proprietary Packet"),
-            0x1B:("PROP/1b", " MPP PRx Proprietary Packet"),
-            0x20:("SRQ", " Specific Request [PLA]"),
-            0x23:("CAL_OP", " Calibration Operation"),
-            0x26:("SADT/1e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x27:("SADT/1o", " Simultaneous Auxiliary Data Transport (odd)"), 
-            0x28:("GET Get", " request"),
-            0x29:("EDS", " Enabled Data Streams"),
-            0x2A:("PROP/2a", " MPP PRx Proprietary Packet"),
-            0x2B:("PROP/2b", " MPP PRx Proprietary Packet"),
-            0x2C:("CAL_ENTER", " Enter Calibration"),
-            0x2D:("CAL_EXIT", " Exit Calibration"),
-            0x36:("SADT/2e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x37:("SADT/2o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x38:("SDSR", " Simultaneous Data Stream Response"),
-            0x39:("PROP/39", " MPP PRx Proprietary Packet"),
-            0x46:("SADT/3e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x47:("SADT/3o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x48:("SADC", " Simultaneous Auxiliary Data Control"),
-            0x49:("PROP/49", " MPP PRx Proprietary Packet"),
-            0x50:("KEST-COEFF", " K-est Coefficients"),
-            0x56:("SADT/4e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x57:("SADT/4o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x58:("REPORT/PLA", " Report/Power Loss Accounting"),
-            0x59:("PROP/59", " MPP PRx Proprietary Packet"),
-            0x66:("SADT/5e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x67:("SADT/5o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x78:("PLAP", " Power Loss Accounting Parameters"),
-            0x76:("SADT/6e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x77:("SADT/6o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x79:("PROP/79", " MPP PRx Proprietary Packet "),
-            0x81:("MPP-XID", " MPP Extended Identification"),
-            0x84:("ECAP", " Extended Received Capabilities"),
-            0x85:("PROP/85", " MPP PRx Proprietary Packet "),
-            0x88:("PLA_2", " Power Loss Accounting"),
-            0x90:("PLAP_2", " Power Loss Accounting Parameters"),
-            0x96:("CAL_CAPTURE", " Calibration Capture"),
-            0xA8:("MATEDQ-COEFF", " Mated-Q Coefficients"),
-        }
-        name, _ = d.get(header, (f"UNK_0x{header:02X}", "未知/专有指令"))
-        desc = ""
-        plen = len(payload)
+    def showEvent(self, event): super().showEvent(event); getattr(self, '_initial_layout_done', self.adjust_panel_widths())
 
-        if header == 0x01 and plen >= 1:
-            val = payload[0]
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{val:02X}<br>"
-            desc += f"  ↳ 耦合强度映射值: <b>{val}</b> / 255 ({(val/255)*100:.1f}%)"
-
-        elif header == 0x02 and plen >= 1:
-            e_map = {0x00: "未知", 0x01: "<span style='color:#22C55E'>充电完成</span>", 0x02: "<span style='color:#EF4444'>内部故障</span>", 0x03: "<span style='color:#EF4444'>过温</span>", 0x04: "<span style='color:#EF4444'>过压</span>", 0x05: "<span style='color:#EF4444'>过流</span>", 0x06: "<span style='color:#EF4444'>电池故障</span>", 0x0A: "重启传输", 0x0B: "<span style='color:#EF4444'>鉴权失败</span>"}
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{payload[0]:02X} ➔ <b>{e_map.get(payload[0], '保留原因')}</b>"
-
-        elif header == 0x03 and plen >= 1:
-            val = payload[0]
-            ce = val - 256 if val > 127 else val
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{val:02X}<br>"
-            desc += f"  ↳ 误差值 (Signed 8-bit): <b style='color:{'#22C55E' if ce<0 else '#EF4444'};'>{ce}</b><br>"
-            desc += f"  <i>* 负值要求 PTx 降功率，正值要求升功率</i>"
-
-        elif header == 0x04 and plen >= 1:
-            val = payload[0]
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{val:02X}<br>"
-            desc += f"  ↳ 接收功率比: <b>{val}</b> / 128 ({(val/128)*100:.1f}% Max Power)"
-
-        elif header == 0x05 and plen >= 1:
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{payload[0]:02X} ➔ 电池电量: <b style='color:#22C55E'>{payload[0]} %</b>"
-
-        elif header == 0x06 and plen >= 1:
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{payload[0]:02X} ➔ 保持时间: <b>{payload[0] * 10} ms</b>"
-
-        elif header == 0x13 and plen >= 1:
-            align = payload[0] & 0x0F
-            couple = (payload[0] >> 4) & 0x0F
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{payload[0]:02X} (磁吸状态)<br>"
-            desc += f"  ↳ 对齐质量 (Alignment) [Bit 0-3]: <b>{align}</b>/15<br>"
-            desc += f"  ↳ 耦合强度 (Coupling)  [Bit 4-7]: <b>{couple}</b>/15<br>"
-            if plen >= 2:
-                flags = payload[1]
-                desc += f"• <span style='color:#38BDF8'>Byte 1:</span> 0x{flags:02X} (PRx Flags)<br>"
-                desc += f"  ↳ Bit 0 (过压保护): {'<b style=''color:#EF4444''>触发</b>' if flags & 0x01 else '正常'}<br>"
-                desc += f"  ↳ Bit 1 (过流保护): {'<b style=''color:#EF4444''>触发</b>' if flags & 0x02 else '正常'}"
-
-        elif header == 0x23 and plen >= 2:
-            val = (payload[0] << 8) | payload[1]
-            ce = val - 65536 if val > 32767 else val
-            desc = f"• <span style='color:#38BDF8'>Byte 0-1:</span> 0x{payload[0]:02X} 0x{payload[1]:02X}<br>"
-            desc += f"  ↳ 16-bit 高精度误差: <b style='color:{'#22C55E' if ce<0 else '#EF4444'};'>{ce}</b>"
-
-        elif header == 0x28 and plen >= 1:
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{payload[0]:02X} ➔ 请求 PTx 发送 <b>0x{payload[0]:02X}</b> 报文"
-
-        elif header == 0x31 and plen >= 3:
-            mode = payload[0] & 0x07
-            val = payload[1] | (payload[2] << 8)
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{payload[0]:02X} ➔ 功率计算模式: Mode <b>{mode}</b><br>"
-            desc += f"• <span style='color:#38BDF8'>Byte 1-2:</span> 0x{payload[1]:02X} 0x{payload[2]:02X}<br>"
-            desc += f"  ↳ 24-bit 接收功率参考值: <b>{val}</b>"
-
-        elif header == 0x51 and plen >= 5:
-            p_class = payload[0] >> 6
-            max_p_val = payload[0] & 0x3F
-            prop = (payload[1] >> 7) & 1
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{payload[0]:02X}<br>"
-            desc += f"  ↳ 功率级别 (Power Class): Class <b>{p_class}</b><br>"
-            desc += f"  ↳ 最大协商功率 (Max Pwr): <b>{max_p_val * 0.5:.1f} W</b><br>"
-            desc += f"• <span style='color:#38BDF8'>Byte 1:</span> 0x{payload[1]:02X}<br>"
-            desc += f"  ↳ 专有扩展标志 (Proprietary): <b>{'Yes' if prop else 'No'}</b><br>"
-            desc += f"  ↳ 窗口极性/深度位掩码: [0x{payload[1]&0x7F:02X}]<br>"
-            desc += f"• <span style='color:#38BDF8'>Byte 3:</span> 0x{payload[3]:02X} ➔ 期望包数 (Count): <b>{payload[3]}</b><br>"
-            desc += f"• <span style='color:#38BDF8'>Byte 4:</span> 0x{payload[4]:02X} ➔ 窗口时间偏移 (Window Offset)"
-
-        elif header == 0x71 and plen >= 7:
-            ver_major = payload[0] >> 4
-            ver_minor = payload[0] & 0x0F
-            ext = (payload[0] >> 7) & 1
-            ptmc = (payload[1] << 8) | payload[2]
-            dev_id = f"{payload[3]:02X} {payload[4]:02X} {payload[5]:02X} {payload[6]:02X}"
-            desc = f"• <span style='color:#38BDF8'>Byte 0:</span> 0x{payload[0]:02X}<br>"
-            desc += f"  ↳ Qi 版本号: <b>{ver_major}.{ver_minor}</b> (Ext: {ext})<br>"
-            desc += f"• <span style='color:#38BDF8'>Byte 1-2:</span> 0x{payload[1]:02X} 0x{payload[2]:02X}<br>"
-            desc += f"  ↳ 制造商代码 (PTMC): <b>0x{ptmc:04X}</b><br>"
-            desc += f"• <span style='color:#38BDF8'>Byte 3-6:</span> {dev_id}<br>"
-            desc += f"  ↳ 基本设备 ID (Basic Device ID)"
-
-        elif header in [0x48, 0x38, 0xA8]:
-            desc = f"• 鉴权安全负载 (Auth Data Stream)<br>"
-            desc += f"• 负载长度: <b>{plen} Bytes</b><br>"
-            desc += f"• 报文片段: <span style='color:#94A3B8'>{' '.join([f'{b:02X}' for b in payload[:12]])} ...</span>"
-
-        else:
-            if not payload: desc = "<i>无 Payload (Empty Packet)</i>"
-            else:
-                desc = f"• 载荷长度: {plen} Bytes<br>"
-                desc += f"• HEX: <span style='color:#94A3B8'>{' '.join([f'{b:02X}' for b in payload])}</span>"
-
-        return name, desc
-
-    def fsk_qi22_map(self, header, payload):
-        """FSK (PTx -> PRx) 发射端到接收端 - Wireshark 级解析"""
-        d = {
-            0x00: ("NAK", "拒绝"),
-            0x55: ("ND", "未定义 (Not Defined)"),
-            0x33: ("ATN", "注意 (Attention)"),
-            0xFF: ("ACK", "同意 (Acknowledge)"),
-            0x01: ("ERR", "Error Status"),
-            0x0A: ("EPTR", "End Power Transfer Request"),
-            0x14: ("CAL_CAPTURE_RSP", " Calibration Capture Response"),
-            0x1C: ("PROP/1c", " MPP PTx Proprietary Packet"),
-            0x1B: ("CAL_OP_RSP", " Calibration Operation Response"),
-            0x1D: ("PROP/1d MPP", " PTx Proprietary Packet"),
-            0x1E: ("0x00 CLOAK", " Cloak Request"),
-            0x1E: ("0x03 RCS", " Regulation Control Status"),
-            0x1F: ("CHS", " Charge Status"),
-            0x23: ("MSS", " Mode Select Status"),
-            0x26: ("SADT/1e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x27: ("SADT/1o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x2C: ("PROP/2c", " MPP PTx Proprietary Packet"),
-            0x2D: ("PROP/2d", " MPP PTx Proprietary Packet"),
-            0x2E: ("GET", " Get Request"),
-            0x2F: ("EDS", " Enabled Data Streams"),
-            0x34: ("CAL_ENTER_RSP", " Enter Calibration Response"),
-            0x36: ("SADT/2e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x37: ("SADT/2o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x3E: ("PROP/3e", " MPP PTx Proprietary Packet "),
-            0x3F: ("INV/SDSR/KEST", "0x00:Inverter Voltage 0x01:Simultaneous Data Stream Response 0x02:Estimated K"),
-            0x40: ("MATEDQ_RES", " Mated-Q Results "),
-            0x43: ("CAL_CAP", " Calibration Capabilities "),
-            0x46: ("SADT/3e", " Simultaneous Auxiliary Data Transport (even) "),
-            0x47: ("SADT/3o", " Simultaneous Auxiliary Data Transport (odd) "),
-            0x4E: ("PROP/4e", " MPP PTx Proprietary Packet "),
-            0x4F: ("SADC", " Simultaneous Auxiliary Data Control "),
-            0x54: ("dPCAL_PARAM", " Calibration Parameter "),
-            0x56: ("SADT/4e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x57: ("SADT/4o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x5A: ("MODECAP", " Power Modes Capabilities"),
-            0x5E: ("PROP/5e", " MPP PTx Proprietary Packet"),
-            0x5F: ("PLAP", " Power Loss Accounting Parameters"),
-            0x61: ("GMP", " Gain Measurement Parameters"),
-            0x66: ("SADT/5e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x67: ("SADT/5o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x76: ("SADT/6e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x77: ("SADT/6o", " Simultaneous Auxiliary Data Transport (odd)"),
-            0x88: ("PLAP_2", " Power Loss Accounting Parameters"),
-            0x8E: ("PROP/8e", " MPP PTx Proprietary Packet"),
-            0x8F: ("XID/ECAP", " 0x00:Extended Power Transmitter Identification 0x01:Extended Power Transmitter Extended Capabilities"),
-            0xA0: ("MODEXCAP", " Power Modes Extended Capabilities"),
-        }
-        name, _ = d.get(header, (f"UNK_0x{header:02X}", "扩展/专有 FSK 指令"))
-        desc = ""
-        plen = len(payload)
-
-        if header == 0x01: desc = "<b style='color:#22C55E'>✓ ACK (接受/确认上一条 PRx 指令)</b>"
-        elif header == 0x02: desc = "<b style='color:#EF4444'>✗ NACK (拒绝/条件不支持)</b>"
-        elif header == 0x03: desc = "<b style='color:#FACC15'>⚠ ND (指令格式不识别)</b>"
-        
-        elif header == 0x09 and plen >= 1:
-            r = {0x00: "<b style='color:#22C55E'>ACK</b>", 0x01: "<b style='color:#EF4444'>NACK</b>", 0x02: "<b style='color:#FACC15'>ND</b>", 0x03: "<b style='color:#38BDF8'>ATN</b>"}
-            desc = f"• <span style='color:#FB923C'>Byte 0:</span> 0x{payload[0]:02X} ➔ 响应类型: {r.get(payload[0], 'Reserved')}"
-
-        elif header == 0x40 and plen >= 1:
-            flags = payload[0]
-            desc = f"• <span style='color:#FB923C'>Byte 0:</span> 0x{flags:02X} (PTx 状态标志位图)<br>"
-            desc += f"  ↳ Bit 0 (功率限制): {'<b style=''color:#EF4444''>触发降额</b>' if flags & 0x01 else '未激活'}<br>"
-            desc += f"  ↳ Bit 1 (温度限制): {'<b style=''color:#EF4444''>触发过温保护</b>' if flags & 0x02 else '未激活'}<br>"
-            desc += f"  ↳ Bit 2 (疑似异物 FOD): {'<b style=''color:#EF4444''>报警 (FOD)</b>' if flags & 0x04 else '<b style=''color:#22C55E''>正常</b>'}<br>"
-            desc += f"  ↳ Bit 3 (鉴权状态): {'<b style=''color:#38BDF8''>处理中/完成</b>' if flags & 0x08 else '无鉴权'}"
-
-        elif header == 0x43 and plen >= 2:
-            max_p = payload[0] * 0.5
-            auth_cap = (payload[1] >> 4) & 1
-            desc = f"• <span style='color:#FB923C'>Byte 0:</span> 0x{payload[0]:02X}<br>"
-            desc += f"  ↳ PTx 保证输出功率 (Guaranteed): <b>{max_p:.1f} W</b><br>"
-            desc += f"• <span style='color:#FB923C'>Byte 1:</span> 0x{payload[1]:02X}<br>"
-            desc += f"  ↳ 鉴权硬件 (Auth Capable): <b>{'具备' if auth_cap else '不具备'}</b>"
-
-        elif header in [0x11, 0x76, 0x77]:
-            desc = f"• PTx 鉴权下行安全通道 (Security Channel)<br>"
-            desc += f"• 负载长度: <b>{plen} Bytes</b><br>"
-            if plen > 0:
-                desc += f"• 报文片段: <span style='color:#94A3B8'>{' '.join([f'{b:02X}' for b in payload[:12]])} ...</span>"
-
-        else:
-            if not payload: desc = "<i>无 Payload (Empty Packet)</i>"
-            else:
-                desc = f"• 载荷长度: {plen} Bytes<br>"
-                desc += f"• HEX: <span style='color:#94A3B8'>{' '.join([f'{b:02X}' for b in payload])}</span>"
-        
-        return name, desc
-
-    # ========================== 交互逻辑 ==========================
     def export_csv(self):
         p, _ = QFileDialog.getSaveFileName(self, "导出表格数据", f"Qi_Monitor_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", "CSV (*.csv)")
         if p:
             try:
-                c = sqlite3.connect('charging_data.db')
-                r = c.execute("SELECT timestamp, v_in, i_in, v_out, i_out, v_bat, i_bat, eff, power, temp, battery FROM charging_metrics ORDER BY rel_time ASC").fetchall()
-                c.close()
+                conn = sqlite3.connect(CONFIG['system']['db_name']); r = conn.execute("SELECT timestamp, v_in, i_in, v_out, i_out, v_bat, i_bat, eff, power, temp, battery FROM charging_metrics ORDER BY rel_time ASC").fetchall(); conn.close()
                 with open(p, 'w', newline='', encoding='utf-8-sig') as f:
-                    csv.writer(f).writerow(["时间戳","Vin","Iin","Vout","Iout","Vbat","Ibat","效率","功率","温度","电量"])
-                    csv.writer(f).writerows(r)
+                    csv.writer(f).writerow(["时间戳","Vin","Iin","Vout","Iout","Vbat","Ibat","效率","功率","温度","电量"]); csv.writer(f).writerows(r)
                 QMessageBox.information(self, "成功", "数据导出成功！")
             except Exception as e: QMessageBox.critical(self, "错误", f"导出失败: {e}")
 
     def eventFilter(self, obj, event):
         if obj == self.ui.text_log.viewport():
             if event.type() == QEvent.MouseMove:
-                if self.worker and self.worker.isRunning():
+                if self.worker and self.worker.isRunning() and self.auto_scroll_chart:
                     self.log_interaction_timer.start(3000); QToolTip.hideText()
                 else:
                     cursor = self.ui.text_log.cursorForPosition(event.pos())
                     if cursor.blockNumber() != self.last_hovered_line:
                         self.last_hovered_line = cursor.blockNumber()
-                        info = self.parse_qi_message(cursor.block().text())
+                        info = self.qi_parser.parse_message(cursor.block().text())
                         if info: QToolTip.showText(event.globalPos(), info, self.ui.text_log)
                         else: QToolTip.hideText()
             elif event.type() == QEvent.Leave: QToolTip.hideText(); self.last_hovered_line = -1
         return super().eventFilter(obj, event)
 
-    # ========================== UI 调度引擎 (基于 PyQtGraph) ==========================
+    def show_protection_alert(self, alert_type, trigger_val, threshold_val, unit):
+        ts_str = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        self.append_log(time.time(), f"[{ts_str}] 🚨 硬件保护触发：{alert_type}！当前值 {trigger_val:.2f}{unit}，安全阈值 {threshold_val:.2f}{unit}")
+        msg = QMessageBox(self); msg.setIcon(QMessageBox.Critical); msg.setWindowTitle("硬件保护触发 🚨")
+        msg.setText(f"<h3>{alert_type}</h3>")
+        msg.setInformativeText(f"系统检测到危险参数，请检查测试环境！<br><br><b>当前触发值:</b> <span style='color:#EF4444;'>{trigger_val:.2f} {unit}</span><br><b>系统安全阈值:</b> {threshold_val:.2f} {unit}")
+        msg.setStandardButtons(QMessageBox.Ok); msg.exec_() 
+
     def render_ui(self):
         if self.log_buffer:
-            if self.log_mode == 'live':
-                self.ui_lock = True; self.ui.text_log.appendPlainText("\n".join(self.log_buffer)); self.ui_lock = False
+            if self.log_mode == 'live': self.ui_lock = True; self.ui.text_log.appendPlainText("\n".join(self.log_buffer)); self.ui_lock = False
             self.log_buffer.clear()
-            
         if self.latest_data:
             d = self.latest_data
+            for lcd, val in [(self.ui.lcd_v_in, d['v_in']),(self.ui.lcd_i_in, d['i_in']),(self.ui.lcd_v_out, d['v_out']),(self.ui.lcd_i_out, d['i_out']),(self.ui.lcd_power, d['p']),(self.ui.lcd_v_bat, d['v_bat']),(self.ui.lcd_i_bat, d['i_bat']),(self.ui.lcd_battery, d['b']),(self.ui.lcd_temp, d['t'])]: lcd.display(f"{val:.2f}" if isinstance(val, float) else f"{val}")
             
-            # 单独展开 LCD 更新，恢复被合并掉的过温警告逻辑
-            self.ui.lcd_v_in.display(f"{d['v_in']:.2f}")
-            self.ui.lcd_i_in.display(f"{d['i_in']:.2f}")
-            self.ui.lcd_v_out.display(f"{d['v_out']:.2f}")
-            self.ui.lcd_i_out.display(f"{d['i_out']:.2f}")
-            self.ui.lcd_power.display(f"{d['p']:.2f}")
-            self.ui.lcd_v_bat.display(f"{d['v_bat']:.2f}")
-            self.ui.lcd_i_bat.display(f"{d['i_bat']:.2f}")
-            self.ui.lcd_battery.display(f"{d['b']}")
-            
-            # 🟢 完整恢复：独立处理温度并加入过温视觉警告 (阈值 60 度)
-            temp_val = d['t']
-            self.ui.lcd_temp.display(f"{temp_val}")
-            
-            if temp_val >= 60:
-                # 过温状态：红底红框
+            ovp = CONFIG['alerts'].get('ovp_threshold', 25.0); ocp = CONFIG['alerts'].get('ocp_threshold', 3.0); temp_w = CONFIG['alerts'].get('temp_warning_threshold', 60); temp_r = CONFIG['alerts'].get('temp_recovery_threshold', 55)
+            max_v = max(d['v_in'], d['v_out'])
+            if max_v >= ovp:
+                if 'OVP' not in self._active_alerts: self._active_alerts.add('OVP'); self.show_protection_alert("过压保护 (OVP)", max_v, ovp, "V")
+            elif max_v < ovp - 1.0: self._active_alerts.discard('OVP')
+
+            max_i = max(d['i_in'], d['i_out'])
+            if max_i >= ocp:
+                if 'OCP' not in self._active_alerts: self._active_alerts.add('OCP'); self.show_protection_alert("过流保护 (OCP)", max_i, ocp, "A")
+            elif max_i < ocp - 0.2: self._active_alerts.discard('OCP')
+
+            if d['t'] >= temp_w:
                 self.ui.lcd_temp.setStyleSheet("color: #EF4444; background-color: #450a0a; border: 2px solid #EF4444;")
-                if not getattr(self, '_temp_warned', False):
-                    ts_str = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
-                    self.append_log(f"[{ts_str}] ⚠️ 警告：线圈温度过高 ({temp_val}°C)！")
-                    self._temp_warned = True
+                if not getattr(self, '_temp_warned', False): self.append_log(time.time(), f"[{datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚠️ 警告：线圈温度过高 ({d['t']}°C)！"); self._temp_warned = True
+                if 'OTP' not in self._active_alerts: self._active_alerts.add('OTP'); self.show_protection_alert("过温保护 (OTP)", d['t'], temp_w, "°C")
             else:
-                # 正常状态：恢复默认橙色极客风格
                 self.ui.lcd_temp.setStyleSheet("color: #FB923C; background-color: #0D1117; border: 1px solid #334155;")
-                if temp_val < 55: # 回滞区间，避免数值在 59/60 抖动时疯狂报警
-                    self._temp_warned = False
+                if d['t'] < temp_r: self._temp_warned = False; self._active_alerts.discard('OTP')
+                    
+            if len(self.y_vb) >= 20: 
+                curr_p = d['p']; curr_v = d['v_bat']; curr_i = d['i_bat']
+                if curr_p < 0.5: state_text = "🔌 未充电 / 待机中"; color = "#94A3B8"; border_style = "dashed"
+                else:
+                    border_style = "solid"; dv = curr_v - self.y_vb[-20]; di = curr_i - self.y_ib[-20]
+                    if curr_i < 0.15: state_text = "🟢 涓流阶段 / 已满电"; color = "#10B981"
+                    elif abs(dv) <= 0.05 and di < -0.05: state_text = "🟡 恒压充电阶段 (CV)"; color = "#FACC15"
+                    elif dv > 0.02 and abs(di) <= 0.1: state_text = "🔵 恒流充电阶段 (CC)"; color = "#38BDF8"
+                    else: state_text = "🔄 动态功率协商中..."; color = "#A855F7"
                 
+                if self._last_cc_cv_state != state_text:
+                    self.ui.lbl_charge_state.setText(state_text); self.ui.lbl_charge_state.setStyleSheet(f"background-color: #0F172A; color: {color}; border: 2px {border_style} {color}; border-radius: 6px; padding: 10px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;")
+                    self._last_cc_cv_state = state_text
+
+                if state_text == "🟢 涓流阶段 / 已满电":
+                    if self._full_charge_start_time is None: self._full_charge_start_time = time.time()
+                    else:
+                        debounce = CONFIG['alerts'].get('full_charge_debounce_sec', 20.0)
+                        if not self._full_charge_alerted and (time.time() - self._full_charge_start_time >= debounce): self.show_full_charge_alert(debounce); self._full_charge_alerted = True 
+                else: self._full_charge_start_time = None; self._full_charge_alerted = False
+
         if self.worker and self.worker.isRunning():
             if self.auto_scroll_chart:
                 if not self.x_data: return
-                
-                self.ui.line_power.setData(self.x_data, self.y_p)
-                self.ui.line_v_in.setData(self.x_data, self.y_vi); self.ui.line_i_in.setData(self.x_data, self.y_ii)
-                self.ui.line_v_out.setData(self.x_data, self.y_vo); self.ui.line_i_out.setData(self.x_data, self.y_io)
-                self.ui.line_v_bat.setData(self.x_data, self.y_vb); self.ui.line_i_bat.setData(self.x_data, self.y_ib)
-                
-                cur_t = self.x_data[-1]
-                win = getattr(self, 'current_window_size', 60.0)
-                if cur_t > win: 
-                    self.last_forced_xlim = [cur_t-win, cur_t+win*0.05]
-                else: 
-                    self.last_forced_xlim = [0, max(cur_t+1, win)]
-                    
-                self.ui.p_p.setXRange(self.last_forced_xlim[0], self.last_forced_xlim[1], padding=0)
-            else:
-                self.request_chart_fetch()
+                self.ui.line_power.setData(self.x_data, self.y_p); self.ui.line_v_in.setData(self.x_data, self.y_vi); self.ui.line_i_in.setData(self.x_data, self.y_ii); self.ui.line_v_out.setData(self.x_data, self.y_vo); self.ui.line_i_out.setData(self.x_data, self.y_io); self.ui.line_v_bat.setData(self.x_data, self.y_vb); self.ui.line_i_bat.setData(self.x_data, self.y_ib)
+                self.view_data = {'x': self.x_data, 'p': self.y_p, 'vi': self.y_vi, 'ii': self.y_ii, 'vo': self.y_vo, 'io': self.y_io, 'vb': self.y_vb, 'ib': self.y_ib, 't': self.y_t, 'b': self.y_b}
+                cur_t = self.x_data[-1]; win = CONFIG['ui'].get('default_window_size_sec', 60.0)
+                xlim = [cur_t-win, cur_t+win*0.05] if cur_t > win else [0, max(cur_t+1, win)]
+                self.ui.p_p.setXRange(xlim[0], xlim[1], padding=0)
+            else: self.request_chart_fetch()
 
-    # ========================== 其他逻辑分支 ==========================
+    def on_chart_fetched(self, data):
+        if not data or len(data) < 10 or not data[0]: return 
+        hx, hp, hvi, hii, hvo, hio, hvb, hib, ht, hb = data
+        self.ui.line_power.setData(hx, hp); self.ui.line_v_in.setData(hx, hvi); self.ui.line_i_in.setData(hx, hii); self.ui.line_v_out.setData(hx, hvo); self.ui.line_i_out.setData(hx, hio); self.ui.line_v_bat.setData(hx, hvb); self.ui.line_i_bat.setData(hx, hib)
+        self.view_data = {'x':hx, 'p':hp, 'vi':hvi, 'ii':hii, 'vo':hvo, 'io':hio, 'vb':hvb, 'ib':hib, 't':ht, 'b':hb}
+
     def start_mon(self):
         if self.ui.cb_port.currentText() == "无设备": return
-        self.ui.btn_start.setEnabled(False); self.ui.btn_stop.setEnabled(True); self.ui.cb_port.setEnabled(False)
-        self.ui.btn_start.setText("▶ 监控中")
-        try:
-            conn = sqlite3.connect('charging_data.db'); max_t = conn.execute("SELECT MAX(rel_time) FROM charging_metrics").fetchone()[0]; conn.close()
-            self.time_offset = (max_t if max_t is not None else 0.0) + 1.0 
+        if self.worker and self.worker.isRunning():
+            self.auto_scroll_chart = True; self.ui.btn_start.setText("▶ 监控中")
+            for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]: p.enableAutoRange(axis='y')
+            self.force_live_mode(); return
+        self.ui.btn_start.setEnabled(False); self.ui.btn_stop.setEnabled(True); self.ui.cb_port.setEnabled(False); self.ui.btn_start.setText("▶ 监控中")
+        try: conn = sqlite3.connect('charging_data.db'); max_t = conn.execute("SELECT MAX(rel_time) FROM charging_metrics").fetchone()[0]; conn.close(); self.time_offset = (max_t if max_t is not None else 0.0) + 1.0 
         except: self.time_offset = 0.0
-        self.start_time, self.ui_lock = time.time(), True
-        self.ui.text_log.clear(); self.ui_lock = False; self.log_buffer.clear()
-        
+        self.start_time, self.ui_lock = time.time(), True; self.ui.text_log.clear(); self.ui_lock = False; self.log_buffer.clear()
         self.auto_scroll_chart, self.log_mode = True, 'live'
-        self.current_window_size = 60.0
-        self._temp_warned = False # 重置温度警告标记
-        
-        [a.clear() for a in [self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b]]
-        
+        self._temp_warned = False; self._active_alerts.clear(); self._last_cc_cv_state = ""; self._full_charge_start_time = None; self._full_charge_alerted = False
+        self.ui.lbl_charge_state.setText("⚡ 数据采集中..."); self.ui.lbl_charge_state.setStyleSheet("background-color: #0F172A; color: #94A3B8; border: 1px dashed #334155; border-radius: 6px; padding: 10px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;")
+        [a.clear() for a in [self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b]]; self.view_data = {'x':[], 'p':[], 'vi':[], 'ii':[], 'vo':[], 'io':[], 'vb':[], 'ib':[], 't':[], 'b':[]}
         for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]: p.enableAutoRange(axis='y')
-        for p, vb in self.ui.vbs: vb.enableAutoRange(axis='y')
-            
-        self.worker = SerialWorker(self.ui.cb_port.currentText(), int(self.ui.cb_baudrate.currentText()))
-        self.worker.data_ready.connect(self.process_data); self.worker.log_ready.connect(self.append_log); self.worker.start()
+        self.worker = SerialWorker(self.ui.cb_port.currentText(), int(self.ui.cb_baudrate.currentText())); self.worker.data_ready.connect(self.process_data); self.worker.log_ready.connect(self.append_log); self.worker.start()
 
     def stop_mon(self):
-        self.ui.btn_start.setEnabled(True); self.ui.btn_stop.setEnabled(False); self.ui.cb_port.setEnabled(True)
-        self.ui.btn_start.setText("▶ 开始")
+        self.ui.btn_start.setEnabled(True); self.ui.btn_stop.setEnabled(False); self.ui.cb_port.setEnabled(True); self.ui.btn_start.setText("▶ 开始")
         if self.worker: self.worker.stop(); self.worker = None
-        self.log_interaction_timer.stop()
+        self.log_interaction_timer.stop(); self.auto_scroll_chart = False; self.ui.btn_start.setText("⏸ 历史浏览 (点击恢复)"); self.request_chart_fetch()
 
     def force_live_mode(self):
-        if self.log_mode != 'live':
-            self.log_mode, self.log_offset = 'history', 0
-            self.ui.btn_rollback.setText("⬇️ 返回最新"); self.ui_lock = True
-            self.ui.text_log.document().setMaximumBlockCount(0); self.ui_lock = False; self.on_log_scroll(0)
-        else: self.force_live_mode()
+        if self.log_mode != 'live': self.log_mode = 'live'; self.log_offset = 0; self.ui.btn_rollback.setText("🔄 历史查阅"); self.ui_lock = True; self.ui.text_log.document().setMaximumBlockCount(1000); self.ui_lock = False
 
     def safe_set_scroll(self, val): self.ui_lock = True; self.ui.text_log.verticalScrollBar().setValue(val); self.ui_lock = False
 
@@ -687,119 +589,69 @@ class MonitorWindow(QMainWindow):
         self.ui.cb_port.clear(); ports = list(serial.tools.list_ports.comports())
         if not ports: self.ui.cb_port.addItem("无设备")
         else: [self.ui.cb_port.addItem(p.device) for p in ports]
+        self.ui.cb_baudrate.clear(); self.ui.cb_baudrate.addItems(CONFIG['serial'].get('default_baudrates', ["115200"]))
 
     def on_log_scroll(self, value):
-        if getattr(self, 'ui_lock', False) or self.is_fetching_logs: return
-        scrollbar = self.ui.text_log.verticalScrollBar()
-        if scrollbar.maximum() < 5: return 
+        if getattr(self, 'ui_lock', False) or self.is_fetching_logs or getattr(self, 'log_mode', 'live') == 'history_jump': return 
+        sb = self.ui.text_log.verticalScrollBar()
+        if sb.maximum() < 5: return 
         if value <= 2:
             self.is_fetching_logs = True
-            if self.log_mode == 'live':
-                self.log_mode, self.log_offset = 'history', 1000
-                self.ui.btn_rollback.setText("⬇️ 返回最新"); self.ui_lock = True
-                self.ui.text_log.document().setMaximumBlockCount(0); self.ui_lock = False
+            if self.log_mode == 'live': self.log_mode, self.log_offset = 'history', 1000; self.ui.btn_rollback.setText("⬇️ 返回最新"); self.ui_lock = True; self.ui.text_log.document().setMaximumBlockCount(0); self.ui_lock = False
             else: self.log_offset += 1000
             self.fetch_worker.log_queue.put({'offset': self.log_offset, 'direction': 'up'})
-        elif value >= scrollbar.maximum() - 2 and self.log_mode == 'history':
+        elif value >= sb.maximum() - 2 and self.log_mode == 'history':
             self.is_fetching_logs, self.log_offset = True, self.log_offset - 1000
             if self.log_offset <= 0: self.force_live_mode(); self.is_fetching_logs = False
             else: self.fetch_worker.log_queue.put({'offset': self.log_offset, 'direction': 'down'})
 
     def on_log_fetched(self, text, success, direction):
-        scrollbar = self.ui.text_log.verticalScrollBar()
         if success:
             self.ui_lock = True; self.ui.text_log.blockSignals(True); self.ui.text_log.setPlainText(text); self.ui.text_log.blockSignals(False)
-            if direction == 'up': QTimer.singleShot(10, lambda: self.safe_set_scroll(scrollbar.maximum() - 10))
-            else:
-                if self.log_offset == 0: QTimer.singleShot(10, lambda: self.safe_set_scroll(scrollbar.maximum()))
-                else: QTimer.singleShot(10, lambda: self.safe_set_scroll(10))
-            self.ui_lock = False
+            target = self.ui.text_log.verticalScrollBar().maximum()-10 if direction=='up' else (self.ui.text_log.verticalScrollBar().maximum() if self.log_offset==0 else 10)
+            QTimer.singleShot(10, lambda: self.safe_set_scroll(target)); self.ui_lock = False
         self.is_fetching_logs = False
-
-    def on_chart_fetched(self, data):
-        hx, hp, hvi, hii, hvo, hio, hvb, hib = data
-        self.ui.line_power.setData(hx, hp)
-        self.ui.line_v_in.setData(hx, hvi); self.ui.line_i_in.setData(hx, hii)
-        self.ui.line_v_out.setData(hx, hvo); self.ui.line_i_out.setData(hx, hio)
-        self.ui.line_v_bat.setData(hx, hvb); self.ui.line_i_bat.setData(hx, hib)
 
     def process_data(self, data):
         self.latest_data = data; t = data['ts'] - self.start_time + self.time_offset
-        if self.x_data and t <= self.x_data[-1]: t = self.x_data[-1] + 0.001 
         self.db_worker.queue.put({'type': 'metric', 'rel_time': t, 'data': data})
-        self.x_data.append(t); self.y_vi.append(data['v_in']); self.y_ii.append(data['i_in'])
-        self.y_vo.append(data['v_out']); self.y_io.append(data['i_out']); self.y_vb.append(data['v_bat']); self.y_ib.append(data['i_bat'])
-        self.y_eff.append(data['eff']); self.y_p.append(data['p']); self.y_t.append(data['t']); self.y_b.append(data['b'])
+        self.x_data.append(t); self.y_vi.append(data['v_in']); self.y_ii.append(data['i_in']); self.y_vo.append(data['v_out']); self.y_io.append(data['i_out']); self.y_vb.append(data['v_bat']); self.y_ib.append(data['i_bat']); self.y_eff.append(data['eff']); self.y_p.append(data['p']); self.y_t.append(data['t']); self.y_b.append(data['b'])
         if len(self.x_data) > 500: [a.pop(0) for a in [self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b]]
 
-    def append_log(self, full_msg):
-        self.db_worker.queue.put({'type': 'log', 'msg': full_msg})
-        self.log_buffer.append(full_msg)
-
-    # 🟢 保留了上一版修复的：智能边缘吸附算法 (避免右边缘缩放时卡死在历史模式)
     def on_chart_manual_interaction(self, *args, **kwargs):
-        ranges = self.ui.p_p.viewRange()
-        xlim = ranges[0]
-        
+        xlim = self.ui.p_p.viewRange()[0]
         if self.auto_scroll_chart and hasattr(self, 'last_forced_xlim'):
-            if abs(xlim[0] - self.last_forced_xlim[0]) < 0.5 and abs(xlim[1] - self.last_forced_xlim[1]) < 0.5:
-                return 
-        
-        if getattr(self, 'x_data', None) and len(self.x_data) > 0:
-            latest_t = self.x_data[-1]
-            view_width = xlim[1] - xlim[0]
-            tolerance = max(1.0, view_width * 0.05) 
-            
-            if xlim[1] >= latest_t - tolerance:
-                self.current_window_size = max(2.0, view_width) 
-                
-                if not self.auto_scroll_chart:
-                    self.auto_scroll_chart = True
-                    self.ui.btn_start.setText("▶ 监控中")
-                return 
-        
-        if self.auto_scroll_chart:
-            self.auto_scroll_chart = False
-            self.ui.btn_start.setText("⏸ 历史浏览 (双击恢复)")
-            
+            if abs(xlim[0] - self.last_forced_xlim[0]) < 0.5: return 
+        if self.x_data and xlim[1] >= self.x_data[-1] - max(1.0, (xlim[1]-xlim[0])*0.05):
+            if not self.auto_scroll_chart: self.auto_scroll_chart = True; self.ui.btn_start.setText("▶ 监控中")
+            return 
+        if self.auto_scroll_chart: self.auto_scroll_chart = False; self.ui.btn_start.setText("⏸ 历史浏览 (点击恢复)")
         self.request_chart_fetch()
 
-    # 🟢 保留了上一版修复的：任何图表双击恢复实时更新功能
-    def on_chart_clicked(self, event):
-        if event.double() and not self.auto_scroll_chart:
-            self.auto_scroll_chart = True
-            self.current_window_size = 60.0
-            self.ui.btn_start.setText("▶ 监控中")
-            for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]: p.enableAutoRange(axis='y')
-            for p, vb in self.ui.vbs: vb.enableAutoRange(axis='y')
+    def on_chart_double_clicked(self, evt):
+        if evt.double():
+            pos = evt.scenePos(); mouse_point = None
+            for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]:
+                if p.sceneBoundingRect().contains(pos): mouse_point = p.vb.mapSceneToView(pos); break
+            if mouse_point: self.sync_log_to_time(mouse_point.x())
 
     def request_chart_fetch(self):
-        if not self.auto_scroll_chart: 
-            ranges = self.ui.p_p.viewRange()
-            self.fetch_worker.latest_xlim, self.fetch_worker.chart_request = ranges[0], True
+        if not self.auto_scroll_chart: self.fetch_worker.latest_xlim, self.fetch_worker.chart_request = self.ui.p_p.viewRange()[0], True
 
     def toggle_log_mode(self):
-        if self.log_mode == 'live':
-            self.log_mode, self.log_offset = 'history', 0
-            self.ui.btn_rollback.setText("⬇️ 返回最新"); self.ui_lock = True
-            self.ui.text_log.document().setMaximumBlockCount(0); self.ui_lock = False; self.on_log_scroll(0)
+        if self.log_mode == 'live': self.log_mode, self.log_offset = 'history', 0; self.ui.btn_rollback.setText("⬇️ 返回最新"); self.ui_lock = True; self.ui.text_log.document().setMaximumBlockCount(0); self.ui_lock = False; self.on_log_scroll(0)
         else: self.force_live_mode()
 
     def export_tx0_logs(self):
         p, _ = QFileDialog.getSaveFileName(self, "导出报文日志", "Logs.txt", "Text Files (*.txt)")
         if p:
-            try:
-                c = sqlite3.connect('charging_data.db'); r = c.execute("SELECT message FROM tx0_logs ORDER BY id ASC").fetchall(); c.close()
-                with open(p, 'w', encoding='utf-8-sig') as f:
-                    for row in r: f.write(row[0] + '\n')
-                QMessageBox.information(self, "成功", f"导出 {len(r)} 条记录！")
-            except: pass
+            try: conn = sqlite3.connect(CONFIG['system']['db_name']); r = conn.execute("SELECT message FROM tx0_logs ORDER BY id ASC").fetchall(); conn.close()
+            except: return
+            with open(p, 'w', encoding='utf-8-sig') as f: [f.write(row[0] + '\n') for row in r]
+            QMessageBox.information(self, "成功", f"导出 {len(r)} 条记录！")
 
     def closeEvent(self, event):
-        self.stop_mon()
-        if hasattr(self, 'db_worker'): self.db_worker.stop()
-        if hasattr(self, 'fetch_worker'): self.fetch_worker.stop()
-        event.accept()
+        self.stop_mon(); self.hide_tooltip(); getattr(self, 'db_worker', QThread).stop(); getattr(self, 'fetch_worker', QThread).stop(); event.accept()
 
 if __name__ == '__main__':
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True); app = QApplication(sys.argv); win = MonitorWindow(); win.show(); sys.exit(app.exec_())

@@ -1,0 +1,22 @@
+{
+    "system": {
+        "db_name": "charging_data.db"
+    },
+    "ui": {
+        "render_interval_ms": 100,
+        "chart_max_points": 500,
+        "default_window_size_sec": 60.0
+    },
+    "alerts": {
+        "temp_warning_threshold": 60,
+        "temp_recovery_threshold": 55,
+        "ovp_threshold": 25.0,
+        "ocp_threshold": 3.0,
+        "full_charge_debounce_sec": 1.0
+    },
+    "serial": {
+        "default_baudrates": ["115200", "921600", "2000000"]
+    }
+
+    
+}

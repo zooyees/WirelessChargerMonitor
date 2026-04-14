@@ -59,8 +59,10 @@ class Ui_MonitorWindow(object):
         port_hbox.addWidget(self.cb_port) 
         config_vbox.addLayout(port_hbox)
         self.cb_baudrate = QComboBox() 
-        self.cb_baudrate.addItems(["115200", "921600", "2000000"])
+        # 🟢 修复：补回丢失的波特率配置与布局添加代码
+        self.cb_baudrate.addItems(["115200", "921600", "2000000"]) 
         config_vbox.addWidget(self.cb_baudrate)
+        
         side_layout.addWidget(self.group_config)
 
         def create_lcd(name, color):
@@ -84,16 +86,35 @@ class Ui_MonitorWindow(object):
         for l in [l1, l2, l3, l4, l5, l7, l8, l9, l10]: side_layout.addLayout(l)
         side_layout.addStretch(1)
 
-        # 🟢 修复截图异常：将原先左右并排的水平布局，改为上下堆叠的垂直布局
+        # 🟢 预埋 CC/CV 充电状态显示大屏占位符
+        self.lbl_charge_state = QLabel("⚡ 充电状态: 等待接入...")
+        self.lbl_charge_state.setAlignment(Qt.AlignCenter)
+        self.lbl_charge_state.setStyleSheet("""
+            background-color: #0F172A; 
+            color: #94A3B8; 
+            border: 1px dashed #334155; 
+            border-radius: 6px; 
+            padding: 10px; 
+            font-size: 11pt; 
+            font-weight: bold; 
+            margin-bottom: 5px;
+        """)
+        side_layout.addWidget(self.lbl_charge_state)
+
         btn_box = QVBoxLayout(); btn_box.setSpacing(5)
         self.btn_start = QPushButton("▶ 开始")
         self.btn_stop = QPushButton("⏹ 停止")
         self.btn_stop.setEnabled(False)
         self.btn_export = QPushButton("💾 导出 CSV")
+
+        self.btn_export = QPushButton("💾 导出 CSV")
+        self.btn_report = QPushButton("📄 导出 PDF 报告") # 🟢 新增
+        self.btn_report.setStyleSheet("background-color: #1E293B; border: 1px solid #38BDF8; color: #38BDF8;")
         
         btn_box.addWidget(self.btn_start)
         btn_box.addWidget(self.btn_stop)
         btn_box.addWidget(self.btn_export)
+        btn_box.addWidget(self.btn_report) # 🟢 新增
         side_layout.addLayout(btn_box)
 
         # ==================== 中间面板：PyQtGraph 深度美化版 ====================
@@ -104,33 +125,26 @@ class Ui_MonitorWindow(object):
         self.graph_widget = pg.GraphicsLayoutWidget()
         chart_layout.addWidget(self.graph_widget)
         
-        # 增加子图间距和外边距，形成呼吸感
         self.graph_widget.ci.layout.setSpacing(12) 
         self.graph_widget.ci.layout.setContentsMargins(10, 10, 15, 10)
 
         self.vbs = []
         
-        # 统一的字体配置字典
         font_css = {'font-size': '8pt', 'font-family': 'Microsoft YaHei', 'font-weight': 'bold'}
-        axis_pen = pg.mkPen(color='#334155', width=1.2) # 坐标轴主线
-        text_pen = pg.mkPen(color='#94A3B8')            # 刻度文字颜色
+        axis_pen = pg.mkPen(color='#334155', width=1.2)
+        text_pen = pg.mkPen(color='#94A3B8')            
 
         def add_plot(row, title, label1, color1, label2=None, color2=None, link_plot=None):
-            # 独立配置背景色深，凸显图表区域
             p = self.graph_widget.addPlot(row=row, col=0)
             p.getViewBox().setBackgroundColor('#0F172A')
-            
-            # 开启自动范围时的边距预留 (Y轴不顶格)
             p.setDefaultPadding(0.08)
 
-            # --- 左侧主 Y 轴定制 ---
             ax_left = p.getAxis('left')
             ax_left.setLabel(label1, color=color1, **font_css)
             ax_left.setPen(axis_pen)
             ax_left.setTextPen(text_pen)
-            ax_left.setGrid(70) # 设置网格透明度 (0-255)
+            ax_left.setGrid(70) 
 
-            # --- 底部 X 轴定制 ---
             ax_bottom = p.getAxis('bottom')
             ax_bottom.setPen(axis_pen)
             ax_bottom.setTextPen(text_pen)
@@ -139,19 +153,16 @@ class Ui_MonitorWindow(object):
             if link_plot: p.setXLink(link_plot)
             else: self.p_main = p
             
-            # 主线条配置 (加粗)
             line1 = p.plot(pen=pg.mkPen(color=color1, width=2.0))
             
             line2 = None
             if label2 and color2:
-                # --- 右侧次 Y 轴定制 (TwinX) ---
                 vb2 = pg.ViewBox()
                 self.vbs.append((p, vb2))
                 p.scene().addItem(vb2)
                 p.getAxis('right').linkToView(vb2)
                 vb2.setXLink(p)
                 
-                # 修复电流线被遮挡：强制提升 Z-order 层级
                 vb2.setZValue(10)
                 
                 ax_right = p.getAxis('right')
@@ -165,18 +176,15 @@ class Ui_MonitorWindow(object):
             
             return p, line1, line2
 
-        # 创建 4 个子图
         self.p_p, self.line_power, _ = add_plot(0, "POWER", "POWER (W)", "#A855F7")
         self.p_in, self.line_v_in, self.line_i_in = add_plot(1, "INPUT", "INPUT (V)", "#FACC15", "INPUT (A)", "#22C55E", link_plot=self.p_p)
         self.p_out, self.line_v_out, self.line_i_out = add_plot(2, "OUTPUT", "OUTPUT (V)", "#FACC15", "OUTPUT (A)", "#22C55E", link_plot=self.p_p)
         self.p_bat, self.line_v_bat, self.line_i_bat = add_plot(3, "BATTERY", "BATTERY (V)", "#FACC15", "BATTERY (A)", "#22C55E", link_plot=self.p_p)
         
-        # 隐藏前三个图的 X 轴文本，保持清爽
         self.p_p.getAxis('bottom').setStyle(showValues=False)
         self.p_in.getAxis('bottom').setStyle(showValues=False)
         self.p_out.getAxis('bottom').setStyle(showValues=False)
 
-        # 同步 TwinX (右侧Y轴) 视图尺寸的回调
         def updateViews():
             for p, vb in self.vbs:
                 vb.setGeometry(p.vb.sceneBoundingRect())
@@ -214,7 +222,6 @@ class Ui_MonitorWindow(object):
         self.splitter.addWidget(self.chart_panel)
         self.splitter.addWidget(self.log_panel)
         
-        # 严格执行 3:11:6 拉伸分配
         self.splitter.setStretchFactor(0, 3)
         self.splitter.setStretchFactor(1, 11) 
         self.splitter.setStretchFactor(2, 6) 
