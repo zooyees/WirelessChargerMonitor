@@ -1,0 +1,20 @@
+2026-05-31 19:12:33,224 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 19:12:33,425 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-05-31 20:45:54,453 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 20:45:54,475 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-05-31 20:50:40,819 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 20:50:40,838 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-05-31 21:26:44,210 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 21:26:44,229 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-05-31 21:27:26,154 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 21:27:26,189 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-05-31 21:27:31,988 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-05-31 21:27:32,004 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-05-31 21:29:17,418 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 21:29:17,435 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-05-31 21:29:21,142 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-05-31 21:29:21,157 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-05-31 21:33:07,995 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-05-31 21:33:08,059 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-05-31 21:33:15,902 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 21:33:15,920 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)

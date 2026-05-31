@@ -5,7 +5,10 @@
 # ==========================================
 import re
 
+
 class Qi22Parser:
+
+
     def __init__(self):
         # 初始化解析字典，剥离主业务逻辑
         pass
@@ -25,19 +28,19 @@ class Qi22Parser:
     def _decode_mpp_full(self, hex_str, p_type):
         try:
             raw = [int(x, 16) for x in hex_str.replace('0x','').replace(',',' ').split()]
-            if not raw: 
+            if not raw:
                 return None
             header = raw[0]
-            
+
             cs, payload, cs_st = None, raw[1:], "N/A"
             if len(raw) > 1:
                 calc = 0
                 for b in raw[:-1]: calc ^= b
-                if calc == raw[-1]: 
+                if calc == raw[-1]:
                     cs, payload, cs_st = raw[-1], raw[1:-1], "<span style='color:#22C55E;'>✅ OK</span>"
-                else: 
+                else:
                     cs, payload, cs_st = raw[-1], raw[1:-1], "<span style='color:#EF4444;'>❌ ERR</span>"
-            
+
             if p_type == "ASK": info, detail = self._ask_qi22_map(header, payload)
             else: info, detail = self._fsk_qi22_map(header, payload)
 
@@ -47,13 +50,13 @@ class Qi22Parser:
             html += f"<hr style='border:1px solid #334155; margin: 5px 0;'>"
             html += f"<b>指令 Header:</b> <span style='color:#FACC15;'>0x{header:02X}</span> [{info}]<br>"
             html += f"<b>原始 Payload:</b> {' '.join([f'{x:02X}' for x in payload]) if payload else 'None'}<br>"
-            if cs is not None: 
+            if cs is not None:
                 html += f"<b>XOR 校验和:</b> 0x{cs:02X} ({cs_st})<br>"
             html += f"<hr style='border:1px dashed #334155; margin: 5px 0;'>"
             html += f"<b>📑 字节/位级深度破译:</b><br><div style='color:#E2E8F0; padding-top: 5px; line-height: 1.4;'>{detail}</div>"
             html += "</div>"
             return html
-        except Exception as e: 
+        except Exception as e:
             return f"解析异常: {e}"
 
     def _ask_qi22_map(self, header, payload):
@@ -78,7 +81,7 @@ class Qi22Parser:
             0x20:("SRQ", " Specific Request [PLA]"),
             0x23:("CAL_OP", " Calibration Operation"),
             0x26:("SADT/1e", " Simultaneous Auxiliary Data Transport (even)"),
-            0x27:("SADT/1o", " Simultaneous Auxiliary Data Transport (odd)"), 
+            0x27:("SADT/1o", " Simultaneous Auxiliary Data Transport (odd)"),
             0x28:("GET Get", " request"),
             0x29:("EDS", " Enabled Data Streams"),
             0x2A:("PROP/2a", " MPP PRx Proprietary Packet"),
@@ -279,5 +282,5 @@ class Qi22Parser:
             else:
                 desc = f"• 载荷长度: {plen} Bytes<br>"
                 desc += f"• HEX: <span style='color:#94A3B8'>{' '.join([f'{b:02X}' for b in payload])}</span>"
-        
+
         return name, desc
