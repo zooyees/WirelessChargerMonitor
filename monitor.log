@@ -18,3 +18,416 @@
 2026-05-31 21:33:08,059 [INFO] WirelessChargerMonitor: FetchWorker stopped
 2026-05-31 21:33:15,902 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
 2026-05-31 21:33:15,920 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-05-31 22:00:10,222 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 22:00:10,262 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-05-31 22:00:25,945 [INFO] WirelessChargerMonitor: Session created: id=1 uuid=463A2A38 port=COM6
+2026-05-31 22:00:25,955 [INFO] WirelessChargerMonitor: Monitoring started: session=1 port=COM6 baud=2000000 demo=False
+2026-05-31 22:00:25,958 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-05-31 22:03:35,042 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 22:03:35,067 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-05-31 22:03:53,609 [INFO] WirelessChargerMonitor: Session created: id=2 uuid=BDC23C0C port=COM6
+2026-05-31 22:03:53,618 [INFO] WirelessChargerMonitor: Monitoring started: session=2 port=COM6 baud=2000000 demo=False
+2026-05-31 22:03:53,620 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-05-31 22:06:14,153 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5))
+2026-05-31 22:06:14,230 [WARNING] WirelessChargerMonitor: Reconnect attempt 1/5 on COM6
+2026-05-31 22:06:17,247 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:06:17,294 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:06:17,297 [WARNING] WirelessChargerMonitor: Reconnect attempt 2/5 on COM6
+2026-05-31 22:06:20,298 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:06:20,299 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:06:20,302 [WARNING] WirelessChargerMonitor: Reconnect attempt 3/5 on COM6
+2026-05-31 22:06:23,309 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:06:23,311 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:06:23,314 [WARNING] WirelessChargerMonitor: Reconnect attempt 4/5 on COM6
+2026-05-31 22:06:26,323 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:06:26,324 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:06:26,325 [WARNING] WirelessChargerMonitor: Reconnect attempt 5/5 on COM6
+2026-05-31 22:06:29,347 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:06:29,348 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:06:29,503 [ERROR] WirelessChargerMonitor: Serial connection lost: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:09:43,014 [INFO] WirelessChargerMonitor: Session closed: id=2 ended_at=2026-05-31 22:09:43
+2026-05-31 22:09:45,460 [INFO] WirelessChargerMonitor: Session created: id=3 uuid=EFAEBDA7 port=COM6
+2026-05-31 22:09:45,470 [INFO] WirelessChargerMonitor: Monitoring started: session=3 port=COM6 baud=2000000 demo=False
+2026-05-31 22:09:45,488 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-05-31 22:10:02,873 [INFO] WirelessChargerMonitor: Session closed: id=3 ended_at=2026-05-31 22:10:02
+2026-05-31 22:10:08,547 [INFO] WirelessChargerMonitor: Session created: id=4 uuid=E37B258B port=COM6
+2026-05-31 22:10:08,556 [INFO] WirelessChargerMonitor: Monitoring started: session=4 port=COM6 baud=2000000 demo=False
+2026-05-31 22:10:08,559 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-05-31 22:10:27,438 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 22:10:27,457 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-05-31 22:10:38,454 [INFO] WirelessChargerMonitor: Session created: id=5 uuid=E378A845 port=COM6
+2026-05-31 22:10:38,464 [INFO] WirelessChargerMonitor: Monitoring started: session=5 port=COM6 baud=2000000 demo=False
+2026-05-31 22:10:38,467 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-05-31 22:12:23,375 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5))
+2026-05-31 22:12:23,386 [WARNING] WirelessChargerMonitor: Reconnect attempt 1/5 on COM6
+2026-05-31 22:12:26,403 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:12:26,405 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:12:26,418 [WARNING] WirelessChargerMonitor: Reconnect attempt 2/5 on COM6
+2026-05-31 22:12:29,424 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:12:29,426 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:12:29,427 [WARNING] WirelessChargerMonitor: Reconnect attempt 3/5 on COM6
+2026-05-31 22:12:32,437 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:12:32,439 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:12:32,439 [WARNING] WirelessChargerMonitor: Reconnect attempt 4/5 on COM6
+2026-05-31 22:12:35,442 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:12:35,444 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:12:35,444 [WARNING] WirelessChargerMonitor: Reconnect attempt 5/5 on COM6
+2026-05-31 22:12:38,455 [WARNING] WirelessChargerMonitor: Reconnect failed on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 449, in run
+    self._open_serial()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 373, in _open_serial
+    self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 33, in __init__
+    super(Serial, self).__init__(*args, **kwargs)
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialutil.py", line 244, in __init__
+    self.open()
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 64, in open
+    raise SerialException("could not open port {!r}: {!r}".format(self.portstr, ctypes.WinError()))
+serial.serialutil.SerialException: could not open port 'COM6': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)
+2026-05-31 22:12:38,456 [ERROR] WirelessChargerMonitor: Serial read error on COM6
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 437, in run
+    self._read_loop()
+  File "D:\windlink\windlink\WirelessChargerMonitor\main.py", line 398, in _read_loop
+    waiting = self.serial_conn.in_waiting
+  File "C:\Program Files\Python310\lib\site-packages\serial\serialwin32.py", line 259, in in_waiting
+    raise SerialException("ClearCommError failed ({!r})".format(ctypes.WinError()))
+serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:12:38,457 [ERROR] WirelessChargerMonitor: Serial connection lost: ClearCommError failed (OSError(9, 'The handle is invalid.', None, 6))
+2026-05-31 22:13:24,972 [INFO] WirelessChargerMonitor: Session closed: id=5 ended_at=2026-05-31 22:13:24
+2026-05-31 22:13:36,438 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 22:13:36,460 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-05-31 22:13:52,498 [INFO] WirelessChargerMonitor: Session created: id=6 uuid=307A0020 port=COM6
+2026-05-31 22:13:52,509 [INFO] WirelessChargerMonitor: Monitoring started: session=6 port=COM6 baud=2000000 demo=False
+2026-05-31 22:13:52,512 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-05-31 22:15:54,652 [INFO] WirelessChargerMonitor: Session closed: id=6 ended_at=2026-05-31 22:15:54
+2026-05-31 22:16:39,328 [INFO] WirelessChargerMonitor.report: PDF report generated: D:/windlink/windlink/WirelessChargerMonitor/Report_S6_20260531_2216.pdf (verdict=PASS, id=RPT-20260531-7C127C)
+2026-05-31 22:23:20,246 [INFO] WirelessChargerMonitor: Session created: id=7 uuid=F08EDC8B port=COM6
+2026-05-31 22:23:20,260 [INFO] WirelessChargerMonitor: Monitoring started: session=7 port=COM6 baud=2000000 demo=False
+2026-05-31 22:23:20,264 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-05-31 22:29:33,730 [INFO] WirelessChargerMonitor: Session closed: id=7 ended_at=2026-05-31 22:29:33
+2026-05-31 22:38:11,688 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-05-31 22:38:11,747 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-05-31 22:38:25,212 [INFO] WirelessChargerMonitor: Session created: id=8 uuid=91477D88 port=COM6
+2026-05-31 22:38:25,223 [INFO] WirelessChargerMonitor: Monitoring started: session=8 port=COM6 baud=2000000 demo=False
+2026-05-31 22:38:25,227 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-05-31 22:39:01,098 [INFO] WirelessChargerMonitor: Session closed: id=8 ended_at=2026-05-31 22:39:01
+2026-06-01 00:11:47,417 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-06-01 00:11:47,447 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-01 00:12:01,049 [INFO] WirelessChargerMonitor: Session created: id=9 uuid=1D9828A1 port=COM6
+2026-06-01 00:12:01,071 [INFO] WirelessChargerMonitor: Monitoring started: session=9 port=COM6 baud=2000000 demo=False
+2026-06-01 00:12:01,075 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-01 00:12:12,199 [INFO] WirelessChargerMonitor: Session closed: id=9 ended_at=2026-06-01 00:12:12
+2026-06-01 07:37:07,569 [INFO] WirelessChargerMonitor: Database initialized: charging_data.db
+2026-06-01 07:37:07,603 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-01 07:37:25,436 [INFO] WirelessChargerMonitor: Session created: id=10 uuid=16515602 port=COM6
+2026-06-01 07:37:25,445 [INFO] WirelessChargerMonitor: Monitoring started: session=10 port=COM6 baud=2000000 demo=False
+2026-06-01 07:37:25,448 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-01 07:37:46,293 [INFO] WirelessChargerMonitor: Session closed: id=10 ended_at=2026-06-01 07:37:46
