@@ -137,4 +137,4 @@ WirelessChargerMonitor/
 演示模式在串口不可用时生成模拟数据，界面会显示橙色「演示模式」警示，不可用于正式测试报告。
 
 **Q: 如何用 Qt Designer 修改界面？**  
-用 Designer 打开 `wireless_charger_monitor/ui/monitor_window.ui`，保存后直接运行即可。PyQtGraph 图表区域由 `loader.py` 运行时注入，不在 `.ui` 内编辑。
+用 Designer 打开 `wireless_charger_monitor/ui/monitor_window.ui`，保存后直接运行即可。样式以 `theme.py` 为单一来源；修改主题后请运行 `python tools/generate_monitor_ui.py` 同步 `.ui` 预览效果。PyQtGraph 图表区域由 `loader.py` 运行时注入，Design 模式下显示占位提示。

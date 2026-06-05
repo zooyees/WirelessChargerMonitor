@@ -18,6 +18,17 @@
         "ocp_threshold": 3.0,
         "full_charge_debounce_sec": 20.0
     },
+    "charge_state": {
+        "window_samples": 40,
+        "min_samples": 20,
+        "state_hold_sec": 4.0,
+        "idle_i_max": 0.10,
+        "trickle_i_max": 0.18,
+        "cc_i_min": 0.12,
+        "cc_dv_min": 0.025,
+        "cv_v_std_max": 0.030,
+        "cv_di_max": -0.025
+    },
     "serial": {
         "default_baudrates": ["115200", "921600", "2000000"],
         "demo_mode": false,

@@ -1,6 +1,5 @@
 # ==========================================
 # Module: WPC Qi 2.2.1 / MPP 协议深度解析引擎
-# Author: Roy Zhao @ 御风智联
 # Reference: Qi 2.2.1 Communications Protocol + MPP Communications Protocol (WPC)
 # ==========================================
 import re
@@ -64,7 +63,7 @@ FSK_RESPONSE = {
 # 完整表见 WPC《Power Receiver Manufacturer Codes》独立文档
 PRMC_VENDORS = {
     0x005A: 'Apple',
-    0x0060: 'Samsung',
+    0x0042: 'Samsung',
     0x010E: 'Google',
     0x0173: 'Xiaomi',
     0x0186: 'Huawei',

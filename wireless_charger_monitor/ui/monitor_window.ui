@@ -7,23 +7,23 @@
   </property>
   <property name="windowTitle"><string>手机无线充电监控系统</string></property>
   <property name="styleSheet"><string>QMainWindow, QWidget#centralwidget {
-    background-color: #0F172A;
-    color: #F8FAFC;
+    background-color: #0B1220;
+    color: #FFFFFF;
     font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
 }
 QLabel#main_title {
-    font-size: 13pt;
+    font-size: 14pt;
     font-weight: bold;
-    color: #F8FAFC;
+    color: #FFFFFF;
     padding: 4px 2px;
-    background-color: #111D2B;
+    background-color: #111827;
     border-radius: 4px;
 }
 QGroupBox {
     font-weight: bold;
-    color: #F8FAFC;
-    background-color: #1E293B;
-    border: 1px solid #5B6B7C;
+    color: #FFFFFF;
+    background-color: #162032;
+    border: 1px solid #8BA3BD;
     border-radius: 6px;
     margin-top: 8px;
     padding: 10px 5px 5px 5px;
@@ -33,27 +33,27 @@ QGroupBox::title {
     subcontrol-origin: margin;
     left: 8px;
     padding: 0 4px;
-    color: #F8FAFC;
+    color: #FFFFFF;
 }
 QFrame#side_panel, QFrame#log_panel, QFrame#chart_panel {
-    background-color: #1E293B;
+    background-color: #162032;
     border-radius: 12px;
 }
 QWidget#side_content {
-    background-color: #1E293B;
-    color: #F8FAFC;
+    background-color: #162032;
+    color: #FFFFFF;
 }
 QScrollArea#side_scroll {
-    background-color: #1E293B;
+    background-color: #162032;
     border: none;
 }
 QScrollBar:vertical {
-    background: #1E293B;
+    background: #162032;
     width: 10px;
     margin: 0;
 }
 QScrollBar::handle:vertical {
-    background: #64748B;
+    background: #8BA3BD;
     min-height: 24px;
     border-radius: 4px;
 }
@@ -61,29 +61,31 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
 }
 QLabel#data_label {
-    color: #E2E8F0;
-    font-size: 9pt;
-    font-weight: 600;
+    color: #FFFFFF;
+    background-color: transparent;
+    font-size: 10pt;
+    font-weight: 700;
+    padding: 2px 0;
 }
 QLCDNumber {
-    background-color: #151D2E;
-    color: #FDE047;
-    border: 1px solid #5B6B7C;
+    background-color: #070B14;
+    color: #FFFFFF;
+    border: 1px solid #C7D2E0;
     border-radius: 4px;
 }
 QComboBox {
-    background-color: #2D3A4F;
-    border: 1px solid #5B6B7C;
+    background-color: #243049;
+    border: 1px solid #8BA3BD;
     border-radius: 4px;
-    color: #F8FAFC;
+    color: #FFFFFF;
     padding: 2px 6px;
     min-height: 25px;
-    font-size: 9pt;
+    font-size: 10pt;
 }
 QComboBox QAbstractItemView {
-    background-color: #2D3A4F;
-    color: #F8FAFC;
-    selection-background-color: #0EA5E9;
+    background-color: #243049;
+    color: #FFFFFF;
+    selection-background-color: #0284C7;
     selection-color: #FFFFFF;
 }
 QPushButton {
@@ -91,40 +93,40 @@ QPushButton {
     font-weight: bold;
     border-radius: 6px;
     padding: 8px;
-    color: #F8FAFC;
+    color: #FFFFFF;
     border: none;
     font-size: 10pt;
-    background-color: #3D4F66;
+    background-color: #3D526E;
 }
 QPushButton#btn_start {
-    background-color: #0EA5E9;
+    background-color: #0284C7;
     color: #FFFFFF;
 }
 QPushButton#btn_stop {
-    background-color: #52657A;
+    background-color: #475569;
     color: #FFFFFF;
 }
 QPushButton#btn_stop:disabled {
     background-color: #334155;
-    color: #B8C5D3;
+    color: #CBD5E1;
 }
 QPushButton#btn_export {
-    background-color: #151D2E;
-    border: 1px solid #0EA5E9;
-    color: #7DD3FC;
+    background-color: #1A2332;
+    border: 1px solid #38BDF8;
+    color: #E0F2FE;
 }
 QPushButton#btn_report {
-    background-color: #151D2E;
-    border: 1px solid #38BDF8;
-    color: #BAE6FD;
+    background-color: #1A2332;
+    border: 1px solid #7DD3FC;
+    color: #F0F9FF;
 }
 QPushButton#btn_log_tool {
-    background-color: #3D4F66;
-    border: 1px solid #5B6B7C;
+    background-color: #3D526E;
+    border: 1px solid #8BA3BD;
     border-radius: 4px;
     padding: 4px 8px;
-    font-size: 8pt;
-    color: #E2E8F0;
+    font-size: 9pt;
+    color: #F1F5F9;
     min-height: 20px;
 }
 QPushButton#btn_log_tool:hover {
@@ -135,26 +137,66 @@ QPushButton:hover {
     background-color: #52657A;
 }
 QPushButton#btn_start:hover {
-    background-color: #0284C7;
+    background-color: #0369A1;
 }
 QPlainTextEdit {
-    background-color: #151D2E;
-    color: #DCE8F5;
-    border: 1px solid #5B6B7C;
+    background-color: #1A2332;
+    color: #FFFFFF;
+    border: 1px solid #8BA3BD;
     border-radius: 6px;
     font-family: Consolas, 'Courier New', monospace;
-    font-size: 9pt;
-    padding: 5px;
+    font-size: 10pt;
+    padding: 6px;
+    selection-background-color: #0369A1;
+    selection-color: #FFFFFF;
 }
 QToolTip {
-    color: #F8FAFC;
+    color: #FFFFFF;
     background-color: #1E293B;
-    border: 1px solid #0EA5E9;
+    border: 1px solid #38BDF8;
     border-radius: 6px;
     padding: 10px;
     font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
     font-size: 10pt;
-}</string></property>
+}
+
+QFrame#side_panel, QFrame#chart_panel, QFrame#log_panel {
+    border: none;
+}
+QLabel#lbl_charge_state {
+    background-color: #1A2332;
+    color: #FFFFFF;
+    border: 1px dashed #8BA3BD;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 11pt;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+QLabel#lbl_log_title {
+    color: #FFFFFF;
+    font-weight: bold;
+    font-size: 11pt;
+}
+QWidget#chart_container {
+    background-color: #0B1220;
+    min-height: 480px;
+}
+QLabel#chart_placeholder {
+    color: #CBD5E1;
+    font-size: 10pt;
+    padding: 24px;
+    background-color: transparent;
+}
+QLCDNumber#lcd_v_in { background-color: #070B14; color: #FFEB3B; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_i_in { background-color: #070B14; color: #69F0AE; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_v_out { background-color: #070B14; color: #FFEB3B; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_i_out { background-color: #070B14; color: #69F0AE; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_power { background-color: #070B14; color: #EA80FC; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_v_bat { background-color: #070B14; color: #FFEB3B; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_i_bat { background-color: #070B14; color: #69F0AE; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_temp { background-color: #070B14; color: #FFB74D; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_battery { background-color: #070B14; color: #64FFDA; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }</string></property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="root_layout">
     <property name="leftMargin"><number>10</number></property>
@@ -164,6 +206,7 @@ QToolTip {
     <property name="spacing"><number>5</number></property>
     <item>
      <widget class="QLabel" name="lbl_main_title">
+      <property name="objectName"><string>main_title</string></property>
       <property name="text"><string>手机无线充电监控系统</string></property>
       <property name="alignment"><set>Qt::AlignCenter</set></property>
      </widget>
@@ -172,6 +215,7 @@ QToolTip {
      <widget class="QSplitter" name="splitter">
       <property name="orientation"><enum>Qt::Horizontal</enum></property>
       <widget class="QFrame" name="side_panel">
+       <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
        <property name="minimumSize"><size><width>220</width><height>0</height></size></property>
        <layout class="QVBoxLayout" name="side_panel_outer">
         <property name="leftMargin"><number>0</number></property>
@@ -204,6 +248,7 @@ QToolTip {
                  <item><widget class="QComboBox" name="cb_port"/></item>
                  <item>
                   <widget class="QPushButton" name="btn_refresh_ports">
+                   <property name="objectName"><string>btn_log_tool</string></property>
                    <property name="text"><string>🔄</string></property>
                    <property name="toolTip"><string>刷新串口列表</string></property>
                    <property name="minimumSize"><size><width>36</width><height>0</height></size></property>
@@ -225,14 +270,16 @@ QToolTip {
               <property name="spacing"><number>0</number></property>
               <item>
                <widget class="QLabel" name="lbl_lcd_v_in">
+      <property name="objectName"><string>data_label</string></property>
                 <property name="text"><string>输入电压 (V_in)</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLCDNumber" name="lcd_v_in">
-                <property name="minimumHeight"><number>30</number></property>
-                <property name="maximumHeight"><number>34</number></property>
-                <property name="styleSheet"><string>background-color: #151D2E; color: #FDE047; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+                <property name="minimumHeight"><number>32</number></property>
+                <property name="maximumHeight"><number>36</number></property>
+                <property name="digitCount"><number>8</number></property>
+                <property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property>
                </widget>
               </item>
              </layout>
@@ -242,14 +289,16 @@ QToolTip {
               <property name="spacing"><number>0</number></property>
               <item>
                <widget class="QLabel" name="lbl_lcd_i_in">
+      <property name="objectName"><string>data_label</string></property>
                 <property name="text"><string>输入电流 (I_in)</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLCDNumber" name="lcd_i_in">
-                <property name="minimumHeight"><number>30</number></property>
-                <property name="maximumHeight"><number>34</number></property>
-                <property name="styleSheet"><string>background-color: #151D2E; color: #4ADE80; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+                <property name="minimumHeight"><number>32</number></property>
+                <property name="maximumHeight"><number>36</number></property>
+                <property name="digitCount"><number>8</number></property>
+                <property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property>
                </widget>
               </item>
              </layout>
@@ -259,14 +308,16 @@ QToolTip {
               <property name="spacing"><number>0</number></property>
               <item>
                <widget class="QLabel" name="lbl_lcd_v_out">
+      <property name="objectName"><string>data_label</string></property>
                 <property name="text"><string>输出电压 (V_out)</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLCDNumber" name="lcd_v_out">
-                <property name="minimumHeight"><number>30</number></property>
-                <property name="maximumHeight"><number>34</number></property>
-                <property name="styleSheet"><string>background-color: #151D2E; color: #FDE047; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+                <property name="minimumHeight"><number>32</number></property>
+                <property name="maximumHeight"><number>36</number></property>
+                <property name="digitCount"><number>8</number></property>
+                <property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property>
                </widget>
               </item>
              </layout>
@@ -276,14 +327,16 @@ QToolTip {
               <property name="spacing"><number>0</number></property>
               <item>
                <widget class="QLabel" name="lbl_lcd_i_out">
+      <property name="objectName"><string>data_label</string></property>
                 <property name="text"><string>输出电流 (I_out)</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLCDNumber" name="lcd_i_out">
-                <property name="minimumHeight"><number>30</number></property>
-                <property name="maximumHeight"><number>34</number></property>
-                <property name="styleSheet"><string>background-color: #151D2E; color: #4ADE80; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+                <property name="minimumHeight"><number>32</number></property>
+                <property name="maximumHeight"><number>36</number></property>
+                <property name="digitCount"><number>8</number></property>
+                <property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property>
                </widget>
               </item>
              </layout>
@@ -293,14 +346,16 @@ QToolTip {
               <property name="spacing"><number>0</number></property>
               <item>
                <widget class="QLabel" name="lbl_lcd_power">
+      <property name="objectName"><string>data_label</string></property>
                 <property name="text"><string>输出功率 (Power W)</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLCDNumber" name="lcd_power">
-                <property name="minimumHeight"><number>30</number></property>
-                <property name="maximumHeight"><number>34</number></property>
-                <property name="styleSheet"><string>background-color: #151D2E; color: #C084FC; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+                <property name="minimumHeight"><number>32</number></property>
+                <property name="maximumHeight"><number>36</number></property>
+                <property name="digitCount"><number>8</number></property>
+                <property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property>
                </widget>
               </item>
              </layout>
@@ -310,14 +365,16 @@ QToolTip {
               <property name="spacing"><number>0</number></property>
               <item>
                <widget class="QLabel" name="lbl_lcd_v_bat">
+      <property name="objectName"><string>data_label</string></property>
                 <property name="text"><string>电池电压 (V_bat)</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLCDNumber" name="lcd_v_bat">
-                <property name="minimumHeight"><number>30</number></property>
-                <property name="maximumHeight"><number>34</number></property>
-                <property name="styleSheet"><string>background-color: #151D2E; color: #FDE047; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+                <property name="minimumHeight"><number>32</number></property>
+                <property name="maximumHeight"><number>36</number></property>
+                <property name="digitCount"><number>8</number></property>
+                <property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property>
                </widget>
               </item>
              </layout>
@@ -327,14 +384,16 @@ QToolTip {
               <property name="spacing"><number>0</number></property>
               <item>
                <widget class="QLabel" name="lbl_lcd_i_bat">
+      <property name="objectName"><string>data_label</string></property>
                 <property name="text"><string>电池电流 (I_bat)</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLCDNumber" name="lcd_i_bat">
-                <property name="minimumHeight"><number>30</number></property>
-                <property name="maximumHeight"><number>34</number></property>
-                <property name="styleSheet"><string>background-color: #151D2E; color: #4ADE80; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+                <property name="minimumHeight"><number>32</number></property>
+                <property name="maximumHeight"><number>36</number></property>
+                <property name="digitCount"><number>8</number></property>
+                <property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property>
                </widget>
               </item>
              </layout>
@@ -344,14 +403,16 @@ QToolTip {
               <property name="spacing"><number>0</number></property>
               <item>
                <widget class="QLabel" name="lbl_lcd_temp">
+      <property name="objectName"><string>data_label</string></property>
                 <property name="text"><string>线圈温度 (°C)</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLCDNumber" name="lcd_temp">
-                <property name="minimumHeight"><number>30</number></property>
-                <property name="maximumHeight"><number>34</number></property>
-                <property name="styleSheet"><string>background-color: #151D2E; color: #FB923C; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+                <property name="minimumHeight"><number>32</number></property>
+                <property name="maximumHeight"><number>36</number></property>
+                <property name="digitCount"><number>8</number></property>
+                <property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property>
                </widget>
               </item>
              </layout>
@@ -361,14 +422,16 @@ QToolTip {
               <property name="spacing"><number>0</number></property>
               <item>
                <widget class="QLabel" name="lbl_lcd_battery">
+      <property name="objectName"><string>data_label</string></property>
                 <property name="text"><string>当前电量 (%)</string></property>
                </widget>
               </item>
               <item>
                <widget class="QLCDNumber" name="lcd_battery">
-                <property name="minimumHeight"><number>30</number></property>
-                <property name="maximumHeight"><number>34</number></property>
-                <property name="styleSheet"><string>background-color: #151D2E; color: #34D399; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+                <property name="minimumHeight"><number>32</number></property>
+                <property name="maximumHeight"><number>36</number></property>
+                <property name="digitCount"><number>8</number></property>
+                <property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property>
                </widget>
               </item>
              </layout>
@@ -379,7 +442,6 @@ QToolTip {
               <property name="text"><string>⚡ 充电状态: 等待接入...</string></property>
               <property name="alignment"><set>Qt::AlignCenter</set></property>
               <property name="wordWrap"><bool>true</bool></property>
-              <property name="styleSheet"><string>background-color: #151D2E; color: #E2E8F0; border: 1px dashed #5B6B7C; border-radius: 6px; padding: 8px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;</string></property>
              </widget>
             </item>
             <item>
@@ -399,6 +461,7 @@ QToolTip {
        </layout>
       </widget>
       <widget class="QFrame" name="chart_panel">
+       <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
        <layout class="QVBoxLayout" name="chart_layout">
         <property name="leftMargin"><number>0</number></property>
         <property name="topMargin"><number>0</number></property>
@@ -406,12 +469,24 @@ QToolTip {
         <property name="bottomMargin"><number>0</number></property>
         <item>
          <widget class="QWidget" name="chart_container">
-          <property name="toolTip"><string>PyQtGraph 图表（程序运行时注入）</string></property>
+          <layout class="QVBoxLayout" name="chart_container_layout">
+           <property name="leftMargin"><number>0</number></property>
+           <property name="topMargin"><number>0</number></property>
+           <property name="rightMargin"><number>0</number></property>
+           <property name="bottomMargin"><number>0</number></property>
+           <item>
+            <widget class="QLabel" name="chart_placeholder">
+             <property name="text"><string>📈 实时波形区域&#xa;（程序运行时由 PyQtGraph 加载）</string></property>
+             <property name="alignment"><set>Qt::AlignCenter</set></property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
       </widget>
       <widget class="QFrame" name="log_panel">
+       <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
        <property name="minimumSize"><size><width>320</width><height>0</height></size></property>
        <layout class="QVBoxLayout" name="log_layout">
         <property name="leftMargin"><number>10</number></property>
@@ -421,15 +496,22 @@ QToolTip {
         <property name="spacing"><number>5</number></property>
         <item>
          <layout class="QHBoxLayout" name="log_header_lay">
-          <item><widget class="QLabel" name="lbl_log_title"><property name="text"><string>📡 报文实时监控</string></property><property name="styleSheet"><string>color: #F8FAFC; font-weight: bold; font-size: 10pt;</string></property></widget></item>
+          <item><widget class="QLabel" name="lbl_log_title"><property name="text"><string>📡 报文实时监控</string></property></widget></item>
           <item><spacer name="log_header_spacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint"><size><width>40</width><height>20</height></size></property></spacer></item>
-          <item><widget class="QPushButton" name="btn_rollback"><property name="text"><string>🔄 历史查阅</string></property></widget></item>
-          <item><widget class="QPushButton" name="btn_export_log"><property name="text"><string>💾 导出全量日志</string></property></widget></item>
+          <item><widget class="QPushButton" name="btn_rollback">
+           <property name="objectName"><string>btn_log_tool</string></property>
+           <property name="text"><string>🔄 历史查阅</string></property>
+          </widget></item>
+          <item><widget class="QPushButton" name="btn_export_log">
+           <property name="objectName"><string>btn_log_tool</string></property>
+           <property name="text"><string>💾 导出全量日志</string></property>
+          </widget></item>
          </layout>
         </item>
         <item>
          <widget class="QPlainTextEdit" name="text_log">
           <property name="readOnly"><bool>true</bool></property>
+          <property name="placeholderText"><string>TX0 报文将在此显示…</string></property>
          </widget>
         </item>
        </layout>

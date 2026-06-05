@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import (
     QToolTip,
 )
 
+from ..charge_state import ChargeStateTracker
 from ..config import CONFIG
 from ..db import (
     close_session,
@@ -36,6 +37,7 @@ from ..protocol.qi_parser import Qi22Parser
 from ..report.engine import ReportEngine
 from ..workers import DBWorker, FetchWorker, SerialWorker
 from .loader import Ui_MonitorWindow
+from .theme import LCD_TEMP
 
 class MonitorWindow(QMainWindow):
 
@@ -50,20 +52,22 @@ class MonitorWindow(QMainWindow):
         init_db()
 
         self.statusBar().setStyleSheet(
-            "QStatusBar { background: #1E293B; color: #F1F5F9; border-top: 1px solid #5B6B7C; font-size: 9pt; }"
+            "QStatusBar { background: #162032; color: #FFFFFF; border-top: 1px solid #8BA3BD; font-size: 10pt; }"
         )
         self._status_default = QLabel("就绪")
-        self._status_default.setStyleSheet("color: #F1F5F9; padding: 0 8px;")
+        self._status_default.setStyleSheet("color: #FFFFFF; padding: 0 8px;")
         self.statusBar().addWidget(self._status_default, 1)
         self._status_session = QLabel("")
-        self._status_session.setStyleSheet("color: #38BDF8; padding: 0 8px;")
+        self._status_session.setStyleSheet("color: #7DD3FC; padding: 0 8px; font-weight: 600;")
         self.statusBar().addPermanentWidget(self._status_session)
         self._alert_clear_timer = QTimer(self)
         self._alert_clear_timer.setSingleShot(True)
         self._alert_clear_timer.timeout.connect(lambda: self._set_status("就绪", "normal"))
         self.qi_parser = Qi22Parser()
+        self._charge_state_tracker = ChargeStateTracker(CONFIG.get('charge_state', {}))
         self._active_alerts = set()
-        self._last_cc_cv_state = ""
+        self._last_stable_charge_state = None
+        self._last_charge_state_text = None
         self._full_charge_start_time = None
         self._full_charge_alerted = False
 
@@ -133,7 +137,7 @@ class MonitorWindow(QMainWindow):
     # ========================== 核心扩展功能区 ==========================
     def _set_status(self, text, level='normal'):
         colors_map = {
-            'normal': '#F1F5F9', 'info': '#7DD3FC', 'warn': '#FCD34D',
+            'normal': '#FFFFFF', 'info': '#BAE6FD', 'warn': '#FDE047',
             'error': '#FCA5A5', 'success': '#86EFAC',
         }
         self._status_default.setText(text)
@@ -292,6 +296,7 @@ class MonitorWindow(QMainWindow):
                 'type': 'log', 'rel_time': t, 'msg': msg,
                 'session_id': self.current_session_id,
             })
+
     def setup_crosshair(self):
         self.v_lines = []
         for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]:
@@ -303,9 +308,9 @@ class MonitorWindow(QMainWindow):
         self.hud_label.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
         self.hud_label.setAttribute(Qt.WA_TranslucentBackground)
         self.hud_label.setStyleSheet(
-            "QLabel { background-color: rgba(21, 29, 46, 245); color: #E2E8F0; "
+            "QLabel { background-color: rgba(15, 23, 42, 250); color: #FFFFFF; "
             "border: 1px solid #38BDF8; border-radius: 6px; padding: 10px; "
-            "font-family: Consolas, monospace; font-size: 10pt; }"
+            "font-family: Consolas, monospace; font-size: 11pt; }"
         )
         self.hud_label.hide()
         self.proxy = pg.SignalProxy(self.ui.graph_widget.scene().sigMouseMoved, rateLimit=60, slot=self.on_mouse_moved)
@@ -335,11 +340,11 @@ class MonitorWindow(QMainWindow):
                 try: p_val, vi_val, ii_val, vo_val, io_val, vb_val, ib_val = self.view_data['p'][idx], self.view_data['vi'][idx], self.view_data['ii'][idx], self.view_data['vo'][idx], self.view_data['io'][idx], self.view_data['vb'][idx], self.view_data['ib'][idx]
                 except IndexError: self.hide_tooltip(); return
                 for line in self.v_lines: line.setPos(closest_x); line.setVisible(True)
-                html = f"<div style='font-size: 10pt; line-height: 1.4;'><b style='color:#F8FAFC; font-size: 11pt;'>⏱ {closest_x:.2f} s</b><hr style='border: 1px solid #334155; margin: 4px 0;'>"
-                if active_p == self.ui.p_p: html += f"<b>PWR:</b> <span style='color:#A855F7'>{p_val:.2f} W</span>"
-                elif active_p == self.ui.p_in: html += f"<b>IN :</b> <span style='color:#FACC15'>{vi_val:.2f} V</span> / <span style='color:#22C55E'>{ii_val:.2f} A</span>"
-                elif active_p == self.ui.p_out: html += f"<b>OUT:</b> <span style='color:#FACC15'>{vo_val:.2f} V</span> / <span style='color:#22C55E'>{io_val:.2f} A</span>"
-                elif active_p == self.ui.p_bat: html += f"<b>BAT:</b> <span style='color:#FACC15'>{vb_val:.2f} V</span> / <span style='color:#22C55E'>{ib_val:.2f} A</span>"
+                html = f"<div style='font-size: 11pt; line-height: 1.5; color:#FFFFFF;'><b style='color:#FFFFFF; font-size: 12pt;'>⏱ {closest_x:.2f} s</b><hr style='border: 1px solid #64748B; margin: 4px 0;'>"
+                if active_p == self.ui.p_p: html += f"<b>PWR:</b> <span style='color:#E879F9'>{p_val:.2f} W</span>"
+                elif active_p == self.ui.p_in: html += f"<b>IN :</b> <span style='color:#FFE566'>{vi_val:.2f} V</span> / <span style='color:#4ADE80'>{ii_val:.2f} A</span>"
+                elif active_p == self.ui.p_out: html += f"<b>OUT:</b> <span style='color:#FFE566'>{vo_val:.2f} V</span> / <span style='color:#4ADE80'>{io_val:.2f} A</span>"
+                elif active_p == self.ui.p_bat: html += f"<b>BAT:</b> <span style='color:#FFE566'>{vb_val:.2f} V</span> / <span style='color:#4ADE80'>{ib_val:.2f} A</span>"
                 self.hud_label.setText(html + "</div>")
                 self.hud_label.adjustSize()
                 self.hud_label.move(QCursor.pos().x() + 15, QCursor.pos().y() + 15)
@@ -445,38 +450,46 @@ class MonitorWindow(QMainWindow):
             elif max_i < ocp - 0.2: self._active_alerts.discard('OCP')
 
             if d['t'] >= temp_w:
-                self.ui.lcd_temp.setStyleSheet("color: #FCA5A5; background-color: #450a0a; border: 2px solid #EF4444;")
+                self.ui.lcd_temp.setStyleSheet(
+                    'background-color: #450A0A; color: #FECACA; border: 2px solid #EF4444; border-radius: 4px;'
+                )
                 if not getattr(self, '_temp_warned', False): self.append_log(time.time(), f"[{datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ⚠️ 警告：线圈温度过高 ({d['t']}°C)！"); self._temp_warned = True
                 if 'OTP' not in self._active_alerts: self._active_alerts.add('OTP'); self.show_protection_alert("过温保护 (OTP)", d['t'], temp_w, "°C")
             else:
-                self.ui.lcd_temp.setStyleSheet("color: #FDBA74; background-color: #151D2E; border: 1px solid #5B6B7C;")
+                self.ui.lcd_temp.setStyleSheet(
+                    f'background-color: #151D2E; color: {LCD_TEMP}; border: 1px solid #5B6B7C; border-radius: 4px;'
+                )
                 if d['t'] < temp_r: self._temp_warned = False; self._active_alerts.discard('OTP')
 
-            if len(self.y_vb) >= 20:
-                curr_p = d['p']
-                curr_v = d['v_bat']
-                curr_i = d['i_bat']
-                if curr_p < 0.5: state_text = "🔌 未充电 / 待机中"; color = "#B8C5D3"; border_style = "dashed"
-                else:
-                    border_style = "solid"
-                    dv = curr_v - self.y_vb[-20]
-                    di = curr_i - self.y_ib[-20]
-                    if curr_i < 0.15: state_text = "🟢 涓流阶段 / 已满电"; color = "#10B981"
-                    elif abs(dv) <= 0.05 and di < -0.05: state_text = "🟡 恒压充电阶段 (CV)"; color = "#FACC15"
-                    elif dv > 0.02 and abs(di) <= 0.1: state_text = "🔵 恒流充电阶段 (CC)"; color = "#38BDF8"
-                    else: state_text = "🔄 动态功率协商中..."; color = "#A855F7"
-
-                if self._last_cc_cv_state != state_text:
+            if self.worker and self.worker.isRunning():
+                stable = self._charge_state_tracker.update(self.y_vb, self.y_ib)
+                state_text, color, border_style = self._charge_state_tracker.display(stable)
+                battery_pct = float(d.get('b', 0) or 0)
+                if stable == 'trickle' and battery_pct < 100.0:
+                    state_text = '🟢 涓流阶段 (电量未满)'
+                if (
+                    stable != self._last_stable_charge_state
+                    or state_text != getattr(self, '_last_charge_state_text', None)
+                ):
                     self.ui.lbl_charge_state.setText(state_text)
-                    self.ui.lbl_charge_state.setStyleSheet(f"background-color: #151D2E; color: {color}; border: 2px {border_style} {color}; border-radius: 6px; padding: 10px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;")
-                    self._last_cc_cv_state = state_text
+                    self.ui.lbl_charge_state.setStyleSheet(
+                        f"background-color: #151D2E; color: {color}; border: 2px {border_style} {color}; "
+                        "border-radius: 6px; padding: 10px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;"
+                    )
+                    self._last_stable_charge_state = stable
+                    self._last_charge_state_text = state_text
 
-                if state_text == "🟢 涓流阶段 / 已满电":
-                    if self._full_charge_start_time is None: self._full_charge_start_time = time.time()
+                if stable == 'trickle' and battery_pct >= 100.0:
+                    if self._full_charge_start_time is None:
+                        self._full_charge_start_time = time.time()
                     else:
                         debounce = CONFIG['alerts'].get('full_charge_debounce_sec', 20.0)
-                        if not self._full_charge_alerted and (time.time() - self._full_charge_start_time >= debounce): self.show_full_charge_alert(debounce); self._full_charge_alerted = True
-                else: self._full_charge_start_time = None; self._full_charge_alerted = False
+                        if not self._full_charge_alerted and (time.time() - self._full_charge_start_time >= debounce):
+                            self.show_full_charge_alert(debounce)
+                            self._full_charge_alerted = True
+                else:
+                    self._full_charge_start_time = None
+                    self._full_charge_alerted = False
 
         if self.worker and self.worker.isRunning():
             if self.auto_scroll_chart:
@@ -493,6 +506,7 @@ class MonitorWindow(QMainWindow):
                 win = CONFIG['ui'].get('default_window_size_sec', 60.0)
                 xlim = [cur_t-win, cur_t+win*0.05] if cur_t > win else [0, max(cur_t+1, win)]
                 self.ui.p_p.setXRange(xlim[0], xlim[1], padding=0)
+                self.last_forced_xlim = xlim
             else: self.request_chart_fetch()
 
     def on_chart_fetched(self, data):
@@ -517,13 +531,16 @@ class MonitorWindow(QMainWindow):
         self.ui.btn_start.setText("▶ 开始")
         self._demo_mode_active = False
         self.auto_scroll_chart = False
+        self._charge_state_tracker.reset()
+        self._last_stable_charge_state = None
+        self._last_charge_state_text = None
         if self.worker:
             self.worker.stop()
             self.worker = None
         self.ui.lbl_charge_state.setText("⚡ 充电状态: 等待接入...")
         self.ui.lbl_charge_state.setStyleSheet(
-            "background-color: #151D2E; color: #B8C5D3; border: 1px dashed #5B6B7C; "
-            "border-radius: 6px; padding: 10px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;"
+            "background-color: #1A2332; color: #F1F5F9; border: 1px dashed #8BA3BD; "
+            "border-radius: 6px; padding: 10px; font-size: 12pt; font-weight: bold; margin-bottom: 5px;"
         )
 
     def on_serial_connection_failed(self, msg):
@@ -536,8 +553,8 @@ class MonitorWindow(QMainWindow):
             )
             self.ui.lbl_charge_state.setText("⚠️ 演示模式 — 模拟数据")
             self.ui.lbl_charge_state.setStyleSheet(
-                "background-color: #422006; color: #FBBF24; border: 2px solid #F59E0B; "
-                "border-radius: 6px; padding: 10px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;"
+                "background-color: #422006; color: #FDE047; border: 2px solid #F59E0B; "
+                "border-radius: 6px; padding: 10px; font-size: 12pt; font-weight: bold; margin-bottom: 5px;"
             )
             return
         logger.error("Serial connection failed, monitoring stopped: %s", msg)
@@ -572,7 +589,6 @@ class MonitorWindow(QMainWindow):
         if self.worker and self.worker.isRunning():
             self.auto_scroll_chart = True
             self.ui.btn_start.setText("▶ 监控中")
-            for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]: p.enableAutoRange(axis='y')
             self.force_live_mode()
             return
         self.ui.btn_start.setEnabled(False)
@@ -601,13 +617,17 @@ class MonitorWindow(QMainWindow):
         self.auto_scroll_chart, self.log_mode = True, 'live'
         self._temp_warned = False
         self._active_alerts.clear()
-        self._last_cc_cv_state = ""
+        self._charge_state_tracker.reset()
+        self._last_stable_charge_state = None
+        self._last_charge_state_text = None
         self._full_charge_start_time = None
         self._full_charge_alerted = False
         self.ui.lbl_charge_state.setText("⚡ 数据采集中...")
-        self.ui.lbl_charge_state.setStyleSheet("background-color: #151D2E; color: #B8C5D3; border: 1px dashed #5B6B7C; border-radius: 6px; padding: 10px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;")
+        self.ui.lbl_charge_state.setStyleSheet(
+            "background-color: #1A2332; color: #F1F5F9; border: 1px dashed #8BA3BD; "
+            "border-radius: 6px; padding: 10px; font-size: 12pt; font-weight: bold; margin-bottom: 5px;"
+        )
         [a.clear() for a in [self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b]]; self.view_data = {'x':[], 'p':[], 'vi':[], 'ii':[], 'vo':[], 'io':[], 'vb':[], 'ib':[], 't':[], 'b':[]}
-        for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]: p.enableAutoRange(axis='y')
         serial_cfg = CONFIG.get('serial', {})
         self.worker = SerialWorker(
             port, baud, demo_mode=demo_mode,
