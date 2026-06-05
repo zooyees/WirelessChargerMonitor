@@ -1,0 +1,40 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Runtime data & logs
+*.db
+*.db-shm
+*.db-wal
+monitor.log
+Unknown_Qi_Commands_Log.txt
+Report_*.pdf
+Logs_*.txt
+Qi_Monitor_*.csv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+*.zip
+
+# Qt generated (optional stub)
+wireless_charger_monitor/ui/ui_monitor_generated.py
+
+# Spec extracts & local artifacts
+_spec_extract/
+
+# OS
+Thumbs.db
+Desktop.ini

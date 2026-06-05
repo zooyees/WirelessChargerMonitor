@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MonitorWindow</class>
+ <widget class="QMainWindow" name="MonitorWindow">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>1600</width><height>950</height></rect>
+  </property>
+  <property name="windowTitle"><string>手机无线充电监控系统</string></property>
+  <property name="styleSheet"><string>QMainWindow, QWidget#centralwidget {
+    background-color: #0F172A;
+    color: #F8FAFC;
+    font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+}
+QLabel#main_title {
+    font-size: 13pt;
+    font-weight: bold;
+    color: #F8FAFC;
+    padding: 4px 2px;
+    background-color: #111D2B;
+    border-radius: 4px;
+}
+QGroupBox {
+    font-weight: bold;
+    color: #F8FAFC;
+    background-color: #1E293B;
+    border: 1px solid #5B6B7C;
+    border-radius: 6px;
+    margin-top: 8px;
+    padding: 10px 5px 5px 5px;
+    font-size: 10pt;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 8px;
+    padding: 0 4px;
+    color: #F8FAFC;
+}
+QFrame#side_panel, QFrame#log_panel, QFrame#chart_panel {
+    background-color: #1E293B;
+    border-radius: 12px;
+}
+QWidget#side_content {
+    background-color: #1E293B;
+    color: #F8FAFC;
+}
+QScrollArea#side_scroll {
+    background-color: #1E293B;
+    border: none;
+}
+QScrollBar:vertical {
+    background: #1E293B;
+    width: 10px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background: #64748B;
+    min-height: 24px;
+    border-radius: 4px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QLabel#data_label {
+    color: #E2E8F0;
+    font-size: 9pt;
+    font-weight: 600;
+}
+QLCDNumber {
+    background-color: #151D2E;
+    color: #FDE047;
+    border: 1px solid #5B6B7C;
+    border-radius: 4px;
+}
+QComboBox {
+    background-color: #2D3A4F;
+    border: 1px solid #5B6B7C;
+    border-radius: 4px;
+    color: #F8FAFC;
+    padding: 2px 6px;
+    min-height: 25px;
+    font-size: 9pt;
+}
+QComboBox QAbstractItemView {
+    background-color: #2D3A4F;
+    color: #F8FAFC;
+    selection-background-color: #0EA5E9;
+    selection-color: #FFFFFF;
+}
+QPushButton {
+    font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    font-weight: bold;
+    border-radius: 6px;
+    padding: 8px;
+    color: #F8FAFC;
+    border: none;
+    font-size: 10pt;
+    background-color: #3D4F66;
+}
+QPushButton#btn_start {
+    background-color: #0EA5E9;
+    color: #FFFFFF;
+}
+QPushButton#btn_stop {
+    background-color: #52657A;
+    color: #FFFFFF;
+}
+QPushButton#btn_stop:disabled {
+    background-color: #334155;
+    color: #B8C5D3;
+}
+QPushButton#btn_export {
+    background-color: #151D2E;
+    border: 1px solid #0EA5E9;
+    color: #7DD3FC;
+}
+QPushButton#btn_report {
+    background-color: #151D2E;
+    border: 1px solid #38BDF8;
+    color: #BAE6FD;
+}
+QPushButton#btn_log_tool {
+    background-color: #3D4F66;
+    border: 1px solid #5B6B7C;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 8pt;
+    color: #E2E8F0;
+    min-height: 20px;
+}
+QPushButton#btn_log_tool:hover {
+    background-color: #52657A;
+    color: #FFFFFF;
+}
+QPushButton:hover {
+    background-color: #52657A;
+}
+QPushButton#btn_start:hover {
+    background-color: #0284C7;
+}
+QPlainTextEdit {
+    background-color: #151D2E;
+    color: #DCE8F5;
+    border: 1px solid #5B6B7C;
+    border-radius: 6px;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 9pt;
+    padding: 5px;
+}
+QToolTip {
+    color: #F8FAFC;
+    background-color: #1E293B;
+    border: 1px solid #0EA5E9;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    font-size: 10pt;
+}</string></property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="root_layout">
+    <property name="leftMargin"><number>10</number></property>
+    <property name="topMargin"><number>5</number></property>
+    <property name="rightMargin"><number>10</number></property>
+    <property name="bottomMargin"><number>10</number></property>
+    <property name="spacing"><number>5</number></property>
+    <item>
+     <widget class="QLabel" name="lbl_main_title">
+      <property name="text"><string>手机无线充电监控系统</string></property>
+      <property name="alignment"><set>Qt::AlignCenter</set></property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation"><enum>Qt::Horizontal</enum></property>
+      <widget class="QFrame" name="side_panel">
+       <property name="minimumSize"><size><width>220</width><height>0</height></size></property>
+       <layout class="QVBoxLayout" name="side_panel_outer">
+        <property name="leftMargin"><number>0</number></property>
+        <property name="topMargin"><number>0</number></property>
+        <property name="rightMargin"><number>0</number></property>
+        <property name="bottomMargin"><number>0</number></property>
+        <item>
+         <widget class="QScrollArea" name="side_scroll">
+          <property name="widgetResizable"><bool>true</bool></property>
+          <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+          <property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarAlwaysOff</enum></property>
+          <widget class="QWidget" name="side_content">
+           <layout class="QVBoxLayout" name="side_layout">
+            <property name="leftMargin"><number>10</number></property>
+            <property name="topMargin"><number>5</number></property>
+            <property name="rightMargin"><number>10</number></property>
+            <property name="bottomMargin"><number>10</number></property>
+            <property name="spacing"><number>3</number></property>
+            <item>
+             <widget class="QGroupBox" name="group_config">
+              <property name="title"><string>连接配置</string></property>
+              <layout class="QVBoxLayout" name="config_vbox">
+               <property name="leftMargin"><number>5</number></property>
+               <property name="topMargin"><number>15</number></property>
+               <property name="rightMargin"><number>5</number></property>
+               <property name="bottomMargin"><number>5</number></property>
+               <property name="spacing"><number>2</number></property>
+               <item>
+                <layout class="QHBoxLayout" name="port_hbox">
+                 <item><widget class="QComboBox" name="cb_port"/></item>
+                 <item>
+                  <widget class="QPushButton" name="btn_refresh_ports">
+                   <property name="text"><string>🔄</string></property>
+                   <property name="toolTip"><string>刷新串口列表</string></property>
+                   <property name="minimumSize"><size><width>36</width><height>0</height></size></property>
+                   <property name="maximumSize"><size><width>36</width><height>16777215</height></size></property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item><widget class="QComboBox" name="cb_baudrate">
+                <item><property name="text"><string>115200</string></property></item>
+                <item><property name="text"><string>921600</string></property></item>
+                <item><property name="text"><string>2000000</string></property></item>
+               </widget></item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_v_in">
+              <property name="spacing"><number>0</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_lcd_v_in">
+                <property name="text"><string>输入电压 (V_in)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLCDNumber" name="lcd_v_in">
+                <property name="minimumHeight"><number>30</number></property>
+                <property name="maximumHeight"><number>34</number></property>
+                <property name="styleSheet"><string>background-color: #151D2E; color: #FDE047; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_i_in">
+              <property name="spacing"><number>0</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_lcd_i_in">
+                <property name="text"><string>输入电流 (I_in)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLCDNumber" name="lcd_i_in">
+                <property name="minimumHeight"><number>30</number></property>
+                <property name="maximumHeight"><number>34</number></property>
+                <property name="styleSheet"><string>background-color: #151D2E; color: #4ADE80; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_v_out">
+              <property name="spacing"><number>0</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_lcd_v_out">
+                <property name="text"><string>输出电压 (V_out)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLCDNumber" name="lcd_v_out">
+                <property name="minimumHeight"><number>30</number></property>
+                <property name="maximumHeight"><number>34</number></property>
+                <property name="styleSheet"><string>background-color: #151D2E; color: #FDE047; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_i_out">
+              <property name="spacing"><number>0</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_lcd_i_out">
+                <property name="text"><string>输出电流 (I_out)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLCDNumber" name="lcd_i_out">
+                <property name="minimumHeight"><number>30</number></property>
+                <property name="maximumHeight"><number>34</number></property>
+                <property name="styleSheet"><string>background-color: #151D2E; color: #4ADE80; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_power">
+              <property name="spacing"><number>0</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_lcd_power">
+                <property name="text"><string>输出功率 (Power W)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLCDNumber" name="lcd_power">
+                <property name="minimumHeight"><number>30</number></property>
+                <property name="maximumHeight"><number>34</number></property>
+                <property name="styleSheet"><string>background-color: #151D2E; color: #C084FC; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_v_bat">
+              <property name="spacing"><number>0</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_lcd_v_bat">
+                <property name="text"><string>电池电压 (V_bat)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLCDNumber" name="lcd_v_bat">
+                <property name="minimumHeight"><number>30</number></property>
+                <property name="maximumHeight"><number>34</number></property>
+                <property name="styleSheet"><string>background-color: #151D2E; color: #FDE047; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_i_bat">
+              <property name="spacing"><number>0</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_lcd_i_bat">
+                <property name="text"><string>电池电流 (I_bat)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLCDNumber" name="lcd_i_bat">
+                <property name="minimumHeight"><number>30</number></property>
+                <property name="maximumHeight"><number>34</number></property>
+                <property name="styleSheet"><string>background-color: #151D2E; color: #4ADE80; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_temp">
+              <property name="spacing"><number>0</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_lcd_temp">
+                <property name="text"><string>线圈温度 (°C)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLCDNumber" name="lcd_temp">
+                <property name="minimumHeight"><number>30</number></property>
+                <property name="maximumHeight"><number>34</number></property>
+                <property name="styleSheet"><string>background-color: #151D2E; color: #FB923C; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_battery">
+              <property name="spacing"><number>0</number></property>
+              <item>
+               <widget class="QLabel" name="lbl_lcd_battery">
+                <property name="text"><string>当前电量 (%)</string></property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLCDNumber" name="lcd_battery">
+                <property name="minimumHeight"><number>30</number></property>
+                <property name="maximumHeight"><number>34</number></property>
+                <property name="styleSheet"><string>background-color: #151D2E; color: #34D399; border: 1px solid #5B6B7C; border-radius: 4px;</string></property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+
+            <item>
+             <widget class="QLabel" name="lbl_charge_state">
+              <property name="text"><string>⚡ 充电状态: 等待接入...</string></property>
+              <property name="alignment"><set>Qt::AlignCenter</set></property>
+              <property name="wordWrap"><bool>true</bool></property>
+              <property name="styleSheet"><string>background-color: #151D2E; color: #E2E8F0; border: 1px dashed #5B6B7C; border-radius: 6px; padding: 8px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;</string></property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="btn_box">
+              <property name="spacing"><number>5</number></property>
+              <item><widget class="QPushButton" name="btn_start"><property name="text"><string>▶ 开始</string></property></widget></item>
+              <item><widget class="QPushButton" name="btn_stop"><property name="text"><string>⏹ 停止</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+              <item><widget class="QPushButton" name="btn_export"><property name="text"><string>💾 导出 CSV</string></property></widget></item>
+              <item><widget class="QPushButton" name="btn_report"><property name="text"><string>📄 导出 PDF 报告</string></property></widget></item>
+             </layout>
+            </item>
+            <item><spacer name="side_spacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint"><size><width>20</width><height>40</height></size></property></spacer></item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QFrame" name="chart_panel">
+       <layout class="QVBoxLayout" name="chart_layout">
+        <property name="leftMargin"><number>0</number></property>
+        <property name="topMargin"><number>0</number></property>
+        <property name="rightMargin"><number>0</number></property>
+        <property name="bottomMargin"><number>0</number></property>
+        <item>
+         <widget class="QWidget" name="chart_container">
+          <property name="toolTip"><string>PyQtGraph 图表（程序运行时注入）</string></property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QFrame" name="log_panel">
+       <property name="minimumSize"><size><width>320</width><height>0</height></size></property>
+       <layout class="QVBoxLayout" name="log_layout">
+        <property name="leftMargin"><number>10</number></property>
+        <property name="topMargin"><number>10</number></property>
+        <property name="rightMargin"><number>10</number></property>
+        <property name="bottomMargin"><number>10</number></property>
+        <property name="spacing"><number>5</number></property>
+        <item>
+         <layout class="QHBoxLayout" name="log_header_lay">
+          <item><widget class="QLabel" name="lbl_log_title"><property name="text"><string>📡 报文实时监控</string></property><property name="styleSheet"><string>color: #F8FAFC; font-weight: bold; font-size: 10pt;</string></property></widget></item>
+          <item><spacer name="log_header_spacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint"><size><width>40</width><height>20</height></size></property></spacer></item>
+          <item><widget class="QPushButton" name="btn_rollback"><property name="text"><string>🔄 历史查阅</string></property></widget></item>
+          <item><widget class="QPushButton" name="btn_export_log"><property name="text"><string>💾 导出全量日志</string></property></widget></item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QPlainTextEdit" name="text_log">
+          <property name="readOnly"><bool>true</bool></property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
