@@ -3,6 +3,7 @@ import copy
 import json
 import sys
 
+from .i18n import normalize_language
 from .paths import config_file
 
 DEFAULT_CONFIG = {
@@ -17,6 +18,7 @@ DEFAULT_CONFIG = {
         'render_interval_ms': 100,
         'chart_max_points': 500,
         'default_window_size_sec': 60.0,
+        'language': 'en',
     },
     'alerts': {
         'temp_warning_threshold': 60,
@@ -42,8 +44,30 @@ DEFAULT_CONFIG = {
         'auto_reconnect': True,
         'reconnect_interval_sec': 3.0,
         'max_reconnect_attempts': 5,
+        'port_poll_interval_ms': 2000,
+    },
+    'log_monitor': {
+        'default_filename': 'Live Capture',
+        'save_dir': 'logs',
+        'file_extension': 'txt',
     },
 }
+
+
+def update_config(partial: dict) -> dict:
+    """Merge partial settings into the on-disk config file."""
+    path = config_file()
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+    merged = _deep_merge(data, partial)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(merged, f, indent=2, ensure_ascii=False)
+    global CONFIG
+    CONFIG = load_config()
+    return merged
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -61,10 +85,13 @@ def load_config() -> dict:
     try:
         with open(path, 'r', encoding='utf-8') as f:
             file_cfg = json.load(f)
-        return _deep_merge(DEFAULT_CONFIG, file_cfg)
+        merged = _deep_merge(DEFAULT_CONFIG, file_cfg)
     except Exception as e:
         print(f'[WARN] 无法加载 {path}，使用默认配置: {e}', file=sys.stderr)
-        return copy.deepcopy(DEFAULT_CONFIG)
+        merged = copy.deepcopy(DEFAULT_CONFIG)
+    ui = merged.setdefault('ui', {})
+    ui['language'] = normalize_language(str(ui.get('language', 'en') or 'en'))
+    return merged
 
 
 CONFIG = load_config()

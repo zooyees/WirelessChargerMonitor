@@ -1,3 +1,3 @@
-"""手机无线充电监控系统 (Wireless Charger Monitor)."""
+"""串口分析工具 (Serial Port Analysis Tool)."""
 
 __version__ = '1.0.0'

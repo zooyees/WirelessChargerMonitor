@@ -1,0 +1,4 @@
+# Runtime dependencies for the packaged EXE (matplotlib omitted; not used by app code).
+PyQt5>=5.15.0
+pyserial>=3.5
+pyqtgraph>=0.13.0

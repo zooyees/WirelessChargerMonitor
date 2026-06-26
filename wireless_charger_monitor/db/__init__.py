@@ -3,8 +3,6 @@ from .sessions import (
     close_session,
     create_session,
     get_session_info,
-    pick_report_session,
-    resolve_export_session_id,
 )
 
 __all__ = [
@@ -13,6 +11,4 @@ __all__ = [
     'create_session',
     'close_session',
     'get_session_info',
-    'resolve_export_session_id',
-    'pick_report_session',
 ]

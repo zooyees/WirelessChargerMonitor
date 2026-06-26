@@ -1,4 +1,3 @@
-import queue
 import sqlite3
 
 from PyQt5.QtCore import QThread, pyqtSignal
@@ -9,12 +8,10 @@ from ..logging_setup import logger
 
 class FetchWorker(QThread):
     chart_fetched = pyqtSignal(tuple)
-    log_fetched = pyqtSignal(str, bool, str)
 
     def __init__(self):
         super().__init__()
         self.running = True
-        self.log_queue = queue.Queue()
         self.latest_xlim = None
         self.chart_request = False
         self.db_name = db_path()
@@ -44,20 +41,7 @@ class FetchWorker(QThread):
                         self.chart_fetched.emit(([], [], [], [], [], [], [], [], [], []))
                 except Exception:
                     logger.exception('FetchWorker: chart query failed')
-            try:
-                log_task = self.log_queue.get(timeout=0.05)
-                r = cur.execute(
-                    'SELECT message FROM (SELECT id, message FROM tx0_logs ORDER BY id DESC LIMIT 1000 OFFSET ?) ORDER BY id ASC',
-                    (log_task['offset'],),
-                ).fetchall()
-                if r:
-                    self.log_fetched.emit('\n'.join([row[0] for row in r]), True, log_task['direction'])
-                else:
-                    self.log_fetched.emit('', False, log_task['direction'])
-            except queue.Empty:
-                pass
-            except Exception:
-                logger.exception('FetchWorker: log query failed')
+            self.msleep(50)
         conn.close()
         logger.info('FetchWorker stopped')
 

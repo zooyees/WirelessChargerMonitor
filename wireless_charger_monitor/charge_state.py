@@ -2,6 +2,7 @@
 import time
 from typing import List, Optional, Sequence, Tuple
 
+from .i18n import tr
 
 StateLabel = Tuple[str, str, str]  # text, color, border_style
 
@@ -9,12 +10,20 @@ StateLabel = Tuple[str, str, str]  # text, color, border_style
 class ChargeStateTracker:
     """利用电池电压/电流历史推断 CC/CV/涓流，并在切换前保持一段时间。"""
 
-    LABELS = {
-        'idle': ('🔌 未充电 / 待机中', '#E2E8F0', 'dashed'),
-        'cc': ('🔵 恒流充电阶段 (CC)', '#7DD3FC', 'solid'),
-        'cv': ('🟡 恒压充电阶段 (CV)', '#FDE047', 'solid'),
-        'trickle': ('🟢 涓流阶段 / 已满电', '#6EE7B7', 'solid'),
-        'negotiate': ('🔄 动态功率协商中...', '#C4B5FD', 'solid'),
+    _STATE_KEYS = {
+        'idle': 'charge.idle',
+        'cc': 'charge.cc',
+        'cv': 'charge.cv',
+        'trickle': 'charge.trickle',
+        'negotiate': 'charge.negotiate',
+    }
+
+    _STYLES = {
+        'idle': ('#E2E8F0', 'dashed'),
+        'cc': ('#7DD3FC', 'solid'),
+        'cv': ('#FDE047', 'solid'),
+        'trickle': ('#6EE7B7', 'solid'),
+        'negotiate': ('#C4B5FD', 'solid'),
     }
 
     def __init__(self, cfg=None):
@@ -128,5 +137,7 @@ class ChargeStateTracker:
 
     def display(self, state: Optional[str]) -> StateLabel:
         if state is None:
-            return '⚡ 充电状态分析中...', '#E2E8F0', 'dashed'
-        return self.LABELS.get(state, self.LABELS['negotiate'])
+            return tr('charge.analyzing'), '#E2E8F0', 'dashed'
+        key = self._STATE_KEYS.get(state, 'charge.negotiate')
+        color, border = self._STYLES.get(state, self._STYLES['negotiate'])
+        return tr(key), color, border

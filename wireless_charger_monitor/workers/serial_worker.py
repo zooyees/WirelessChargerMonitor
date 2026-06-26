@@ -5,6 +5,7 @@ import time
 import serial
 from PyQt5.QtCore import QThread, pyqtSignal
 
+from ..i18n import tr
 from ..logging_setup import logger
 from ..paths import project_path
 
@@ -15,6 +16,7 @@ class SerialWorker(QThread):
     data_ready = pyqtSignal(dict)
     log_ready = pyqtSignal(float, str)
     connection_failed = pyqtSignal(str)
+    connection_opened = pyqtSignal()
     connection_lost = pyqtSignal(str)
     reconnecting = pyqtSignal(int, int)
     KNOWN_ASK = {
@@ -93,12 +95,19 @@ class SerialWorker(QThread):
                 while '\n' in buffer:
                     line, buffer = buffer.split('\n', 1)
                     line = line.strip()
-                    if line.startswith('TX1'):
-                        msg = f"{self.get_strict_timestamp()} {line[3:].strip().strip(':').strip()}"
-                        self.log_ready.emit(time.time(), msg)
-                        self.check_and_log_unknown(msg)
-                    elif 'AA55' in line and 'EDED' in line:
+                    if not line:
+                        continue
+                    if 'AA55' in line and 'EDED' in line:
                         self.parse_line(line)
+                        continue
+                    payload = line
+                    if line.startswith('TX0:') or line.startswith('TX1:'):
+                        payload = line.split(':', 1)[1].strip()
+                    elif line.startswith('TX0') or line.startswith('TX1'):
+                        payload = line[3:].strip().lstrip(':').strip()
+                    msg = f"{self.get_strict_timestamp()} {payload}"
+                    self.log_ready.emit(time.time(), msg)
+                    self.check_and_log_unknown(msg)
             else:
                 time.sleep(0.001)
 
@@ -106,8 +115,9 @@ class SerialWorker(QThread):
         try:
             self._open_serial()
             logger.info('Serial connected: %s @ %d', self.port, self.baudrate)
+            self.connection_opened.emit()
         except Exception as e:
-            err_msg = f'无法打开串口 {self.port} (波特率 {self.baudrate}): {e}'
+            err_msg = tr('msg.serial_open_failed', port=self.port, baud=self.baudrate, error=e)
             logger.error(err_msg)
             self.connection_failed.emit(err_msg)
             if self.demo_mode:
@@ -180,4 +190,15 @@ class SerialWorker(QThread):
 
     def stop(self):
         self.running = False
-        self.wait()
+        conn = self.serial_conn
+        if conn is not None:
+            try:
+                if conn.is_open:
+                    conn.close()
+            except Exception:
+                logger.warning('Failed to close serial port %s', self.port, exc_info=True)
+            self.serial_conn = None
+        if not self.wait(3000):
+            logger.warning('Serial worker did not stop within 3s on %s', self.port)
+            self.terminate()
+            self.wait(1000)

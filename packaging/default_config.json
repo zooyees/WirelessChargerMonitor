@@ -1,0 +1,10 @@
+{
+  "ui": {
+    "language": "en"
+  },
+  "log_monitor": {
+    "default_filename": "Live Capture",
+    "save_dir": "logs",
+    "file_extension": "txt"
+  }
+}
