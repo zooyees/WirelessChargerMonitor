@@ -3,13 +3,13 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QFontMetrics
 from PyQt5.QtWidgets import QTabBar, QTabWidget
 
-_TAB_MIN_H = 38
-_V_PAD = 20
+_TAB_MIN_H = 30
+_V_PAD = 12
 
 TAB_PRESETS = {
-    'main': dict(scroll_threshold=3, h_pad=44, closable_extra=0, use_bold=True),
-    'file': dict(scroll_threshold=8, h_pad=42, closable_extra=34, use_bold=False),
-    'split': dict(scroll_threshold=6, h_pad=40, closable_extra=0, use_bold=False),
+    'main': dict(scroll_threshold=3, h_pad=36, closable_extra=0, use_bold=True),
+    'file': dict(scroll_threshold=8, h_pad=34, closable_extra=28, use_bold=False),
+    'split': dict(scroll_threshold=6, h_pad=32, closable_extra=0, use_bold=False),
 }
 
 

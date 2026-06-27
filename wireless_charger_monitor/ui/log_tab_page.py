@@ -24,6 +24,9 @@ from PyQt5.QtWidgets import (
 from ..i18n import get_language, tr
 from .tab_utils import refresh_tab_widget
 from .theme import (
+    FS_BODY,
+    LOG_FILTER_SCROLL_H,
+    LOG_SPLIT_TOOLBAR_H,
     apply_log_split_checkbox_style,
     apply_log_split_column_title_style,
     apply_log_split_filter_label_style,
@@ -39,9 +42,9 @@ from .theme import (
 _MAX_LIVE_LINES = 1000
 _FILTER_LABEL_WIDTH = 76
 _FILTER_EDIT_WIDTH = 112
-_FILTER_GROUP_SPACING = 10
+_FILTER_GROUP_SPACING = 8
 _LOG_FONT_MAX = 24
-_LOG_FONT_DEFAULT = 10
+_LOG_FONT_DEFAULT = FS_BODY
 _FILTER_HIGHLIGHT_COLOR = QColor('#FACC15')
 
 
@@ -88,13 +91,14 @@ class LogTabPage(QWidget):
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(6)
+        root.setSpacing(4)
 
         self._toolbar = QFrame()
         apply_log_split_toolbar_style(self._toolbar)
+        self._toolbar.setFixedHeight(LOG_SPLIT_TOOLBAR_H)
         toolbar = QHBoxLayout(self._toolbar)
-        toolbar.setContentsMargins(8, 6, 8, 6)
-        toolbar.setSpacing(10)
+        toolbar.setContentsMargins(6, 3, 6, 3)
+        toolbar.setSpacing(6)
 
         self.chk_split = QCheckBox(tr('log.split_enable'))
         apply_log_split_checkbox_style(self.chk_split)
@@ -127,7 +131,7 @@ class LogTabPage(QWidget):
         self._filter_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self._filter_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._filter_scroll.setFrameShape(QScrollArea.NoFrame)
-        self._filter_scroll.setFixedHeight(34)
+        self._filter_scroll.setFixedHeight(LOG_FILTER_SCROLL_H)
         self._filter_scroll.setVisible(True)
         self._filter_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 

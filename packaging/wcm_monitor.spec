@@ -79,7 +79,8 @@ a = Analysis(
     runtime_hooks=[str(ROOT / 'packaging' / 'runtime_hook.py')],
     excludes=excludes,
     noarchive=False,
-    optimize=2,
+    # optimize=2 strips docstrings; NumPy 2.x fails at import without them.
+    optimize=0,
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)

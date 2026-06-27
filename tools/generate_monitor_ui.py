@@ -120,20 +120,13 @@ UI_XML = '''<?xml version="1.0" encoding="UTF-8"?>
                </item>
                <item><widget class="QComboBox" name="cb_baudrate">
                 <item><property name="text"><string>115200</string></property></item>
-                <item><property name="text"><string>921600</string></property></item>
+                <item><property name="text"><string>1000000</string></property></item>
                 <item><property name="text"><string>2000000</string></property></item>
                </widget></item>
               </layout>
              </widget>
             </item>
 LCD_BLOCKS
-            <item>
-             <widget class="QLabel" name="lbl_charge_state">
-              <property name="text"><string>⚡ 充电状态: 等待接入...</string></property>
-              <property name="alignment"><set>Qt::AlignCenter</set></property>
-              <property name="wordWrap"><bool>true</bool></property>
-             </widget>
-            </item>
             <item>
              <layout class="QVBoxLayout" name="btn_box">
               <property name="spacing"><number>5</number></property>

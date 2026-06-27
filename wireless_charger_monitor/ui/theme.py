@@ -4,11 +4,13 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFrame,
     QLCDNumber,
     QLabel,
     QLineEdit,
     QPlainTextEdit,
+    QPushButton,
     QScrollArea,
     QSpinBox,
     QWidget,
@@ -37,6 +39,15 @@ FS_SUBTITLE = 11    # section headings (e.g. Real-Time Packet Monitor)
 FW_NORMAL = 'normal'
 FW_MEDIUM = '500'
 FW_SEMIBOLD = '600'
+
+# Compact log header stack (connection row + file tabs + split/filter toolbar)
+LOG_TOOLBAR_CTRL_H = 28
+LOG_TOOLBAR_BTN_START_H = 28
+LOG_CONTROL_PANEL_MAX_H = 44
+LOG_SPLIT_TOOLBAR_H = 34
+LOG_FILTER_SCROLL_H = 28
+CTRL_MIN_H_COMBO = 22
+CTRL_MIN_H_INPUT = 20
 
 
 def ui_font_css(size_pt: int, weight: str = FW_NORMAL, *, family: str | None = None) -> str:
@@ -108,13 +119,6 @@ def apply_status_session_style(label: QLabel) -> None:
     apply_status_message_style(label, '#7DD3FC', weight=FW_MEDIUM)
 
 
-def apply_section_title_style(label: QLabel) -> None:
-    label.setObjectName('lbl_log_title')
-    label.setStyleSheet(
-        f'color: {TEXT_PRIMARY}; background: transparent; '
-        f'{ui_font_css(FS_SUBTITLE, FW_SEMIBOLD)} letter-spacing: 0.2px;'
-    )
-
 # LCD 数值色（高亮，与深底强对比）
 LCD_VOLTAGE = '#FFEB3B'
 LCD_CURRENT = '#69F0AE'
@@ -181,7 +185,7 @@ def apply_log_tool_label_style(label: QLabel, *, muted=True):
     label.setPalette(pal)
     label.setStyleSheet(
         f'color: {color}; background-color: transparent; '
-        f'{ui_font_css(FS_CAPTION, FW_MEDIUM)} padding: 0 6px;'
+        f'{ui_font_css(FS_CAPTION, FW_MEDIUM)} padding: 0 4px;'
     )
 
 
@@ -221,8 +225,8 @@ def apply_log_split_checkbox_style(checkbox: QCheckBox):
     checkbox.setPalette(pal)
     checkbox.setStyleSheet(
         f'QCheckBox#log_split_chk {{ color: {TEXT_SECONDARY}; '
-        f'{ui_font_css(FS_CAPTION, FW_MEDIUM)} spacing: 6px; }}'
-        f'QCheckBox#log_split_chk::indicator {{ width: 14px; height: 14px; border: 1px solid {BORDER_STRONG}; '
+        f'{ui_font_css(FS_CAPTION, FW_MEDIUM)} spacing: 4px; }}'
+        f'QCheckBox#log_split_chk::indicator {{ width: 13px; height: 13px; border: 1px solid {BORDER_STRONG}; '
         f'border-radius: 3px; background-color: {SURFACE_BG}; }}'
         f'QCheckBox#log_split_chk::indicator:checked {{ background-color: #0284C7; border-color: #38BDF8; }}'
     )
@@ -232,8 +236,8 @@ def apply_log_split_spinbox_style(spinbox: QSpinBox):
     spinbox.setObjectName('log_split_count')
     spinbox.setStyleSheet(
         f'QSpinBox#log_split_count {{ background-color: #243049; border: 1px solid {BORDER}; '
-        f'border-radius: 4px; color: {TEXT_PRIMARY}; padding: 2px 4px; min-height: 24px; '
-        f'{ui_font_css(FS_BODY, FW_NORMAL)} }}'
+        f'border-radius: 4px; color: {TEXT_PRIMARY}; padding: 1px 4px; min-height: 20px; '
+        f'{ui_font_css(FS_CAPTION, FW_NORMAL)} }}'
         f'QSpinBox#log_split_count::up-button, QSpinBox#log_split_count::down-button '
         f'{{ width: 16px; border: none; background-color: #3D526E; }}'
     )
@@ -248,8 +252,8 @@ def apply_log_split_line_edit_style(edit: QLineEdit):
     edit.setPalette(pal)
     edit.setStyleSheet(
         f'QLineEdit#log_split_filter {{ background-color: #243049; border: 1px solid {BORDER}; '
-        f'border-radius: 4px; color: {TEXT_PRIMARY}; padding: 4px 8px; min-height: 24px; '
-        f'{ui_font_css(FS_BODY, FW_NORMAL)} }}'
+        f'border-radius: 4px; color: {TEXT_PRIMARY}; padding: 2px 6px; min-height: 20px; '
+        f'{ui_font_css(FS_CAPTION, FW_NORMAL)} }}'
         f'QLineEdit#log_split_filter:focus {{ border: 1px solid #38BDF8; }}'
     )
 
@@ -383,8 +387,8 @@ QComboBox {{
     border: 1px solid {BORDER};
     border-radius: 4px;
     color: {TEXT_PRIMARY};
-    padding: 2px 8px;
-    min-height: 25px;
+    padding: 1px 6px;
+    min-height: {CTRL_MIN_H_COMBO}px;
     {ui_font_css(FS_BODY, FW_NORMAL)}
 }}
 QComboBox QAbstractItemView {{
@@ -393,13 +397,26 @@ QComboBox QAbstractItemView {{
     selection-background-color: #0284C7;
     selection-color: #FFFFFF;
 }}
+QComboBox:editable {{
+    background-color: #243049;
+}}
+QComboBox QLineEdit {{
+    background-color: #243049;
+    color: {TEXT_PRIMARY};
+    border: none;
+    border-radius: 0;
+    padding: 0 2px;
+    min-height: 0;
+    selection-background-color: #0284C7;
+    selection-color: #FFFFFF;
+}}
 QLineEdit {{
     background-color: #243049;
     border: 1px solid {BORDER};
     border-radius: 4px;
     color: {TEXT_PRIMARY};
-    padding: 4px 8px;
-    min-height: 22px;
+    padding: 2px 6px;
+    min-height: {CTRL_MIN_H_INPUT}px;
     {ui_font_css(FS_BODY, FW_NORMAL)}
 }}
 QLineEdit:focus {{
@@ -407,8 +424,8 @@ QLineEdit:focus {{
 }}
 QPushButton {{
     {ui_font_css(FS_BODY, FW_SEMIBOLD)}
-    border-radius: 6px;
-    padding: 6px 12px;
+    border-radius: 5px;
+    padding: 4px 10px;
     color: {TEXT_PRIMARY};
     border: none;
     background-color: #3D526E;
@@ -416,6 +433,9 @@ QPushButton {{
 QPushButton#btn_start {{
     background-color: #0284C7;
     color: #FFFFFF;
+    padding: 3px 10px;
+    min-height: 0;
+    {ui_font_css(FS_BODY, FW_SEMIBOLD)}
 }}
 QPushButton#btn_stop {{
     background-color: #475569;
@@ -429,10 +449,10 @@ QPushButton#btn_log_tool {{
     background-color: #3D526E;
     border: 1px solid {BORDER};
     border-radius: 4px;
-    padding: 4px 10px;
+    padding: 2px 8px;
     {ui_font_css(FS_CAPTION, FW_MEDIUM)}
     color: {TEXT_SECONDARY};
-    min-height: 20px;
+    min-height: 0;
 }}
 QPushButton#btn_log_tool:hover {{
     background-color: #52657A;
@@ -470,10 +490,10 @@ def _tab_close_button_styles(scope: str) -> str:
 {scope} QTabBar::close-button {{
     subcontrol-position: right;
     subcontrol-origin: padding;
-    width: 14px;
-    height: 14px;
-    margin-left: 8px;
-    border-radius: 7px;
+    width: 12px;
+    height: 12px;
+    margin-left: 6px;
+    border-radius: 6px;
     background: transparent;
 }}
 {scope} QTabBar::close-button:hover {{
@@ -497,11 +517,11 @@ def _tab_strip_styles(scope: str, pane_bg: str, *, font_weight: str = FW_MEDIUM)
     border: 1px solid {TAB_BORDER};
     border-bottom: none;
     border-top: 2px solid transparent;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    padding: 8px 18px 10px 18px;
-    min-height: 22px;
-    margin-right: 4px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 4px 14px 5px 14px;
+    min-height: 18px;
+    margin-right: 3px;
     {ui_font_css(FS_BODY, font_weight)}
 }}
 {scope} QTabBar::tab:selected {{
@@ -510,7 +530,7 @@ def _tab_strip_styles(scope: str, pane_bg: str, *, font_weight: str = FW_MEDIUM)
     border: 1px solid {TAB_ACCENT};
     border-top: 2px solid {TAB_ACCENT};
     border-bottom: 1px solid {pane_bg};
-    padding-bottom: 9px;
+    padding-bottom: 4px;
     margin-bottom: -1px;
 }}
 {scope} QTabBar::tab:hover {{
@@ -574,20 +594,11 @@ QTabWidget#log_file_tabs QPlainTextEdit {{
 QFrame#chart_panel, QFrame#log_panel {{
     border: none;
 }}
-QLabel#lbl_charge_state {{
-    background-color: {SURFACE_BG};
-    color: {TEXT_PRIMARY};
-    border: 1px dashed {BORDER};
-    border-radius: 6px;
-    padding: 8px;
-    {ui_font_css(FS_SUBTITLE, FW_SEMIBOLD)}
-    margin-bottom: 5px;
-}}
 QLabel#log_tool_label {{
     color: {TEXT_MUTED};
     background-color: transparent;
     {ui_font_css(FS_CAPTION, FW_MEDIUM)}
-    padding: 0 6px;
+    padding: 0 4px;
 }}
 QWidget#log_tab_page {{
     background-color: transparent;
@@ -603,12 +614,12 @@ QWidget#log_split_filter_host {{
 QCheckBox#log_split_chk {{
     color: {TEXT_SECONDARY};
     {ui_font_css(FS_CAPTION, FW_MEDIUM)}
-    spacing: 6px;
+    spacing: 4px;
     padding: 0 2px;
 }}
 QCheckBox#log_split_chk::indicator {{
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
     border: 1px solid {BORDER_STRONG};
     border-radius: 3px;
     background-color: {PANEL_BG};
@@ -628,9 +639,9 @@ QSpinBox#log_split_count {{
     border: 1px solid {BORDER};
     border-radius: 4px;
     color: {TEXT_PRIMARY};
-    padding: 2px 4px;
-    min-height: 24px;
-    {ui_font_css(FS_BODY, FW_NORMAL)}
+    padding: 1px 4px;
+    min-height: 20px;
+    {ui_font_css(FS_CAPTION, FW_NORMAL)}
 }}
 QSpinBox#log_split_count::up-button, QSpinBox#log_split_count::down-button {{
     width: 16px;
@@ -642,9 +653,9 @@ QLineEdit#log_split_filter {{
     border: 1px solid {BORDER};
     border-radius: 4px;
     color: {TEXT_PRIMARY};
-    padding: 4px 8px;
-    min-height: 24px;
-    {ui_font_css(FS_BODY, FW_NORMAL)}
+    padding: 2px 6px;
+    min-height: 20px;
+    {ui_font_css(FS_CAPTION, FW_NORMAL)}
 }}
 QLineEdit#log_split_filter:focus {{
     border: 1px solid #38BDF8;
@@ -693,12 +704,6 @@ QTabWidget#log_split_tabs::pane {{
     top: -1px;
 }}
 {_tab_strip_styles('QTabWidget#log_split_tabs', SURFACE_BG, font_weight=FW_MEDIUM)}
-QLabel#lbl_log_title {{
-    color: {TEXT_PRIMARY};
-    background: transparent;
-    {ui_font_css(FS_SUBTITLE, FW_SEMIBOLD)}
-    letter-spacing: 0.2px;
-}}
 QWidget#chart_container {{
     background-color: {CHART_BG};
     min-height: 480px;
@@ -711,6 +716,60 @@ QLabel#chart_placeholder {{
 }}
 {lcd_rules}
 """
+
+
+def apply_log_toolbar_button_style(button: QPushButton) -> None:
+    """Secondary log toolbar buttons — caption tier; objectName must be btn_log_tool for QSS."""
+    button.setObjectName('btn_log_tool')
+    button.style().unpolish(button)
+    button.style().polish(button)
+
+
+def apply_editable_combo_line_edit(combo: QComboBox) -> None:
+    """Editable QComboBox embeds a QLineEdit that may ignore global QSS on Windows."""
+    line_edit = combo.lineEdit()
+    if line_edit is None:
+        return
+    line_edit.setFrame(False)
+    pal = line_edit.palette()
+    pal.setColor(QPalette.Base, QColor('#243049'))
+    pal.setColor(QPalette.Text, QColor(TEXT_PRIMARY))
+    pal.setColor(QPalette.Highlight, QColor('#0284C7'))
+    pal.setColor(QPalette.HighlightedText, QColor('#FFFFFF'))
+    line_edit.setPalette(pal)
+    line_edit.setAutoFillBackground(True)
+
+
+def apply_log_toolbar_control_height(widget, *, primary=False, scale: float = 1.0) -> None:
+    """Fix log connection-row control height for a single compact toolbar line."""
+    base = LOG_TOOLBAR_BTN_START_H if primary else LOG_TOOLBAR_CTRL_H
+    widget.setFixedHeight(int(base * scale))
+
+
+def apply_log_control_panel_metrics(ui, scale: float = 1.0) -> None:
+    """Apply compact vertical metrics to the log monitor connection toolbar."""
+    panel = getattr(ui, 'log_control_panel', None)
+    if panel is not None:
+        panel.setMaximumHeight(int(LOG_CONTROL_PANEL_MAX_H * scale))
+    for name in ('btn_new_live_log', 'btn_browse_log_dir', 'btn_open_log'):
+        widget = getattr(ui, name, None)
+        if widget is not None:
+            apply_log_toolbar_button_style(widget)
+    for name in (
+        'cb_port', 'cb_baudrate', 'edit_live_log_name', 'edit_live_log_dir',
+        'btn_new_live_log', 'btn_browse_log_dir', 'btn_open_log',
+    ):
+        widget = getattr(ui, name, None)
+        if widget is not None:
+            apply_log_toolbar_control_height(widget, scale=scale)
+    btn_start = getattr(ui, 'btn_start', None)
+    if btn_start is not None:
+        apply_log_toolbar_control_height(btn_start, primary=True, scale=scale)
+    layout = panel.layout() if panel is not None else None
+    if layout is not None:
+        m = int(4 * scale)
+        layout.setContentsMargins(int(8 * scale), m, int(8 * scale), m)
+        layout.setSpacing(int(6 * scale))
 
 
 # Qt Designer 与运行时共用（单一来源）

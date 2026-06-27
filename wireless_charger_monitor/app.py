@@ -19,7 +19,7 @@ def main(argv=None):
     )
     args = parser.parse_args(argv)
 
-    config_module.CONFIG = load_config()
+    load_config()
     init_language(config_module.CONFIG.get('ui', {}).get('language', 'en'))
 
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)

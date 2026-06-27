@@ -39,7 +39,7 @@ DEFAULT_CONFIG = {
         'cv_di_max': -0.025,
     },
     'serial': {
-        'default_baudrates': ['115200', '921600', '2000000'],
+        'default_baudrates': ['115200', '1000000', '2000000'],
         'demo_mode': False,
         'auto_reconnect': True,
         'reconnect_interval_sec': 3.0,
@@ -91,6 +91,8 @@ def load_config() -> dict:
         merged = copy.deepcopy(DEFAULT_CONFIG)
     ui = merged.setdefault('ui', {})
     ui['language'] = normalize_language(str(ui.get('language', 'en') or 'en'))
+    global CONFIG
+    CONFIG = merged
     return merged
 
 

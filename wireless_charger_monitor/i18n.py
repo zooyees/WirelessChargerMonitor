@@ -38,7 +38,7 @@ STRINGS: dict[str, tuple[str, str]] = {
     ),
     'btn.start': ('▶ 开始', '▶ Start'),
     'btn.stop': ('⏹ 停止', '⏹ Stop'),
-    'btn.new': ('New', 'New'),
+    'btn.new': ('新建', 'New'),
     'btn.browse_dir': ('📁 选择路径', '📁 Browse…'),
     'btn.open_log': ('📂 打开文件', '📂 Open…'),
     'btn.browse_tooltip': ('选择实时报文保存目录', 'Select the output directory for live capture files'),
@@ -76,6 +76,7 @@ STRINGS: dict[str, tuple[str, str]] = {
     'dialog.serial_lost': ('串口连接断开', 'Serial Link Lost'),
     'dialog.no_device': ('无可用设备', 'No Serial Port'),
     'dialog.full_charge_title': ('充电完成 🔋', 'Charge Complete 🔋'),
+    'msg.invalid_baudrate': ('无效的波特率：{value}', 'Invalid baud rate: {value}'),
     'msg.cannot_create_log': ('无法创建日志文件：\n{path}\n{error}', 'Cannot create capture file:\n{path}\n{error}'),
     'msg.file_exists': ('目标文件已存在：\n{path}', 'Target file already exists:\n{path}'),
     'msg.cannot_rename': (

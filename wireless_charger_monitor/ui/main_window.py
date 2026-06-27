@@ -8,11 +8,12 @@ import time
 import pyqtgraph as pg
 import serial.tools.list_ports
 from PyQt5.QtCore import QEvent, Qt, QTimer
-from PyQt5.QtGui import QColor, QCursor, QTextCharFormat, QTextCursor
+from PyQt5.QtGui import QColor, QCursor, QIntValidator, QTextCharFormat, QTextCursor
 from PyQt5.QtWidgets import (
     QApplication,
     QAction,
     QActionGroup,
+    QComboBox,
     QFileDialog,
     QLabel,
     QMainWindow,
@@ -24,7 +25,8 @@ from PyQt5.QtWidgets import (
 )
 
 from ..charge_state import ChargeStateTracker
-from ..config import CONFIG, update_config
+from .. import config as config_module
+from ..config import update_config
 from ..db import (
     close_session,
     create_session,
@@ -42,13 +44,21 @@ from .loader import Ui_MonitorWindow
 from .log_tab_page import LogTabPage
 from .tab_utils import refresh_tab_widget
 from .theme import (
+    FS_BODY,
+    FS_CAPTION,
+    FS_SUBTITLE,
+    FONT_FAMILY_MONO,
     LCD_TEMP,
     TEXT_MUTED,
     apply_data_label_style,
+    apply_editable_combo_line_edit,
+    apply_log_control_panel_metrics,
     apply_status_message_style,
     apply_status_session_style,
     menu_bar_stylesheet,
     status_bar_stylesheet,
+    ui_font_css,
+    FW_NORMAL,
 )
 
 class MonitorWindow(QMainWindow):
@@ -56,7 +66,7 @@ class MonitorWindow(QMainWindow):
 
     def __init__(self, cli_demo_mode=False):
         super().__init__()
-        init_language(CONFIG.get('ui', {}).get('language', 'en'))
+        init_language(config_module.CONFIG.get('ui', {}).get('language', 'en'))
         self._cli_demo_mode = cli_demo_mode
         self._demo_mode_active = False
         self.current_session_id = None
@@ -76,10 +86,8 @@ class MonitorWindow(QMainWindow):
         self._alert_clear_timer.setSingleShot(True)
         self._alert_clear_timer.timeout.connect(lambda: self._set_status(tr('status.ready'), 'normal'))
         self.qi_parser = Qi22Parser()
-        self._charge_state_tracker = ChargeStateTracker(CONFIG.get('charge_state', {}))
+        self._charge_state_tracker = ChargeStateTracker(config_module.CONFIG.get('charge_state', {}))
         self._active_alerts = set()
-        self._last_stable_charge_state = None
-        self._last_charge_state_text = None
         self._full_charge_start_time = None
         self._full_charge_alerted = False
 
@@ -110,7 +118,7 @@ class MonitorWindow(QMainWindow):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.render_ui)
-        self.timer.start(CONFIG['ui']['render_interval_ms'])
+        self.timer.start(config_module.CONFIG['ui']['render_interval_ms'])
 
         self._log_tabs_by_path = {}
         self._live_log_page = None
@@ -128,9 +136,9 @@ class MonitorWindow(QMainWindow):
         self.ui.graph_widget.scene().sigMouseClicked.connect(self.on_chart_double_clicked)
 
         self.ui.cb_baudrate.clear()
-        self.ui.cb_baudrate.addItems(CONFIG['serial'].get('default_baudrates', ["115200"]))
+        self._setup_baudrate_combo()
 
-        poll_ms = CONFIG.get('serial', {}).get('port_poll_interval_ms', 2000)
+        poll_ms = config_module.CONFIG.get('serial', {}).get('port_poll_interval_ms', 2000)
         self._port_watcher = SerialPortWatcher(poll_interval_ms=poll_ms, parent=self)
         self._port_watcher.ports_changed.connect(lambda: self.scan_ports(notify=True))
         self._port_watcher.start()
@@ -150,6 +158,17 @@ class MonitorWindow(QMainWindow):
             logger.warning("Failed to restore chart view from database", exc_info=True)
 
         self._retranslate_ui()
+
+    def _setup_baudrate_combo(self):
+        combo = self.ui.cb_baudrate
+        combo.clear()
+        combo.addItems(config_module.CONFIG['serial'].get('default_baudrates', ['115200']))
+        combo.setEditable(True)
+        combo.setInsertPolicy(QComboBox.NoInsert)
+        combo.setValidator(QIntValidator(1, 10_000_000, self))
+        if combo.count() > 0:
+            combo.setCurrentIndex(0)
+        apply_editable_combo_line_edit(combo)
 
     def _iter_log_pages(self):
         tabs = self.ui.log_file_tabs
@@ -173,29 +192,6 @@ class MonitorWindow(QMainWindow):
     def _on_language_selected(self, action):
         lang = 'en' if action is self._act_lang_en else 'zh'
         self._set_language(lang)
-
-    def _refresh_charge_state_label(self):
-        if self._demo_mode_active:
-            self.ui.lbl_charge_state.setText(tr('charge.demo'))
-            return
-        if self._is_monitoring():
-            stable = self._charge_state_tracker.current
-            if stable is None:
-                self.ui.lbl_charge_state.setText(tr('charge.collecting'))
-                return
-            state_text, color, border = self._charge_state_tracker.display(stable)
-            if stable == 'trickle' and self.latest_data:
-                battery_pct = float(self.latest_data.get('b', 0) or 0)
-                if battery_pct < 100.0:
-                    state_text = tr('charge.trickle_not_full')
-            self.ui.lbl_charge_state.setText(state_text)
-            self.ui.lbl_charge_state.setStyleSheet(
-                f"background-color: #151D2E; color: {color}; border: 2px {border} {color}; "
-                "border-radius: 6px; padding: 10px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;"
-            )
-            self._last_charge_state_text = state_text
-            return
-        self.ui.lbl_charge_state.setText(tr('charge.waiting'))
 
     def _retranslate_ui(self):
         self.setWindowTitle(tr('app.title'))
@@ -245,13 +241,11 @@ class MonitorWindow(QMainWindow):
         self.ui.btn_browse_log_dir.setToolTip(tr('btn.browse_tooltip'))
         self.ui.btn_open_log.setText(tr('btn.open_log'))
         self.ui.btn_open_log.setToolTip(tr('log.open_tooltip'))
-        self.ui.lbl_log_title.setText(tr('log.title'))
 
         self._refresh_main_tabs()
         self._refresh_log_file_tabs()
 
         self._update_monitor_button()
-        self._refresh_charge_state_label()
         self._update_session_label()
         self._sync_localized_log_defaults()
         self._apply_toolbar_metrics()
@@ -288,7 +282,7 @@ class MonitorWindow(QMainWindow):
         return page
 
     def _live_log_cfg(self):
-        return CONFIG.get('log_monitor', {})
+        return config_module.CONFIG.get('log_monitor', {})
 
     def _live_log_extension(self):
         return self._live_log_cfg().get('file_extension', 'txt').lstrip('.')
@@ -323,6 +317,11 @@ class MonitorWindow(QMainWindow):
                 widget = getattr(self.ui, name)
                 widget.setMinimumWidth(int(min_w * scale))
                 widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        apply_log_control_panel_metrics(self.ui, scale)
+        if hasattr(self.ui, 'edit_live_log_dir'):
+            self.ui.edit_live_log_dir.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        if hasattr(self.ui, 'edit_live_log_name'):
+            self.ui.edit_live_log_name.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
     def _sync_localized_log_defaults(self):
         current = self._sanitize_log_basename(self.ui.edit_live_log_name.text())
@@ -713,7 +712,6 @@ class MonitorWindow(QMainWindow):
         self.auto_scroll_chart = False
         self.hide_tooltip()
         self._schedule_monitor_button_update()
-        self._refresh_charge_state_label()
 
     def sync_log_to_time(self, target_time):
         if self.auto_scroll_chart:
@@ -787,7 +785,7 @@ class MonitorWindow(QMainWindow):
         self.hud_label.setStyleSheet(
             "QLabel { background-color: rgba(15, 23, 42, 250); color: #FFFFFF; "
             "border: 1px solid #38BDF8; border-radius: 6px; padding: 10px; "
-            "font-family: Consolas, monospace; font-size: 11pt; }"
+            f"{ui_font_css(FS_SUBTITLE, FW_NORMAL, family=FONT_FAMILY_MONO)} }}"
         )
         self.hud_label.hide()
         self.ui.graph_widget.installEventFilter(self)
@@ -822,7 +820,11 @@ class MonitorWindow(QMainWindow):
                 try: p_val, vi_val, ii_val, vo_val, io_val, vb_val, ib_val = self.view_data['p'][idx], self.view_data['vi'][idx], self.view_data['ii'][idx], self.view_data['vo'][idx], self.view_data['io'][idx], self.view_data['vb'][idx], self.view_data['ib'][idx]
                 except IndexError: self.hide_tooltip(); return
                 for line in self.v_lines: line.setPos(closest_x); line.setVisible(True)
-                html = f"<div style='font-size: 11pt; line-height: 1.5; color:#FFFFFF;'><b style='color:#FFFFFF; font-size: 12pt;'>⏱ {closest_x:.2f} s</b><hr style='border: 1px solid #64748B; margin: 4px 0;'>"
+                html = (
+                    f"<div style='font-size: {FS_SUBTITLE}pt; line-height: 1.5; color:#FFFFFF;'>"
+                    f"<b style='color:#FFFFFF; font-size: {FS_SUBTITLE + 1}pt;'>⏱ {closest_x:.2f} s</b>"
+                    f"<hr style='border: 1px solid #64748B; margin: 4px 0;'>"
+                )
                 if active_p == self.ui.p_p: html += f"<b>PWR:</b> <span style='color:#E879F9'>{p_val:.2f} W</span>"
                 elif active_p == self.ui.p_in: html += f"<b>IN :</b> <span style='color:#FFE566'>{vi_val:.2f} V</span> / <span style='color:#4ADE80'>{ii_val:.2f} A</span>"
                 elif active_p == self.ui.p_out: html += f"<b>OUT:</b> <span style='color:#FFE566'>{vo_val:.2f} V</span> / <span style='color:#4ADE80'>{io_val:.2f} A</span>"
@@ -1000,10 +1002,10 @@ class MonitorWindow(QMainWindow):
             d = self.latest_data
             for lcd, val in [(self.ui.lcd_v_in, d['v_in']),(self.ui.lcd_i_in, d['i_in']),(self.ui.lcd_v_out, d['v_out']),(self.ui.lcd_i_out, d['i_out']),(self.ui.lcd_power, d['p']),(self.ui.lcd_v_bat, d['v_bat']),(self.ui.lcd_i_bat, d['i_bat']),(self.ui.lcd_battery, d['b']),(self.ui.lcd_temp, d['t'])]: lcd.display(f"{val:.2f}" if isinstance(val, float) else f"{val}")
 
-            ovp = CONFIG['alerts'].get('ovp_threshold', 25.0)
-            ocp = CONFIG['alerts'].get('ocp_threshold', 3.0)
-            temp_w = CONFIG['alerts'].get('temp_warning_threshold', 60)
-            temp_r = CONFIG['alerts'].get('temp_recovery_threshold', 55)
+            ovp = config_module.CONFIG['alerts'].get('ovp_threshold', 25.0)
+            ocp = config_module.CONFIG['alerts'].get('ocp_threshold', 3.0)
+            temp_w = config_module.CONFIG['alerts'].get('temp_warning_threshold', 60)
+            temp_r = config_module.CONFIG['alerts'].get('temp_recovery_threshold', 55)
             max_v = max(d['v_in'], d['v_out'])
             if max_v >= ovp:
                 if 'OVP' not in self._active_alerts:
@@ -1039,27 +1041,12 @@ class MonitorWindow(QMainWindow):
 
             if self.worker and self.worker.isRunning():
                 stable = self._charge_state_tracker.update(self.y_vb, self.y_ib)
-                state_text, color, border_style = self._charge_state_tracker.display(stable)
                 battery_pct = float(d.get('b', 0) or 0)
-                if stable == 'trickle' and battery_pct < 100.0:
-                    state_text = tr('charge.trickle_not_full')
-                if (
-                    stable != self._last_stable_charge_state
-                    or state_text != getattr(self, '_last_charge_state_text', None)
-                ):
-                    self.ui.lbl_charge_state.setText(state_text)
-                    self.ui.lbl_charge_state.setStyleSheet(
-                        f"background-color: #151D2E; color: {color}; border: 2px {border_style} {color}; "
-                        "border-radius: 6px; padding: 10px; font-size: 11pt; font-weight: bold; margin-bottom: 5px;"
-                    )
-                    self._last_stable_charge_state = stable
-                    self._last_charge_state_text = state_text
-
                 if stable == 'trickle' and battery_pct >= 100.0:
                     if self._full_charge_start_time is None:
                         self._full_charge_start_time = time.time()
                     else:
-                        debounce = CONFIG['alerts'].get('full_charge_debounce_sec', 20.0)
+                        debounce = config_module.CONFIG['alerts'].get('full_charge_debounce_sec', 20.0)
                         if not self._full_charge_alerted and (time.time() - self._full_charge_start_time >= debounce):
                             self.show_full_charge_alert(debounce)
                             self._full_charge_alerted = True
@@ -1079,7 +1066,7 @@ class MonitorWindow(QMainWindow):
                 self.ui.line_i_bat.setData(self.x_data, self.y_ib)
                 self.view_data = {'x': self.x_data, 'p': self.y_p, 'vi': self.y_vi, 'ii': self.y_ii, 'vo': self.y_vo, 'io': self.y_io, 'vb': self.y_vb, 'ib': self.y_ib, 't': self.y_t, 'b': self.y_b}
                 cur_t = self.x_data[-1]
-                win = CONFIG['ui'].get('default_window_size_sec', 60.0)
+                win = config_module.CONFIG['ui'].get('default_window_size_sec', 60.0)
                 xlim = [cur_t-win, cur_t+win*0.05] if cur_t > win else [0, max(cur_t+1, win)]
                 self.ui.p_p.setXRange(xlim[0], xlim[1], padding=0)
                 self.last_forced_xlim = xlim
@@ -1098,7 +1085,7 @@ class MonitorWindow(QMainWindow):
         self.view_data = {'x':hx, 'p':hp, 'vi':hvi, 'ii':hii, 'vo':hvo, 'io':hio, 'vb':hvb, 'ib':hib, 't':ht, 'b':hb}
 
     def _is_demo_mode_enabled(self):
-        return self._cli_demo_mode or CONFIG.get('serial', {}).get('demo_mode', False)
+        return self._cli_demo_mode or config_module.CONFIG.get('serial', {}).get('demo_mode', False)
 
     def _reset_monitor_ui_after_failure(self):
         self._demo_mode_active = False
@@ -1107,18 +1094,11 @@ class MonitorWindow(QMainWindow):
         self._stopping_monitor = False
         self.auto_scroll_chart = False
         self._charge_state_tracker.reset()
-        self._last_stable_charge_state = None
-        self._last_charge_state_text = None
         if self.worker:
             self.worker.stop()
             self.worker = None
         self._close_live_log_file()
         self._schedule_monitor_button_update()
-        self.ui.lbl_charge_state.setText(tr('charge.waiting'))
-        self.ui.lbl_charge_state.setStyleSheet(
-            "background-color: #1A2332; color: #F1F5F9; border: 1px dashed #8BA3BD; "
-            "border-radius: 6px; padding: 10px; font-size: 12pt; font-weight: bold; margin-bottom: 5px;"
-        )
 
     def on_serial_connection_failed(self, msg):
         if self._is_demo_mode_enabled():
@@ -1131,11 +1111,6 @@ class MonitorWindow(QMainWindow):
                 self,
                 tr('dialog.demo_mode'),
                 tr('msg.demo_body', detail=msg),
-            )
-            self.ui.lbl_charge_state.setText(tr('charge.demo'))
-            self.ui.lbl_charge_state.setStyleSheet(
-                "background-color: #422006; color: #FDE047; border: 2px solid #F59E0B; "
-                "border-radius: 6px; padding: 10px; font-size: 12pt; font-weight: bold; margin-bottom: 5px;"
             )
             return
         logger.error("Serial connection failed, monitoring stopped: %s", msg)
@@ -1186,7 +1161,6 @@ class MonitorWindow(QMainWindow):
         self.auto_scroll_chart = False
         self.hide_tooltip()
         self._schedule_monitor_button_update()
-        self._refresh_charge_state_label()
         self.request_chart_fetch()
 
     def start_mon(self):
@@ -1198,7 +1172,15 @@ class MonitorWindow(QMainWindow):
         self._demo_mode_active = False
         demo_mode = self._is_demo_mode_enabled()
         port = self.ui.cb_port.currentText()
-        baud = int(self.ui.cb_baudrate.currentText())
+        baud_text = self.ui.cb_baudrate.currentText().strip()
+        try:
+            baud = int(baud_text)
+        except ValueError:
+            QMessageBox.warning(self, tr('dialog.notice'), tr('msg.invalid_baudrate', value=baud_text))
+            return
+        if baud <= 0:
+            QMessageBox.warning(self, tr('dialog.notice'), tr('msg.invalid_baudrate', value=baud_text))
+            return
         self.current_session_id, _, _ = create_session(port, baud, demo_mode)
         self._update_session_label()
         self._set_status(tr('status.monitoring', id=self.current_session_id), 'info')
@@ -1223,17 +1205,10 @@ class MonitorWindow(QMainWindow):
         self._temp_warned = False
         self._active_alerts.clear()
         self._charge_state_tracker.reset()
-        self._last_stable_charge_state = None
-        self._last_charge_state_text = None
         self._full_charge_start_time = None
         self._full_charge_alerted = False
-        self.ui.lbl_charge_state.setText(tr('charge.collecting'))
-        self.ui.lbl_charge_state.setStyleSheet(
-            "background-color: #1A2332; color: #F1F5F9; border: 1px dashed #8BA3BD; "
-            "border-radius: 6px; padding: 10px; font-size: 12pt; font-weight: bold; margin-bottom: 5px;"
-        )
         [a.clear() for a in [self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b]]; self.view_data = {'x':[], 'p':[], 'vi':[], 'ii':[], 'vo':[], 'io':[], 'vb':[], 'ib':[], 't':[], 'b':[]}
-        serial_cfg = CONFIG.get('serial', {})
+        serial_cfg = config_module.CONFIG.get('serial', {})
         self.worker = SerialWorker(
             port, baud, demo_mode=demo_mode,
             auto_reconnect=serial_cfg.get('auto_reconnect', True),
@@ -1324,7 +1299,7 @@ class MonitorWindow(QMainWindow):
         self.y_p.append(data['p'])
         self.y_t.append(data['t'])
         self.y_b.append(data['b'])
-        max_pts = CONFIG['ui'].get('chart_max_points', 500)
+        max_pts = config_module.CONFIG['ui'].get('chart_max_points', 500)
         if len(self.x_data) > max_pts:
             [a.pop(0) for a in [self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b]]
 

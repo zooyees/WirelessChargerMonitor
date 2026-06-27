@@ -24,10 +24,12 @@ from .theme import (
     TEXT_PRIMARY,
     TEXT_SECONDARY,
     BORDER,
+    FS_CAPTION,
+    FS_SUBTITLE,
     apply_data_label_style,
     apply_lcd_style,
+    apply_log_control_panel_metrics,
     apply_log_tool_label_style,
-    apply_section_title_style,
 )
 
 pg.setConfigOptions(antialias=True)
@@ -45,11 +47,11 @@ _WIDGET_NAMES = (
     'lbl_lcd_v_bat', 'lbl_lcd_i_bat', 'lbl_lcd_temp', 'lbl_lcd_battery',
     'lcd_v_in', 'lcd_i_in', 'lcd_v_out', 'lcd_i_out', 'lcd_power',
     'lcd_v_bat', 'lcd_i_bat', 'lcd_temp', 'lcd_battery',
-    'lbl_charge_state', 'btn_start',
+    'btn_start',
     'chart_container', 'log_panel', 'log_control_panel',
     'btn_new_live_log', 'lbl_live_log_name', 'edit_live_log_name', 'lbl_live_log_dir',
     'edit_live_log_dir', 'btn_browse_log_dir',
-    'lbl_log_title', 'btn_open_log', 'log_file_tabs',
+    'btn_open_log', 'log_file_tabs',
 )
 
 
@@ -104,7 +106,7 @@ class Ui_MonitorWindow:
             MainWindow.resize(int(geo.width() * 0.88), int(geo.height() * 0.88))
 
         self.log_control_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.log_control_panel.setMaximumHeight(int(52 * scale))
+        apply_log_control_panel_metrics(self, scale)
         self.edit_live_log_dir.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.chart_lcd_scroll.setMinimumWidth(int(220 * scale))
         self._apply_dark_bg(self.centralwidget, self._CANVAS_BG)
@@ -125,7 +127,10 @@ class Ui_MonitorWindow:
             if content_item is not None:
                 content_layout = content_item.layout()
                 if content_layout is not None:
-                    content_layout.setStretch(1, 1)
+                    content_layout.setStretch(0, 1)
+                    m = int(4 * scale)
+                    content_layout.setContentsMargins(int(8 * scale), m, int(8 * scale), int(6 * scale))
+                    content_layout.setSpacing(int(3 * scale))
         self.log_file_tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._configure_log_file_tabs()
 
@@ -137,7 +142,6 @@ class Ui_MonitorWindow:
         self.cb_baudrate.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.edit_live_log_name.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
-        self.lbl_charge_state.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.main_tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.chart_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -162,14 +166,6 @@ class Ui_MonitorWindow:
             lcd = getattr(self, lcd_name, None)
             if lcd is not None:
                 apply_lcd_style(lcd, color)
-
-        charge_pad = max(6, round(8 * scale))
-        self.lbl_charge_state.setStyleSheet(
-            f'background-color: {self._SURFACE_BG}; color: {self._TEXT_PRIMARY}; '
-            f'border: 1px dashed {self._BORDER}; border-radius: 6px; padding: {charge_pad}px; '
-            f'font-size: {max(10, round(12 * scale))}pt; font-weight: bold; margin-bottom: 5px;'
-        )
-        apply_section_title_style(self.lbl_log_title)
 
     def find_data_labels(self):
         labels = []
@@ -220,7 +216,7 @@ class Ui_MonitorWindow:
 
         self.vbs = []
         self.dual_plots = []
-        chart_fs = max(9, min(13, round(9 * scale)))
+        chart_fs = max(FS_CAPTION, min(FS_SUBTITLE, round(FS_CAPTION * scale)))
         font_css = {'font-size': f'{chart_fs}pt', 'font-family': 'Microsoft YaHei', 'font-weight': 'bold'}
         axis_pen = pg.mkPen(color=CHART_AXIS, width=1.2)
         text_pen = pg.mkPen(color=CHART_TEXT)
