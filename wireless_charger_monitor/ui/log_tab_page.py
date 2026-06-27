@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
     QSplitter,
     QStackedWidget,
     QTabWidget,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
@@ -48,30 +49,42 @@ _LOG_FONT_DEFAULT = FS_BODY
 _FILTER_HIGHLIGHT_COLOR = QColor('#FACC15')
 
 
+def _parse_filter_patterns(raw):
+    """Parse filter input into substring patterns. ``|`` splits without trimming segments."""
+    if raw is None or raw == '':
+        return None
+    if '|' in raw:
+        return tuple(raw.split('|'))
+    return (raw,)
+
+
 class _FilterMatchHighlighter(QSyntaxHighlighter):
     def __init__(self, document):
         super().__init__(document)
-        self._filter_text = None
+        self._filter_patterns = None
         self._highlight_format = QTextCharFormat()
         self._highlight_format.setForeground(_FILTER_HIGHLIGHT_COLOR)
 
-    def set_filter_text(self, filter_text, *, rehighlight=True):
-        self._filter_text = filter_text or None
+    def set_filter_text(self, filter_patterns, *, rehighlight=True):
+        self._filter_patterns = filter_patterns or None
         if rehighlight:
             self.rehighlight()
 
     def highlightBlock(self, text):
-        filter_text = self._filter_text
-        if not filter_text:
+        patterns = self._filter_patterns
+        if not patterns:
             return
-        start = 0
-        match_len = len(filter_text)
-        while True:
-            idx = text.find(filter_text, start)
-            if idx < 0:
-                break
-            self.setFormat(idx, match_len, self._highlight_format)
-            start = idx + match_len
+        for pattern in patterns:
+            if not pattern:
+                continue
+            start = 0
+            match_len = len(pattern)
+            while True:
+                idx = text.find(pattern, start)
+                if idx < 0:
+                    break
+                self.setFormat(idx, match_len, self._highlight_format)
+                start = idx + match_len
 
 
 class LogTabPage(QWidget):
@@ -81,6 +94,7 @@ class LogTabPage(QWidget):
         self.filepath = filepath
         self._master_lines = []
         self._filter_edits = []
+        self._parse_checkboxes = []
         self._panes = []
         self._event_filter = None
         self._cached_filters = []
@@ -179,12 +193,17 @@ class LogTabPage(QWidget):
         self.chk_same_page.setText(tr('log.same_page'))
         self.chk_same_page.setToolTip(tr('log.same_page_tooltip'))
         saved = self._saved_filter_texts()
+        saved_parse = self._saved_parse_states()
         if self.chk_split.isChecked():
             count = max(1, len(self._filter_edits))
             self._rebuild_filters(count)
         else:
             self._build_single_filter()
         self._restore_filter_texts(saved)
+        self._restore_parse_states(saved_parse)
+        for chk in self._parse_checkboxes:
+            chk.setText(tr('log.auto_parse'))
+            chk.setToolTip(tr('log.auto_parse_tooltip'))
         self._retranslate_pane_titles()
         refresh_tab_widget(self.content_tabs, preset='split')
 
@@ -344,6 +363,20 @@ class LogTabPage(QWidget):
     def all_editors(self):
         return list(self._panes)
 
+    def pane_index_for_edit(self, edit):
+        try:
+            return self._panes.index(edit)
+        except ValueError:
+            return -1
+
+    def is_auto_parse_enabled(self, pane_idx):
+        if pane_idx < 0 or pane_idx >= len(self._parse_checkboxes):
+            return False
+        return self._parse_checkboxes[pane_idx].isChecked()
+
+    def is_auto_parse_enabled_for_edit(self, edit):
+        return self.is_auto_parse_enabled(self.pane_index_for_edit(edit))
+
     def _make_editor(self):
         edit = QPlainTextEdit()
         apply_log_pane_style(edit)
@@ -415,6 +448,7 @@ class LogTabPage(QWidget):
     def _on_split_toggled(self, enabled):
         self._sync_master_from_panes_if_empty()
         saved = self._saved_filter_texts()
+        saved_parse = self._saved_parse_states()
         self.lbl_count.setEnabled(enabled)
         self.spin_count.setEnabled(enabled)
         self.chk_same_page.setEnabled(enabled)
@@ -423,10 +457,12 @@ class LogTabPage(QWidget):
         if enabled:
             self._rebuild_panes(self.spin_count.value())
             self._restore_filter_texts(saved[:1])
+            self._restore_parse_states(saved_parse[:1])
         else:
             self._build_single_pane()
             self._build_single_filter()
             self._restore_filter_texts(saved[:1])
+            self._restore_parse_states(saved_parse[:1])
 
     def _sync_master_from_panes_if_empty(self):
         if self._master_lines or not self._panes:
@@ -442,8 +478,10 @@ class LogTabPage(QWidget):
     def _on_count_changed(self, value):
         if self.chk_split.isChecked():
             saved = self._saved_filter_texts()
+            saved_parse = self._saved_parse_states()
             self._rebuild_panes(value)
             self._restore_filter_texts(saved)
+            self._restore_parse_states(saved_parse)
 
     def _clear_filters(self):
         while self._filter_layout.count():
@@ -452,6 +490,21 @@ class LogTabPage(QWidget):
             if widget is not None:
                 widget.deleteLater()
         self._filter_edits = []
+        self._parse_checkboxes = []
+
+    def _saved_parse_states(self):
+        return [chk.isChecked() for chk in self._parse_checkboxes]
+
+    def _restore_parse_states(self, states):
+        if not self._parse_checkboxes:
+            return
+        for chk, checked in zip(self._parse_checkboxes, states or []):
+            chk.blockSignals(True)
+            chk.setChecked(bool(checked))
+            chk.blockSignals(False)
+
+    def _on_auto_parse_toggled(self, _checked):
+        QToolTip.hideText()
 
     def _filter_label_width(self):
         return 58 if get_language() == 'en' else _FILTER_LABEL_WIDTH
@@ -468,9 +521,15 @@ class LogTabPage(QWidget):
         edit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         filter_idx = len(self._filter_edits)
         edit.returnPressed.connect(partial(self._on_filter_enter, filter_idx))
+        chk_parse = QCheckBox(tr('log.auto_parse'))
+        apply_log_split_checkbox_style(chk_parse)
+        chk_parse.setToolTip(tr('log.auto_parse_tooltip'))
+        chk_parse.toggled.connect(self._on_auto_parse_toggled)
         self._filter_layout.addWidget(lbl)
         self._filter_layout.addWidget(edit)
+        self._filter_layout.addWidget(chk_parse)
         self._filter_edits.append(edit)
+        self._parse_checkboxes.append(chk_parse)
         return edit
 
     def _build_single_filter(self):
@@ -510,10 +569,10 @@ class LogTabPage(QWidget):
             if self._line_belongs_in_split_pane(line, pane_idx, filters)
         ]
 
-    def _line_matches_filter(self, pattern_text, line):
-        if pattern_text is None:
+    def _line_matches_filter(self, patterns, line):
+        if patterns is None:
             return True
-        return pattern_text in line
+        return any(pattern in line for pattern in patterns)
 
     def _line_belongs_in_split_pane(self, line, pane_idx, filters):
         text = filters[pane_idx] if pane_idx < len(filters) else None
@@ -532,7 +591,7 @@ class LogTabPage(QWidget):
         ]
         for line in lines:
             for pane_idx in range(pane_count):
-                if show_all[pane_idx] or filters[pane_idx] in line:
+                if show_all[pane_idx] or self._line_matches_filter(filters[pane_idx], line):
                     buckets[pane_idx].append(line)
         return buckets
 
@@ -590,28 +649,28 @@ class LogTabPage(QWidget):
                     self._committed_filter_text(0),
                 )
 
-    def _append_pane_lines(self, edit, lines, filter_text):
+    def _append_pane_lines(self, edit, lines, filter_patterns):
         highlighter = self._pane_highlighter(edit)
-        if highlighter and highlighter._filter_text != (filter_text or None):
-            highlighter.set_filter_text(filter_text, rehighlight=False)
+        if highlighter and highlighter._filter_patterns != (filter_patterns or None):
+            highlighter.set_filter_text(filter_patterns, rehighlight=False)
         edit.setProperty('_display_cache_key', None)
         prefix = '\n' if edit.document().characterCount() > 0 else ''
         edit.appendPlainText(prefix + '\n'.join(lines))
 
-    def _write_pane_lines(self, edit, lines, filter_text):
+    def _write_pane_lines(self, edit, lines, filter_patterns):
         text = '\n'.join(lines) if lines else ''
-        cache_key = (text, filter_text or '')
+        cache_key = (text, filter_patterns)
         old_key = edit.property('_display_cache_key')
         if old_key == cache_key:
             return False
         highlighter = self._pane_highlighter(edit)
         if old_key and old_key[0] == text:
             if highlighter:
-                highlighter.set_filter_text(filter_text)
+                highlighter.set_filter_text(filter_patterns)
             edit.setProperty('_display_cache_key', cache_key)
             return True
         if highlighter:
-            highlighter.set_filter_text(filter_text, rehighlight=False)
+            highlighter.set_filter_text(filter_patterns, rehighlight=False)
         edit.blockSignals(True)
         edit.setPlainText(text)
         edit.blockSignals(False)
@@ -682,7 +741,9 @@ class LogTabPage(QWidget):
     def _filter_text(self, raw):
         if raw is None:
             return None
-        return raw if raw else None
+        if not raw:
+            return None
+        return _parse_filter_patterns(raw)
 
     def append_lines(self, lines):
         if not lines:

@@ -42,11 +42,11 @@ STRINGS: dict[str, tuple[str, str]] = {
     'btn.browse_dir': ('📁 选择路径', '📁 Browse…'),
     'btn.open_log': ('📂 打开文件', '📂 Open…'),
     'btn.browse_tooltip': ('选择实时报文保存目录', 'Select the output directory for live capture files'),
-    'log.filename': ('文件名', 'Capture Name'),
+    'log.filename': ('文件名', 'Log Name'),
     'log.save_dir': ('保存路径', 'Output Directory'),
     'log.title': ('📡 报文实时监控', '📡 Real-Time Packet Monitor'),
-    'log.default_filename': ('实时报文', 'Live Capture'),
-    'log.name_placeholder': ('实时报文', 'Live Capture'),
+    'log.default_filename': ('实时报文', 'Live Packet Log'),
+    'log.name_placeholder': ('实时报文', 'Live Packet Log'),
     'log.name_tooltip': ('不含扩展名，保存为 TXT 格式，Enter 确认', 'Base name without extension (.txt); press Enter to apply'),
     'log.dir_tooltip': ('实时报文 TXT 文件保存目录', 'Directory where live capture files (.txt) are saved'),
     'log.new_tooltip': ('新建实时报文文件，当前标签右移', 'Start a new capture file; the current tab shifts right'),
@@ -56,7 +56,10 @@ STRINGS: dict[str, tuple[str, str]] = {
     'log.split_enable': ('数据分窗', 'Split View'),
     'log.split_tooltip': ('启用后将报文按条件分到多个窗口显示', 'Route packets into separate panes by filter criteria'),
     'log.panes_tooltip': ('分窗数量（启用 Split View 后有效）', 'Number of panes (when Split View is enabled)'),
-    'log.filter_tooltip': ('完整字符串匹配；按 Enter 刷新显示', 'Exact substring match; press Enter to apply'),
+    'log.filter_tooltip': (
+        '完整字符串匹配；多个关键词用 | 分隔（保留空格）；按 Enter 刷新显示',
+        'Exact substring match; separate multiple terms with | (spaces preserved); press Enter to apply',
+    ),
     'log.split_count': ('分窗数', 'Panes'),
     'log.same_page': ('同页显示', 'Side-by-Side'),
     'log.same_page_tooltip': (
@@ -66,6 +69,13 @@ STRINGS: dict[str, tuple[str, str]] = {
     'log.all': ('全部', 'All'),
     'log.pane_tab': ('分窗{n}', 'Pane {n}'),
     'log.pane_filter': ('分窗{n}筛选', 'Pane {n}'),
+    'log.auto_parse': ('自动解析', 'Auto Parse'),
+    'log.auto_parse_tooltip': (
+        '悬停报文行时显示 Qi 协议解析；关闭后不进行解析以节省 CPU',
+        'Show Qi packet decode on hover; when off, no parsing runs to save CPU',
+    ),
+    'log.tab.close_current': ('关闭当前', 'Close Current'),
+    'log.tab.close_all': ('关闭所有', 'Close All'),
     'dialog.create_failed': ('创建失败', 'Create Failed'),
     'dialog.rename_failed': ('重命名失败', 'Rename Failed'),
     'dialog.save_failed': ('保存失败', 'Save Failed'),
@@ -162,7 +172,7 @@ STRINGS: dict[str, tuple[str, str]] = {
     'qi.empty_pkt': ('无 Payload (空包)', 'Empty packet (no payload)'),
 }
 
-KNOWN_LOG_DEFAULT_NAMES = frozenset({'实时报文', 'Live Capture', 'Live Log'})
+KNOWN_LOG_DEFAULT_NAMES = frozenset({'实时报文', 'Live Packet Log', 'Live Capture', 'Live Log'})
 
 
 def init_language(lang: str | None = None) -> str:

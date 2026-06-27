@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QMenu,
     QPlainTextEdit,
     QSizePolicy,
     QTextEdit,
@@ -274,6 +275,14 @@ class MonitorWindow(QMainWindow):
             for edit in page.all_editors():
                 if edit.viewport() is viewport:
                     return edit
+        return None
+
+    def _log_page_for_edit(self, edit):
+        tabs = self.ui.log_file_tabs
+        for index in range(tabs.count()):
+            page = tabs.widget(index)
+            if isinstance(page, LogTabPage) and edit in page.all_editors():
+                return page
         return None
 
     def _create_log_tab_page(self, live=False, filepath=None):
@@ -567,7 +576,31 @@ class MonitorWindow(QMainWindow):
         tabs = self.ui.log_file_tabs
         tabs.tabCloseRequested.connect(self._on_log_tab_close_requested)
         tabs.currentChanged.connect(self._on_log_file_tab_changed)
+        bar = tabs.tabBar()
+        bar.setContextMenuPolicy(Qt.CustomContextMenu)
+        bar.customContextMenuRequested.connect(self._on_log_tab_context_menu)
         self._ensure_live_log_tab()
+
+    def _on_log_tab_context_menu(self, pos):
+        bar = self.ui.log_file_tabs.tabBar()
+        index = bar.tabAt(pos)
+        if index < 0:
+            return
+        menu = QMenu(self)
+        act_close = menu.addAction(tr('log.tab.close_current'))
+        act_close.triggered.connect(lambda _checked=False, idx=index: self._close_log_tab_at(idx))
+        act_close_all = menu.addAction(tr('log.tab.close_all'))
+        act_close_all.setEnabled(self.ui.log_file_tabs.count() > 1)
+        act_close_all.triggered.connect(self._close_all_log_tabs_except_live)
+        menu.exec_(bar.mapToGlobal(pos))
+
+    def _close_log_tab_at(self, index):
+        self._on_log_tab_close_requested(index)
+
+    def _close_all_log_tabs_except_live(self):
+        tabs = self.ui.log_file_tabs
+        for index in range(tabs.count() - 1, 0, -1):
+            self._close_log_tab_at(index)
 
     def _on_log_file_tab_changed(self, _index):
         self._hover_state = None
@@ -957,7 +990,14 @@ class MonitorWindow(QMainWindow):
             self.hide_tooltip()
         edit = self._log_edit_for_viewport(obj)
         if edit is not None:
+            page = self._log_page_for_edit(edit)
+            parse_enabled = page.is_auto_parse_enabled_for_edit(edit) if page else False
             if event.type() == QEvent.MouseMove:
+                if not parse_enabled:
+                    if self._hover_state is not None:
+                        QToolTip.hideText()
+                        self._hover_state = None
+                    return super().eventFilter(obj, event)
                 cursor = edit.cursorForPosition(event.pos())
                 hover = (edit, cursor.blockNumber())
                 if hover != self._hover_state:

@@ -47,7 +47,7 @@ DEFAULT_CONFIG = {
         'port_poll_interval_ms': 2000,
     },
     'log_monitor': {
-        'default_filename': 'Live Capture',
+        'default_filename': 'Live Packet Log',
         'save_dir': 'logs',
         'file_extension': 'txt',
     },
