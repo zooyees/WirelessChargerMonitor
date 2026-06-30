@@ -52,7 +52,7 @@ deps: venv
 	$(PIP) install --index-url https://pypi.org/simple --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements-build.txt
 
 check:
-	$(PY) -c "import PyQt5, pyqtgraph, serial; from wireless_charger_monitor.app import main; print('OK')"
+	$(PY) -c "import PyQt5, pyqtgraph, serial; from wireless_charger_monitor.app import main; from wireless_charger_monitor.apps.tektronix_scope import TektronixScopeWindow; print('OK')"
 
 dist: deps check
 	$(PY) -m PyInstaller $(SPEC) --noconfirm --clean

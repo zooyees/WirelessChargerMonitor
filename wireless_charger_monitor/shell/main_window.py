@@ -1,4 +1,4 @@
-"""Main window controller."""
+"""Application shell: hosts serial tool and waveform scope panels."""
 import bisect
 import datetime
 import os
@@ -40,11 +40,11 @@ from ..paths import project_path
 from ..serial_ports import SerialPortWatcher
 from ..protocol.qi_parser import Qi22Parser
 from ..workers import DBWorker, FetchWorker, SerialWorker
+from ..apps.serial_tool import LogTabPage
 from ..i18n import get_language, init_language, is_known_log_default_name, set_language, tr, tr_in
-from .loader import Ui_MonitorWindow
-from .log_tab_page import LogTabPage
-from .tab_utils import refresh_tab_widget
-from .theme import (
+from ..ui.loader import Ui_MonitorWindow
+from ..ui.tab_utils import refresh_tab_widget
+from ..ui.theme import (
     FS_BODY,
     FS_CAPTION,
     FS_SUBTITLE,
@@ -74,7 +74,8 @@ class MonitorWindow(QMainWindow):
         self.ui = Ui_MonitorWindow()
         self.ui.setupUi(self)
         init_db()
-        self._setup_view_menu()
+        self._setup_app_menus()
+        self._tek_scope_window = None
 
         self.statusBar().setStyleSheet(status_bar_stylesheet())
         self._status_default = QLabel(tr('status.ready'))
@@ -196,19 +197,24 @@ class MonitorWindow(QMainWindow):
 
     def _retranslate_ui(self):
         self.setWindowTitle(tr('app.title'))
+        self._menu_serial_tool.setTitle(tr('menu.serial_tool'))
+        self._menu_waveform_scope.setTitle(tr('menu.waveform_scope'))
+        self._menu_tektronix_scope.setTitle(tr('menu.tektronix_scope'))
+        self._act_show_serial.setText(tr('tool.show'))
+        self._act_hide_serial.setText(tr('tool.hide'))
+        self._act_show_waveform.setText(tr('tool.show'))
+        self._act_hide_waveform.setText(tr('tool.hide'))
+        self._act_open_tektronix.setText(tr('tool.open'))
         self._view_menu.setTitle(tr('menu.view'))
-        self._panel_menu.setTitle(tr('menu.panels'))
         self._lang_menu.setTitle(tr('menu.language'))
-        self._act_show_chart.setText(tr('tab.oscilloscope'))
-        self._act_show_log.setText(tr('tab.log_monitor'))
         if get_language() == 'en':
             self._act_lang_en.setChecked(True)
         else:
             self._act_lang_zh.setChecked(True)
 
         tabs = self.ui.main_tabs
-        tabs.setTabText(tabs.indexOf(self.ui.chart_panel), tr('tab.oscilloscope'))
-        tabs.setTabText(tabs.indexOf(self.ui.log_panel), tr('tab.log_monitor'))
+        tabs.setTabText(tabs.indexOf(self.ui.chart_panel), tr('tool.waveform_scope.name'))
+        tabs.setTabText(tabs.indexOf(self.ui.log_panel), tr('tool.serial_tool.name'))
 
         lcd_labels = (
             ('lbl_lcd_v_in', 'lcd.v_in'),
@@ -252,6 +258,8 @@ class MonitorWindow(QMainWindow):
         self._apply_toolbar_metrics()
         for page in self._iter_log_pages():
             page.retranslate_ui()
+        if self._tek_scope_window is not None and self._tek_scope_window.isVisible():
+            self._tek_scope_window.retranslate_ui()
         self.scan_ports()
         self._retranslate_idle_status()
 
@@ -873,20 +881,43 @@ class MonitorWindow(QMainWindow):
             logger.debug("on_mouse_moved failed", exc_info=True)
             self.hide_tooltip()
 
-    def _setup_view_menu(self):
+    def _setup_app_menus(self):
         menu_bar = self.menuBar()
         menu_bar.setStyleSheet(menu_bar_stylesheet())
-        self._view_menu = menu_bar.addMenu(tr('menu.view'))
-        self._panel_menu = self._view_menu.addMenu(tr('menu.panels'))
 
-        self._act_show_chart = self._panel_menu.addAction(tr('tab.oscilloscope'))
-        self._act_show_chart.setCheckable(True)
-        self._act_show_chart.setChecked(True)
+        self._menu_serial_tool = menu_bar.addMenu(tr('menu.serial_tool'))
+        self._act_show_serial = self._menu_serial_tool.addAction(tr('tool.show'))
+        self._act_show_serial.triggered.connect(lambda: self._activate_tool(self.ui.log_panel))
+        self._act_hide_serial = self._menu_serial_tool.addAction(tr('tool.hide'))
+        self._act_hide_serial.triggered.connect(lambda: self._hide_tool_panel(self.ui.log_panel))
 
-        self._act_show_log = self._panel_menu.addAction(tr('tab.log_monitor'))
-        self._act_show_log.setCheckable(True)
-        self._act_show_log.setChecked(True)
+        self._menu_waveform_scope = menu_bar.addMenu(tr('menu.waveform_scope'))
+        self._act_show_waveform = self._menu_waveform_scope.addAction(tr('tool.show'))
+        self._act_show_waveform.triggered.connect(lambda: self._activate_tool(self.ui.chart_panel))
+        self._act_hide_waveform = self._menu_waveform_scope.addAction(tr('tool.hide'))
+        self._act_hide_waveform.triggered.connect(lambda: self._hide_tool_panel(self.ui.chart_panel))
 
+        self._menu_tektronix_scope = menu_bar.addMenu(tr('menu.tektronix_scope'))
+        self._act_open_tektronix = self._menu_tektronix_scope.addAction(tr('tool.open'))
+        self._act_open_tektronix.triggered.connect(self._open_tektronix_scope)
+
+        self._setup_view_menu()
+        self.ui.main_tabs.currentChanged.connect(self._on_main_tab_changed)
+
+    def _activate_tool(self, panel):
+        self._set_tab_visible(panel, True)
+        self.ui.main_tabs.setCurrentWidget(panel)
+
+    def _hide_tool_panel(self, panel):
+        other = self.ui.chart_panel if panel is self.ui.log_panel else self.ui.log_panel
+        if not self._is_tab_visible(other):
+            self._activate_tool(other)
+            return
+        self._set_tab_visible(panel, False)
+        self._ensure_visible_tab()
+
+    def _setup_view_menu(self):
+        self._view_menu = self.menuBar().addMenu(tr('menu.view'))
         self._lang_menu = self._view_menu.addMenu(tr('menu.language'))
         self._lang_group = QActionGroup(self)
         self._act_lang_en = self._lang_menu.addAction('English')
@@ -901,13 +932,17 @@ class MonitorWindow(QMainWindow):
         else:
             self._act_lang_zh.setChecked(True)
 
-        self._panel_toggles = (
-            (self._act_show_chart, self.ui.chart_panel),
-            (self._act_show_log, self.ui.log_panel),
-        )
-        for action, _panel in self._panel_toggles:
-            action.toggled.connect(self._on_panel_visibility_changed)
-        self.ui.main_tabs.currentChanged.connect(self._on_main_tab_changed)
+    def _open_tektronix_scope(self):
+        if self._tek_scope_window is None:
+            from ..apps.tektronix_scope import TektronixScopeWindow
+            self._tek_scope_window = TektronixScopeWindow(self)
+            self._tek_scope_window.destroyed.connect(self._on_tek_scope_destroyed)
+        self._tek_scope_window.show()
+        self._tek_scope_window.raise_()
+        self._tek_scope_window.activateWindow()
+
+    def _on_tek_scope_destroyed(self, _obj=None):
+        self._tek_scope_window = None
 
     def _tab_index(self, panel):
         return self.ui.main_tabs.indexOf(panel)
@@ -930,7 +965,7 @@ class MonitorWindow(QMainWindow):
         return True
 
     def _is_chart_tab_active(self):
-        if not self._act_show_chart.isChecked():
+        if not self._is_tab_visible(self.ui.chart_panel):
             return False
         return self.ui.main_tabs.currentWidget() == self.ui.chart_panel
 
@@ -948,19 +983,6 @@ class MonitorWindow(QMainWindow):
         self.hide_tooltip()
         if self._is_chart_tab_active() and hasattr(self.ui, 'graph_widget'):
             QTimer.singleShot(0, self.ui.graph_widget.updateGeometry)
-
-    def _on_panel_visibility_changed(self, _checked=False):
-        if not any(action.isChecked() for action, _ in self._panel_toggles):
-            sender = self.sender()
-            if sender is not None:
-                sender.blockSignals(True)
-                sender.setChecked(True)
-                sender.blockSignals(False)
-            return
-        for action, panel in self._panel_toggles:
-            self._set_tab_visible(panel, action.isChecked())
-        self._ensure_visible_tab()
-        QTimer.singleShot(0, self._finalize_panel_layout)
 
     def _finalize_panel_layout(self):
         if not self._is_chart_tab_active():
@@ -1379,4 +1401,6 @@ class MonitorWindow(QMainWindow):
             self.db_worker.stop()
         if hasattr(self, 'fetch_worker'):
             self.fetch_worker.stop()
+        if self._tek_scope_window is not None:
+            self._tek_scope_window.close()
         event.accept()

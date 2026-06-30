@@ -2,3 +2,5 @@ PyQt5>=5.15.0
 pyserial>=3.5
 pyqtgraph>=0.13.0
 matplotlib>=3.7.0
+pyvisa>=1.13.0
+pyvisa-py>=0.7.0

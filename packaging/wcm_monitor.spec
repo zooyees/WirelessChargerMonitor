@@ -66,6 +66,13 @@ hiddenimports = [
     'serial.tools.list_ports_windows',
     'pyqtgraph',
     'numpy.lib.format',
+    'pyvisa',
+    'pyvisa.constants',
+    'pyvisa.resources',
+    'pyvisa.resources.usb',
+    'pyvisa_py',
+    'pyvisa_py.protocols',
+    'pyvisa_py.protocols.usbtmc',
 ]
 
 a = Analysis(

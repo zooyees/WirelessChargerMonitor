@@ -725,3 +725,7 @@ serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle
 2026-06-27 01:59:09,485 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
 2026-06-27 02:05:03,450 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
 2026-06-27 02:05:04,116 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-30 18:14:26,247 [INFO] WirelessChargerMonitor: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 18:14:27,080 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-30 18:22:18,963 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-06-30 18:22:19,027 [INFO] WirelessChargerMonitor: FetchWorker stopped

@@ -7,25 +7,19 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QSizePolicy, QVBoxLayout, QWidget
 
+from ..apps.waveform_scope import attach_waveform_charts
 from .tab_utils import refresh_tab_widget
 
 from .theme import (
     MONITOR_WINDOW_STYLESHEET,
     CANVAS_BG,
-    CHART_AXIS,
-    CHART_BG,
-    CHART_CURRENT,
-    CHART_POWER,
     CHART_TEXT,
-    CHART_VOLTAGE,
     LCD_STYLES,
     PANEL_BG,
     SURFACE_BG,
     TEXT_PRIMARY,
     TEXT_SECONDARY,
     BORDER,
-    FS_CAPTION,
-    FS_SUBTITLE,
     apply_data_label_style,
     apply_lcd_style,
     apply_log_control_panel_metrics,
@@ -86,7 +80,7 @@ class Ui_MonitorWindow:
         self._apply_scaled_layout(MainWindow)
         self._apply_widget_styles()
         self._setup_scroll_palettes()
-        self._setup_charts()
+        attach_waveform_charts(self)
         self._configure_tabs()
 
     def _bind_widgets(self, MainWindow):
@@ -194,102 +188,3 @@ class Ui_MonitorWindow:
             tabs.tabBar().moveTab(log_idx, 0)
         tabs.setCurrentWidget(self.log_panel)
         refresh_tab_widget(tabs, preset='main')
-
-    def _setup_charts(self):
-        layout = self.chart_container.layout()
-        if layout is None:
-            layout = QVBoxLayout(self.chart_container)
-        else:
-            while layout.count():
-                item = layout.takeAt(0)
-                w = item.widget()
-                if w is not None:
-                    w.deleteLater()
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        self.graph_widget = pg.GraphicsLayoutWidget()
-        layout.addWidget(self.graph_widget)
-
-        scale = self._ui_scale()
-        self.graph_widget.ci.layout.setSpacing(12)
-        self.graph_widget.ci.layout.setContentsMargins(10, 10, 15, 10)
-
-        self.vbs = []
-        self.dual_plots = []
-        chart_fs = max(FS_CAPTION, min(FS_SUBTITLE, round(FS_CAPTION * scale)))
-        font_css = {'font-size': f'{chart_fs}pt', 'font-family': 'Microsoft YaHei', 'font-weight': 'bold'}
-        axis_pen = pg.mkPen(color=CHART_AXIS, width=1.2)
-        text_pen = pg.mkPen(color=CHART_TEXT)
-
-        def add_plot(row, label1, color1, label2=None, color2=None, link_plot=None):
-            p = self.graph_widget.addPlot(row=row, col=0)
-            p.getViewBox().setBackgroundColor(CHART_BG)
-            p.setDefaultPadding(0.08)
-            p.setMinimumHeight(int(120 * scale))
-            p.enableAutoRange(x=False, y=True)
-            p.getViewBox().enableAutoRange(x=False, y=True)
-
-            ax_left = p.getAxis('left')
-            ax_left.setLabel(label1, color=color1, **font_css)
-            ax_left.setPen(axis_pen)
-            ax_left.setTextPen(text_pen)
-            ax_left.setGrid(100)
-
-            ax_bottom = p.getAxis('bottom')
-            ax_bottom.setPen(axis_pen)
-            ax_bottom.setTextPen(text_pen)
-            ax_bottom.setGrid(100)
-
-            if link_plot:
-                p.setXLink(link_plot)
-            else:
-                self.p_main = p
-
-            line1 = p.plot(pen=pg.mkPen(color=color1, width=2.2))
-            line2 = None
-            if label2 and color2:
-                vb2 = pg.ViewBox()
-                vb2.enableAutoRange(x=False, y=True)
-                self.vbs.append((p, vb2))
-                p.scene().addItem(vb2)
-                p.getAxis('right').linkToView(vb2)
-                vb2.setXLink(p)
-                vb2.setZValue(10)
-                ax_right = p.getAxis('right')
-                ax_right.setLabel(label2, color=color2, **font_css)
-                ax_right.setPen(axis_pen)
-                ax_right.setTextPen(text_pen)
-                p.showAxis('right')
-                line2 = pg.PlotDataItem(pen=pg.mkPen(color=color2, width=2.0))
-                vb2.addItem(line2)
-            return p, line1, line2
-
-        self.p_p, self.line_power, _ = add_plot(0, 'POWER (W)', CHART_POWER)
-        self.p_in, self.line_v_in, self.line_i_in = add_plot(
-            1, 'INPUT (V)', CHART_VOLTAGE, 'INPUT (A)', CHART_CURRENT, link_plot=self.p_p,
-        )
-        self.p_out, self.line_v_out, self.line_i_out = add_plot(
-            2, 'OUTPUT (V)', CHART_VOLTAGE, 'OUTPUT (A)', CHART_CURRENT, link_plot=self.p_p,
-        )
-        self.p_bat, self.line_v_bat, self.line_i_bat = add_plot(
-            3, 'BATTERY (V)', CHART_VOLTAGE, 'BATTERY (A)', CHART_CURRENT, link_plot=self.p_p,
-        )
-
-        self.dual_plots = [
-            (self.p_in, self.vbs[0][1], 'vi', 'ii'),
-            (self.p_out, self.vbs[1][1], 'vo', 'io'),
-            (self.p_bat, self.vbs[2][1], 'vb', 'ib'),
-        ]
-
-        self.p_p.getAxis('bottom').setStyle(showValues=False)
-        self.p_in.getAxis('bottom').setStyle(showValues=False)
-        self.p_out.getAxis('bottom').setStyle(showValues=False)
-
-        def update_views():
-            for p, vb in self.vbs:
-                vb.setGeometry(p.vb.sceneBoundingRect())
-                vb.linkedViewChanged(p.vb, vb.XAxis)
-
-        update_views()
-        for p, _ in self.vbs:
-            p.vb.sigResized.connect(update_views)

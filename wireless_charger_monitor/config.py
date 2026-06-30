@@ -51,6 +51,11 @@ DEFAULT_CONFIG = {
         'save_dir': 'logs',
         'file_extension': 'txt',
     },
+    'apps': {
+        'tektronix_scope': {
+            'save_dir': 'scope_captures',
+        },
+    },
 }
 
 

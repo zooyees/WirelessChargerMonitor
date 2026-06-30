@@ -12,7 +12,7 @@ from .ui import MonitorWindow
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='串口分析工具')
+    parser = argparse.ArgumentParser(description='PC 综合工具')
     parser.add_argument(
         '--demo', action='store_true',
         help='串口不可用时启用演示模式（模拟数据，不可用于正式测试）',

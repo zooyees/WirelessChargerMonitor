@@ -1,3 +1,3 @@
-"""串口分析工具 (Serial Port Analysis Tool)."""
+"""PC 综合工具 (PC Utility Suite)."""
 
 __version__ = '1.0.0'
