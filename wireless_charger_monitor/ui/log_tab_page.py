@@ -1,5 +1,6 @@
 """单个报文文件 Tab：可选分窗显示（仅 UI，不影响文件存储）。"""
 
+from collections import deque
 from functools import partial
 
 from PyQt5.QtCore import QEvent, Qt
@@ -22,9 +23,10 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ...i18n import get_language, tr
-from ...ui.tab_utils import refresh_tab_widget
-from ...ui.theme import (
+from ..i18n import get_language, tr
+from .tab_utils import refresh_tab_widget
+from . import theme as ui_theme
+from .theme import (
     FS_BODY,
     LOG_FILTER_SCROLL_H,
     LOG_SPLIT_TOOLBAR_H,
@@ -40,13 +42,13 @@ from ...ui.theme import (
     apply_log_tool_label_style,
 )
 
-_MAX_LIVE_LINES = 1000
+_MAX_LIVE_LINES = 10000
 _FILTER_LABEL_WIDTH = 76
 _FILTER_EDIT_WIDTH = 112
 _FILTER_GROUP_SPACING = 8
 _LOG_FONT_MAX = 24
 _LOG_FONT_DEFAULT = FS_BODY
-_FILTER_HIGHLIGHT_COLOR = QColor('#FACC15')
+_FILTER_HIGHLIGHT_COLOR = QColor(ui_theme.FILTER_HIGHLIGHT)
 
 
 def _parse_filter_patterns(raw):
@@ -92,7 +94,7 @@ class LogTabPage(QWidget):
         super().__init__(parent)
         self.live = live
         self.filepath = filepath
-        self._master_lines = []
+        self._master_lines = self._new_master_store()
         self._filter_edits = []
         self._parse_checkboxes = []
         self._panes = []
@@ -184,6 +186,45 @@ class LogTabPage(QWidget):
         self._build_single_pane()
         self._build_single_filter()
         refresh_tab_widget(self.content_tabs, preset='split')
+
+    def reapply_theme(self):
+        apply_log_split_toolbar_style(self._toolbar)
+        apply_log_split_checkbox_style(self.chk_split)
+        apply_log_tool_label_style(self.lbl_count)
+        apply_log_split_spinbox_style(self.spin_count)
+        apply_log_split_checkbox_style(self.chk_same_page)
+        apply_log_split_scroll_style(self._filter_scroll)
+        apply_log_split_host_style(self._filter_host)
+        for i in range(self._filter_layout.count()):
+            widget = self._filter_layout.itemAt(i).widget()
+            if isinstance(widget, QLabel):
+                apply_log_split_filter_label_style(widget)
+            elif isinstance(widget, QLineEdit):
+                apply_log_split_line_edit_style(widget)
+            elif isinstance(widget, QCheckBox):
+                apply_log_split_checkbox_style(widget)
+        for pane in self._panes:
+            apply_log_pane_style(pane)
+        for column in self._same_page_columns:
+            layout = column.layout()
+            if layout is None:
+                continue
+            title = layout.itemAt(0).widget()
+            if isinstance(title, QLabel):
+                apply_log_split_column_title_style(title)
+        global _FILTER_HIGHLIGHT_COLOR
+        _FILTER_HIGHLIGHT_COLOR = QColor(ui_theme.FILTER_HIGHLIGHT)
+        for edit in self._panes:
+            self.refresh_filter_highlights(edit)
+        for highlighter in self._pane_highlighters.values():
+            highlighter._highlight_format.setForeground(QColor(ui_theme.FILTER_HIGHLIGHT))
+            highlighter.rehighlight()
+
+    def _new_master_store(self, lines=None):
+        """Live tab: bounded deque for filter/split; file tab: unbounded list."""
+        if self.live:
+            return deque(lines or [], maxlen=_MAX_LIVE_LINES)
+        return list(lines or [])
 
     def retranslate_ui(self):
         self.chk_split.setText(tr('log.split_enable'))
@@ -473,7 +514,7 @@ class LogTabPage(QWidget):
             if text:
                 merged.extend(text.splitlines())
         if merged:
-            self._master_lines = merged
+            self._master_lines = self._new_master_store(merged)
 
     def _on_count_changed(self, value):
         if self.chk_split.isChecked():
@@ -750,20 +791,12 @@ class LogTabPage(QWidget):
             return
         if isinstance(lines, str):
             lines = [lines]
-        trimmed = False
         self._master_lines.extend(lines)
-        if self.live:
-            overflow = len(self._master_lines) - _MAX_LIVE_LINES
-            if overflow > 0:
-                self._master_lines = self._master_lines[overflow:]
-                trimmed = True
-        if trimmed:
-            self._rebuild_display()
-            return
         self._append_to_panes(lines)
 
     def set_content(self, text):
-        self._master_lines = text.splitlines() if text else []
+        lines = text.splitlines() if text else []
+        self._master_lines = self._new_master_store(lines)
         self._rebuild_display()
 
     def clear(self):

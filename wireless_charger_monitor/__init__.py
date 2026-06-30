@@ -1,3 +1,3 @@
-"""PC 综合工具 (PC Utility Suite)."""
+"""WiParse — serial packet analysis tool."""
 
 __version__ = '1.0.0'

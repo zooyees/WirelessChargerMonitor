@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 PACKAGE_DIR = Path(__file__).resolve().parent
+ICON_REL = Path('Icon') / 'WiParse.ico'
 
 
 def is_frozen() -> bool:
@@ -15,9 +16,6 @@ def app_root() -> Path:
     if is_frozen():
         return Path(sys.executable).resolve().parent
     return PACKAGE_DIR.parent
-
-
-PROJECT_ROOT = app_root()
 
 
 def project_path(relative: str) -> Path:
@@ -33,3 +31,19 @@ def config_file() -> Path:
     if env:
         return Path(env)
     return project_path('config.json')
+
+
+def bundle_path(relative: str) -> Path:
+    """Bundled read-only assets (dev: repo root; frozen: PyInstaller _MEIPASS)."""
+    if is_frozen():
+        return Path(sys._MEIPASS) / relative
+    return PACKAGE_DIR.parent / relative
+
+
+def app_icon_path() -> Path | None:
+    """Application window / taskbar icon (Icon/WiParse.ico)."""
+    rel = ICON_REL.as_posix()
+    for candidate in (bundle_path(rel), project_path(rel)):
+        if candidate.is_file():
+            return candidate.resolve()
+    return None

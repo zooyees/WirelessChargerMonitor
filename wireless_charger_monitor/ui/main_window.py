@@ -1,4 +1,4 @@
-"""Application shell: hosts serial tool and waveform scope panels."""
+"""Main window controller."""
 import bisect
 import datetime
 import os
@@ -19,9 +19,9 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QMenu,
-    QPlainTextEdit,
     QSizePolicy,
     QTextEdit,
+    QToolButton,
     QToolTip,
 )
 
@@ -40,23 +40,46 @@ from ..paths import project_path
 from ..serial_ports import SerialPortWatcher
 from ..protocol.qi_parser import Qi22Parser
 from ..workers import DBWorker, FetchWorker, SerialWorker
-from ..apps.serial_tool import LogTabPage
 from ..i18n import get_language, init_language, is_known_log_default_name, set_language, tr, tr_in
-from ..ui.loader import Ui_MonitorWindow
-from ..ui.tab_utils import refresh_tab_widget
-from ..ui.theme import (
+from .loader import Ui_MonitorWindow
+from .log_tab_page import LogTabPage
+from .tab_utils import refresh_tab_widget
+from .theme import (
     FS_BODY,
     FS_CAPTION,
     FS_SUBTITLE,
     FONT_FAMILY_MONO,
     LCD_TEMP,
+    LCD_BG,
     TEXT_MUTED,
+    ACCENT,
+    SELECTION_TEXT,
+    CROSSHAIR_COLOR,
+    HUD_BG_RGBA,
+    HUD_BORDER,
+    HUD_TEXT,
+    CHART_POWER,
+    CHART_VOLTAGE,
+    CHART_CURRENT,
+    STATUS_INFO,
+    STATUS_WARN,
+    STATUS_ERROR,
+    STATUS_SUCCESS,
+    TEMP_ALERT_BG,
+    TEMP_ALERT_FG,
+    TEMP_ALERT_BORDER,
+    TEMP_NORMAL_BORDER,
     apply_data_label_style,
+    apply_lcd_style,
     apply_editable_combo_line_edit,
     apply_log_control_panel_metrics,
     apply_status_message_style,
     apply_status_session_style,
+    full_stylesheet,
+    get_theme,
+    init_theme,
     menu_bar_stylesheet,
+    set_theme,
     status_bar_stylesheet,
     ui_font_css,
     FW_NORMAL,
@@ -68,14 +91,16 @@ class MonitorWindow(QMainWindow):
     def __init__(self, cli_demo_mode=False):
         super().__init__()
         init_language(config_module.CONFIG.get('ui', {}).get('language', 'en'))
+        init_theme(config_module.CONFIG.get('ui', {}).get('theme', 'dark'))
         self._cli_demo_mode = cli_demo_mode
         self._demo_mode_active = False
         self.current_session_id = None
         self.ui = Ui_MonitorWindow()
         self.ui.setupUi(self)
         init_db()
-        self._setup_app_menus()
-        self._tek_scope_window = None
+        self._setup_view_menu()
+        self._setup_unified_header()
+        self._setup_menu_bar_auto_hide()
 
         self.statusBar().setStyleSheet(status_bar_stylesheet())
         self._status_default = QLabel(tr('status.ready'))
@@ -197,24 +222,23 @@ class MonitorWindow(QMainWindow):
 
     def _retranslate_ui(self):
         self.setWindowTitle(tr('app.title'))
-        self._menu_serial_tool.setTitle(tr('menu.serial_tool'))
-        self._menu_waveform_scope.setTitle(tr('menu.waveform_scope'))
-        self._menu_tektronix_scope.setTitle(tr('menu.tektronix_scope'))
-        self._act_show_serial.setText(tr('tool.show'))
-        self._act_hide_serial.setText(tr('tool.hide'))
-        self._act_show_waveform.setText(tr('tool.show'))
-        self._act_hide_waveform.setText(tr('tool.hide'))
-        self._act_open_tektronix.setText(tr('tool.open'))
-        self._view_menu.setTitle(tr('menu.view'))
+        self._panel_menu.setTitle(tr('menu.panels'))
+        self._sync_settings_btn_text()
         self._lang_menu.setTitle(tr('menu.language'))
+        self._theme_menu.setTitle(tr('menu.theme'))
+        self._act_theme_dark.setText(tr('menu.theme_dark'))
+        self._act_theme_light.setText(tr('menu.theme_light'))
+        self._sync_theme_menu_checks()
+        self._act_show_chart.setText(tr('tab.oscilloscope'))
+        self._act_show_log.setText(tr('tab.log_monitor'))
         if get_language() == 'en':
             self._act_lang_en.setChecked(True)
         else:
             self._act_lang_zh.setChecked(True)
 
         tabs = self.ui.main_tabs
-        tabs.setTabText(tabs.indexOf(self.ui.chart_panel), tr('tool.waveform_scope.name'))
-        tabs.setTabText(tabs.indexOf(self.ui.log_panel), tr('tool.serial_tool.name'))
+        tabs.setTabText(tabs.indexOf(self.ui.chart_panel), tr('tab.oscilloscope'))
+        tabs.setTabText(tabs.indexOf(self.ui.log_panel), tr('tab.log_monitor'))
 
         lcd_labels = (
             ('lbl_lcd_v_in', 'lcd.v_in'),
@@ -258,8 +282,6 @@ class MonitorWindow(QMainWindow):
         self._apply_toolbar_metrics()
         for page in self._iter_log_pages():
             page.retranslate_ui()
-        if self._tek_scope_window is not None and self._tek_scope_window.isVisible():
-            self._tek_scope_window.retranslate_ui()
         self.scan_ports()
         self._retranslate_idle_status()
 
@@ -318,27 +340,18 @@ class MonitorWindow(QMainWindow):
 
     def _apply_toolbar_metrics(self):
         scale = getattr(self, '_ui_scale', 1.0)
-        en = get_language() == 'en'
-        toolbar_sizes = (
-            ('cb_port', 100 if en else 110),
-            ('cb_baudrate', 88 if en else 96),
-            ('btn_start', 72 if en else 88),
-            ('btn_new_live_log', 52 if en else 56),
-            ('edit_live_log_name', 96 if en else 120),
-            ('edit_live_log_dir', 120 if en else 140),
-            ('btn_browse_log_dir', 76 if en else 88),
-            ('btn_open_log', 72 if en else 88),
+        sidebar_w = int(140 * scale)
+        sidebar_controls = (
+            'cb_port', 'cb_baudrate', 'btn_start', 'btn_new_live_log',
+            'edit_live_log_name', 'edit_live_log_dir', 'btn_browse_log_dir', 'btn_open_log',
         )
-        for name, min_w in toolbar_sizes:
+        for name in sidebar_controls:
             if hasattr(self.ui, name):
                 widget = getattr(self.ui, name)
-                widget.setMinimumWidth(int(min_w * scale))
-                widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+                widget.setMinimumWidth(0)
+                widget.setMaximumWidth(sidebar_w)
+                widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         apply_log_control_panel_metrics(self.ui, scale)
-        if hasattr(self.ui, 'edit_live_log_dir'):
-            self.ui.edit_live_log_dir.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        if hasattr(self.ui, 'edit_live_log_name'):
-            self.ui.edit_live_log_name.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
     def _sync_localized_log_defaults(self):
         current = self._sanitize_log_basename(self.ui.edit_live_log_name.text())
@@ -358,9 +371,27 @@ class MonitorWindow(QMainWindow):
         if current in (tr_in('zh', 'status.ready'), tr_in('en', 'status.ready')):
             self._set_status(tr('status.ready'), 'normal')
 
+    def _resolve_log_save_dir(self, save_dir):
+        path = (save_dir or '').strip() or 'log'
+        if os.path.isabs(path):
+            return os.path.abspath(path)
+        return str(project_path(path))
+
     def _default_live_log_dir(self):
-        rel = self._live_log_cfg().get('save_dir', 'logs')
-        return str(project_path(rel))
+        return self._resolve_log_save_dir(self._live_log_cfg().get('save_dir', 'log'))
+
+    def _persist_live_log_save_dir(self, directory):
+        directory = os.path.abspath(os.path.expanduser(directory))
+        app_root = str(project_path('.'))
+        try:
+            rel = os.path.relpath(directory, app_root)
+            stored = rel if not rel.startswith('..') else directory
+        except ValueError:
+            stored = directory
+        current = self._resolve_log_save_dir(self._live_log_cfg().get('save_dir', 'log'))
+        if os.path.normcase(directory) == os.path.normcase(current):
+            return
+        update_config({'log_monitor': {'save_dir': stored}})
 
     def _sanitize_log_basename(self, name):
         name = (name or '').strip()
@@ -446,6 +477,10 @@ class MonitorWindow(QMainWindow):
     def _setup_live_log_settings(self):
         self.ui.edit_live_log_name.setText(self._default_live_log_name())
         self.ui.edit_live_log_dir.setText(self._default_live_log_dir())
+        try:
+            os.makedirs(self._default_live_log_dir(), exist_ok=True)
+        except OSError:
+            logger.warning("Could not create default log directory", exc_info=True)
         self.ui.edit_live_log_name.textChanged.connect(self._on_live_log_name_changed)
         self.ui.edit_live_log_name.returnPressed.connect(self._on_live_log_name_return_pressed)
         self.ui.edit_live_log_dir.editingFinished.connect(self._on_live_log_dir_changed)
@@ -462,10 +497,9 @@ class MonitorWindow(QMainWindow):
         self._apply_live_log_rename()
 
     def _apply_live_log_rename(self):
-        if self._live_log_page is None:
-            return
+        self._ensure_live_log_tab()
         new_path = os.path.abspath(self._live_log_filepath())
-        old_path = self._live_log_page.filepath or self._live_log_file_path
+        old_path = self._live_log_file_path or self._live_log_page.filepath
         if old_path:
             old_path = os.path.abspath(old_path)
 
@@ -474,47 +508,35 @@ class MonitorWindow(QMainWindow):
         if old_path and os.path.normcase(old_path) == os.path.normcase(new_path):
             return
 
-        if old_path and os.path.isfile(old_path):
-            if os.path.exists(new_path):
-                QMessageBox.warning(self, tr('dialog.rename_failed'), tr('msg.file_exists', path=new_path))
-                return
-            try:
-                had_open_handle = (
-                    self._live_log_file is not None
-                    and self._live_log_file_path
-                    and os.path.normcase(self._live_log_file_path) == os.path.normcase(old_path)
-                )
-                if had_open_handle:
-                    self._close_live_log_file()
-                os.makedirs(os.path.dirname(new_path), exist_ok=True)
-                os.rename(old_path, new_path)
-            except OSError as e:
-                logger.warning("Failed to rename live log file %s -> %s: %s", old_path, new_path, e)
-                QMessageBox.warning(
-                    self,
-                    tr('dialog.rename_failed'),
-                    tr('msg.cannot_rename', old_path=old_path, new_path=new_path, error=e),
-                )
-                if self.worker and self.worker.isRunning():
-                    self._open_live_log_file()
-                return
-        else:
-            try:
-                os.makedirs(os.path.dirname(new_path), exist_ok=True)
-                if not os.path.exists(new_path):
-                    with open(new_path, 'w', encoding='utf-8-sig', newline='\n'):
-                        pass
-            except OSError as e:
-                logger.warning("Failed to create live log file %s: %s", new_path, e)
-                QMessageBox.warning(self, tr('dialog.create_failed'), tr('msg.cannot_create_log', path=new_path, error=e))
-                return
+        try:
+            os.makedirs(os.path.dirname(new_path), exist_ok=True)
+        except OSError as e:
+            logger.warning("Failed to prepare live log directory for %s: %s", new_path, e)
+            QMessageBox.warning(self, tr('dialog.create_failed'), tr('msg.cannot_create_log', path=new_path, error=e))
+            return
+
+        was_writing = self._live_log_file is not None
+        if was_writing:
+            self._close_live_log_file()
 
         self._live_log_page.filepath = new_path
-        if self.worker and self.worker.isRunning():
+
+        monitoring = self.worker and self.worker.isRunning()
+        if was_writing or monitoring:
             self._open_live_log_file()
+
         self._set_status(tr('status.log_updated', name=self._live_log_tab_title()), 'info')
 
     def _on_live_log_dir_changed(self):
+        raw = self.ui.edit_live_log_dir.text().strip()
+        if not raw:
+            return
+        directory = os.path.abspath(os.path.expanduser(raw))
+        if directory != raw:
+            self.ui.edit_live_log_dir.blockSignals(True)
+            self.ui.edit_live_log_dir.setText(directory)
+            self.ui.edit_live_log_dir.blockSignals(False)
+        self._persist_live_log_save_dir(directory)
         self._reopen_live_log_file_if_active()
 
     def _browse_live_log_dir(self):
@@ -666,8 +688,11 @@ class MonitorWindow(QMainWindow):
 
     def _set_status(self, text, level='normal'):
         colors_map = {
-            'normal': TEXT_MUTED, 'info': '#BAE6FD', 'warn': '#FDE047',
-            'error': '#FCA5A5', 'success': '#86EFAC',
+            'normal': TEXT_MUTED,
+            'info': STATUS_INFO,
+            'warn': STATUS_WARN,
+            'error': STATUS_ERROR,
+            'success': STATUS_SUCCESS,
         }
         self._status_default.setText(text)
         apply_status_message_style(self._status_default, colors_map.get(level, colors_map['normal']))
@@ -795,8 +820,8 @@ class MonitorWindow(QMainWindow):
             edit.setTextCursor(found_cursor)
             edit.centerCursor()
             selection = QTextEdit.ExtraSelection()
-            selection.format.setBackground(QColor("#0284C7"))
-            selection.format.setForeground(QColor("#FFFFFF"))
+            selection.format.setBackground(QColor(ACCENT))
+            selection.format.setForeground(QColor(SELECTION_TEXT))
             selection.cursor = found_cursor
             selection.cursor.select(QTextCursor.BlockUnderCursor)
             edit.setExtraSelections([selection])
@@ -817,17 +842,13 @@ class MonitorWindow(QMainWindow):
     def setup_crosshair(self):
         self.v_lines = []
         for p in [self.ui.p_p, self.ui.p_in, self.ui.p_out, self.ui.p_bat]:
-            v_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(color='#38BDF8', width=1.5, style=Qt.DashLine))
+            v_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(color=CROSSHAIR_COLOR, width=1.5, style=Qt.DashLine))
             v_line.setVisible(False)
             p.addItem(v_line, ignoreBounds=True)
             self.v_lines.append(v_line)
         self.hud_label = QLabel(self.ui.graph_widget)
         self.hud_label.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.hud_label.setStyleSheet(
-            "QLabel { background-color: rgba(15, 23, 42, 250); color: #FFFFFF; "
-            "border: 1px solid #38BDF8; border-radius: 6px; padding: 10px; "
-            f"{ui_font_css(FS_SUBTITLE, FW_NORMAL, family=FONT_FAMILY_MONO)} }}"
-        )
+        self._apply_crosshair_theme()
         self.hud_label.hide()
         self.ui.graph_widget.installEventFilter(self)
         self.proxy = pg.SignalProxy(self.ui.graph_widget.scene().sigMouseMoved, rateLimit=60, slot=self.on_mouse_moved)
@@ -862,14 +883,14 @@ class MonitorWindow(QMainWindow):
                 except IndexError: self.hide_tooltip(); return
                 for line in self.v_lines: line.setPos(closest_x); line.setVisible(True)
                 html = (
-                    f"<div style='font-size: {FS_SUBTITLE}pt; line-height: 1.5; color:#FFFFFF;'>"
-                    f"<b style='color:#FFFFFF; font-size: {FS_SUBTITLE + 1}pt;'>⏱ {closest_x:.2f} s</b>"
-                    f"<hr style='border: 1px solid #64748B; margin: 4px 0;'>"
+                    f"<div style='font-size: {FS_SUBTITLE}pt; line-height: 1.5; color:{HUD_TEXT};'>"
+                    f"<b style='color:{HUD_TEXT}; font-size: {FS_SUBTITLE + 1}pt;'>⏱ {closest_x:.2f} s</b>"
+                    f"<hr style='border: 1px solid {TEMP_NORMAL_BORDER}; margin: 4px 0;'>"
                 )
-                if active_p == self.ui.p_p: html += f"<b>PWR:</b> <span style='color:#E879F9'>{p_val:.2f} W</span>"
-                elif active_p == self.ui.p_in: html += f"<b>IN :</b> <span style='color:#FFE566'>{vi_val:.2f} V</span> / <span style='color:#4ADE80'>{ii_val:.2f} A</span>"
-                elif active_p == self.ui.p_out: html += f"<b>OUT:</b> <span style='color:#FFE566'>{vo_val:.2f} V</span> / <span style='color:#4ADE80'>{io_val:.2f} A</span>"
-                elif active_p == self.ui.p_bat: html += f"<b>BAT:</b> <span style='color:#FFE566'>{vb_val:.2f} V</span> / <span style='color:#4ADE80'>{ib_val:.2f} A</span>"
+                if active_p == self.ui.p_p: html += f"<b>PWR:</b> <span style='color:{CHART_POWER}'>{p_val:.2f} W</span>"
+                elif active_p == self.ui.p_in: html += f"<b>IN :</b> <span style='color:{CHART_VOLTAGE}'>{vi_val:.2f} V</span> / <span style='color:{CHART_CURRENT}'>{ii_val:.2f} A</span>"
+                elif active_p == self.ui.p_out: html += f"<b>OUT:</b> <span style='color:{CHART_VOLTAGE}'>{vo_val:.2f} V</span> / <span style='color:{CHART_CURRENT}'>{io_val:.2f} A</span>"
+                elif active_p == self.ui.p_bat: html += f"<b>BAT:</b> <span style='color:{CHART_VOLTAGE}'>{vb_val:.2f} V</span> / <span style='color:{CHART_CURRENT}'>{ib_val:.2f} A</span>"
                 self.hud_label.setText(html + "</div>")
                 self.hud_label.adjustSize()
                 local_pos = self.ui.graph_widget.mapFromGlobal(QCursor.pos())
@@ -881,43 +902,20 @@ class MonitorWindow(QMainWindow):
             logger.debug("on_mouse_moved failed", exc_info=True)
             self.hide_tooltip()
 
-    def _setup_app_menus(self):
+    def _setup_view_menu(self):
         menu_bar = self.menuBar()
         menu_bar.setStyleSheet(menu_bar_stylesheet())
+        self._view_menu = QMenu(menu_bar)
+        self._panel_menu = self._view_menu.addMenu(tr('menu.panels'))
 
-        self._menu_serial_tool = menu_bar.addMenu(tr('menu.serial_tool'))
-        self._act_show_serial = self._menu_serial_tool.addAction(tr('tool.show'))
-        self._act_show_serial.triggered.connect(lambda: self._activate_tool(self.ui.log_panel))
-        self._act_hide_serial = self._menu_serial_tool.addAction(tr('tool.hide'))
-        self._act_hide_serial.triggered.connect(lambda: self._hide_tool_panel(self.ui.log_panel))
+        self._act_show_chart = self._panel_menu.addAction(tr('tab.oscilloscope'))
+        self._act_show_chart.setCheckable(True)
+        self._act_show_chart.setChecked(True)
 
-        self._menu_waveform_scope = menu_bar.addMenu(tr('menu.waveform_scope'))
-        self._act_show_waveform = self._menu_waveform_scope.addAction(tr('tool.show'))
-        self._act_show_waveform.triggered.connect(lambda: self._activate_tool(self.ui.chart_panel))
-        self._act_hide_waveform = self._menu_waveform_scope.addAction(tr('tool.hide'))
-        self._act_hide_waveform.triggered.connect(lambda: self._hide_tool_panel(self.ui.chart_panel))
+        self._act_show_log = self._panel_menu.addAction(tr('tab.log_monitor'))
+        self._act_show_log.setCheckable(True)
+        self._act_show_log.setChecked(True)
 
-        self._menu_tektronix_scope = menu_bar.addMenu(tr('menu.tektronix_scope'))
-        self._act_open_tektronix = self._menu_tektronix_scope.addAction(tr('tool.open'))
-        self._act_open_tektronix.triggered.connect(self._open_tektronix_scope)
-
-        self._setup_view_menu()
-        self.ui.main_tabs.currentChanged.connect(self._on_main_tab_changed)
-
-    def _activate_tool(self, panel):
-        self._set_tab_visible(panel, True)
-        self.ui.main_tabs.setCurrentWidget(panel)
-
-    def _hide_tool_panel(self, panel):
-        other = self.ui.chart_panel if panel is self.ui.log_panel else self.ui.log_panel
-        if not self._is_tab_visible(other):
-            self._activate_tool(other)
-            return
-        self._set_tab_visible(panel, False)
-        self._ensure_visible_tab()
-
-    def _setup_view_menu(self):
-        self._view_menu = self.menuBar().addMenu(tr('menu.view'))
         self._lang_menu = self._view_menu.addMenu(tr('menu.language'))
         self._lang_group = QActionGroup(self)
         self._act_lang_en = self._lang_menu.addAction('English')
@@ -932,17 +930,237 @@ class MonitorWindow(QMainWindow):
         else:
             self._act_lang_zh.setChecked(True)
 
-    def _open_tektronix_scope(self):
-        if self._tek_scope_window is None:
-            from ..apps.tektronix_scope import TektronixScopeWindow
-            self._tek_scope_window = TektronixScopeWindow(self)
-            self._tek_scope_window.destroyed.connect(self._on_tek_scope_destroyed)
-        self._tek_scope_window.show()
-        self._tek_scope_window.raise_()
-        self._tek_scope_window.activateWindow()
+        self._theme_menu = self._view_menu.addMenu(tr('menu.theme'))
+        self._theme_group = QActionGroup(self)
+        self._act_theme_dark = self._theme_menu.addAction(tr('menu.theme_dark'))
+        self._act_theme_dark.setCheckable(True)
+        self._theme_group.addAction(self._act_theme_dark)
+        self._act_theme_light = self._theme_menu.addAction(tr('menu.theme_light'))
+        self._act_theme_light.setCheckable(True)
+        self._theme_group.addAction(self._act_theme_light)
+        self._theme_group.triggered.connect(self._on_theme_selected)
+        self._sync_theme_menu_checks()
 
-    def _on_tek_scope_destroyed(self, _obj=None):
-        self._tek_scope_window = None
+        self._panel_toggles = (
+            (self._act_show_chart, self.ui.chart_panel),
+            (self._act_show_log, self.ui.log_panel),
+        )
+        for action, _panel in self._panel_toggles:
+            action.toggled.connect(self._on_panel_visibility_changed)
+        self.ui.main_tabs.currentChanged.connect(self._on_main_tab_changed)
+
+    def _on_theme_selected(self, action):
+        theme = 'light' if action is self._act_theme_light else 'dark'
+        self._set_theme(theme)
+
+    def _sync_theme_menu_checks(self):
+        if get_theme() == 'light':
+            self._act_theme_light.setChecked(True)
+        else:
+            self._act_theme_dark.setChecked(True)
+
+    def _set_theme(self, theme):
+        if get_theme() == theme:
+            return
+        set_theme(theme)
+        update_config({'ui': {'theme': theme}})
+        self._apply_theme()
+
+    def _apply_theme(self):
+        self.setStyleSheet(full_stylesheet())
+        self.statusBar().setStyleSheet(status_bar_stylesheet())
+        self.menuBar().setStyleSheet(menu_bar_stylesheet())
+        self.ui.reapply_theme(self)
+        for page in self._iter_log_pages():
+            page.reapply_theme()
+        self._apply_crosshair_theme()
+        apply_editable_combo_line_edit(self.ui.cb_baudrate)
+        self._refresh_main_tabs()
+        self._refresh_log_file_tabs()
+        self._update_monitor_button()
+        self._update_session_label()
+        self._retranslate_idle_status()
+        self._sync_theme_menu_checks()
+
+    def _apply_crosshair_theme(self):
+        if not hasattr(self.ui, 'graph_widget'):
+            return
+        for v_line in getattr(self, 'v_lines', []):
+            v_line.setPen(pg.mkPen(color=CROSSHAIR_COLOR, width=1.5, style=Qt.DashLine))
+        self.hud_label.setStyleSheet(
+            f"QLabel {{ background-color: {HUD_BG_RGBA}; color: {HUD_TEXT}; "
+            f"border: 1px solid {HUD_BORDER}; border-radius: 6px; padding: 10px; "
+            f"{ui_font_css(FS_SUBTITLE, FW_NORMAL, family=FONT_FAMILY_MONO)} }}"
+        )
+
+    def _setup_unified_header(self):
+        """Settings menu on the main tab bar row; native menu bar hidden."""
+        btn = QToolButton(self)
+        btn.setObjectName('settings_menu_btn')
+        btn.setPopupMode(QToolButton.InstantPopup)
+        btn.setMenu(self._view_menu)
+        btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        btn.setCursor(Qt.ArrowCursor)
+        self._settings_btn = btn
+        self._sync_settings_btn_text()
+        self.ui.main_tabs.setCornerWidget(btn, Qt.TopRightCorner)
+        self.menuBar().hide()
+        QTimer.singleShot(0, self._cache_header_height)
+
+    def _sync_settings_btn_text(self):
+        btn = getattr(self, '_settings_btn', None)
+        if btn is not None:
+            btn.setText(tr('menu.settings').replace('&', ''))
+
+    def _main_header_widgets(self):
+        widgets = [self.ui.main_tabs.tabBar()]
+        btn = getattr(self, '_settings_btn', None)
+        if btn is not None:
+            widgets.append(btn)
+        return widgets
+
+    def _setup_menu_bar_auto_hide(self):
+        self._menu_bar_auto_hide = bool(
+            config_module.CONFIG.get('ui', {}).get('menu_bar_auto_hide', False)
+        )
+        self._menu_bar_hide_timer = QTimer(self)
+        self._menu_bar_hide_timer.setSingleShot(True)
+        self._menu_bar_hide_timer.setInterval(400)
+        self._menu_bar_hide_timer.timeout.connect(self._hide_menu_bar_if_needed)
+        self._header_poll_timer = QTimer(self)
+        self._header_poll_timer.setInterval(80)
+        self._header_poll_timer.timeout.connect(self._poll_header_auto_hide)
+        self._cached_header_height = 0
+
+        for widget in self._main_header_widgets():
+            widget.setContextMenuPolicy(Qt.CustomContextMenu)
+            widget.customContextMenuRequested.connect(self._on_menu_bar_context_menu)
+            widget.installEventFilter(self)
+
+        self.ui.main_tabs.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.ui.main_tabs.customContextMenuRequested.connect(self._on_menu_bar_context_menu)
+        self.ui.main_tabs.setMouseTracking(True)
+        self.ui.main_tabs.installEventFilter(self)
+
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
+
+        central = self.centralWidget()
+        if central is not None:
+            central.setMouseTracking(True)
+            central.installEventFilter(self)
+        self.setMouseTracking(True)
+        self.installEventFilter(self)
+
+        if self._menu_bar_auto_hide:
+            self._hide_main_header()
+            self._header_poll_timer.start()
+
+    def _cache_header_height(self):
+        bar = self.ui.main_tabs.tabBar()
+        btn = getattr(self, '_settings_btn', None)
+        heights = [bar.sizeHint().height(), bar.height()]
+        if btn is not None:
+            heights.extend((btn.sizeHint().height(), btn.height()))
+        h = max(h for h in heights if h > 0) if any(h > 0 for h in heights) else 0
+        if h > 0:
+            self._cached_header_height = h
+
+    def _header_reveal_zone_height(self):
+        scale = getattr(self, '_ui_scale', 1.0)
+        cached = getattr(self, '_cached_header_height', 0)
+        return max(cached, int(28 * scale)) + int(4 * scale)
+
+    def _pointer_in_header_reveal_zone(self):
+        if not self.isVisible():
+            return False
+        pos = self.mapFromGlobal(QCursor.pos())
+        if pos.x() < 0 or pos.x() > self.width() or pos.y() < 0:
+            return False
+        zone = self._header_reveal_zone_height()
+        if getattr(self, '_menu_bar_auto_hide', False):
+            return pos.y() <= zone
+        tabs = self.ui.main_tabs
+        tabs_top = tabs.mapTo(self, tabs.rect().topLeft()).y()
+        return tabs_top <= pos.y() <= tabs_top + zone
+
+    def _is_header_context_menu_event(self, event):
+        if event.type() == QEvent.ContextMenu:
+            return True
+        return event.type() == QEvent.MouseButtonPress and event.button() == Qt.RightButton
+
+    def _poll_header_auto_hide(self):
+        if not getattr(self, '_menu_bar_auto_hide', False) or not self.isVisible():
+            return
+        widgets = self._main_header_widgets()
+        visible = any(w.isVisible() for w in widgets)
+        in_zone = self._pointer_in_header_reveal_zone()
+        if not visible and in_zone:
+            self._menu_bar_hide_timer.stop()
+            self._show_main_header()
+        elif visible and not in_zone and not self._menu_bar_hide_timer.isActive():
+            self._menu_bar_hide_timer.start()
+
+    def _on_menu_bar_context_menu(self, pos):
+        sender = self.sender()
+        if sender is not None:
+            self._show_header_context_menu(sender.mapToGlobal(pos))
+        else:
+            self._show_header_context_menu(QCursor.pos())
+
+    def _show_header_context_menu(self, global_pos):
+        if self._menu_bar_auto_hide:
+            self._menu_bar_hide_timer.stop()
+            self._show_main_header()
+        menu = QMenu(self)
+        group = QActionGroup(self)
+        act_auto_hide = menu.addAction(tr('menu.menu_bar_auto_hide'))
+        act_auto_hide.setCheckable(True)
+        group.addAction(act_auto_hide)
+        act_always_show = menu.addAction(tr('menu.menu_bar_always_show'))
+        act_always_show.setCheckable(True)
+        group.addAction(act_always_show)
+        if self._menu_bar_auto_hide:
+            act_auto_hide.setChecked(True)
+        else:
+            act_always_show.setChecked(True)
+
+        def on_selected(selected):
+            self._set_menu_bar_auto_hide(selected is act_auto_hide)
+
+        group.triggered.connect(on_selected)
+        menu.exec_(global_pos)
+
+    def _set_menu_bar_auto_hide(self, auto_hide):
+        if auto_hide == self._menu_bar_auto_hide:
+            return
+        self._menu_bar_auto_hide = auto_hide
+        update_config({'ui': {'menu_bar_auto_hide': auto_hide}})
+        self._menu_bar_hide_timer.stop()
+        if auto_hide:
+            self._hide_menu_bar_if_needed()
+            self._header_poll_timer.start()
+        else:
+            self._header_poll_timer.stop()
+            self._show_main_header()
+
+    def _show_main_header(self):
+        for widget in self._main_header_widgets():
+            if not widget.isVisible():
+                widget.show()
+        QTimer.singleShot(0, self._cache_header_height)
+
+    def _hide_main_header(self):
+        for widget in self._main_header_widgets():
+            widget.hide()
+
+    def _hide_menu_bar_if_needed(self):
+        if not self._menu_bar_auto_hide:
+            return
+        if self._pointer_in_header_reveal_zone():
+            return
+        self._hide_main_header()
 
     def _tab_index(self, panel):
         return self.ui.main_tabs.indexOf(panel)
@@ -965,7 +1183,7 @@ class MonitorWindow(QMainWindow):
         return True
 
     def _is_chart_tab_active(self):
-        if not self._is_tab_visible(self.ui.chart_panel):
+        if not self._act_show_chart.isChecked():
             return False
         return self.ui.main_tabs.currentWidget() == self.ui.chart_panel
 
@@ -984,6 +1202,19 @@ class MonitorWindow(QMainWindow):
         if self._is_chart_tab_active() and hasattr(self.ui, 'graph_widget'):
             QTimer.singleShot(0, self.ui.graph_widget.updateGeometry)
 
+    def _on_panel_visibility_changed(self, _checked=False):
+        if not any(action.isChecked() for action, _ in self._panel_toggles):
+            sender = self.sender()
+            if sender is not None:
+                sender.blockSignals(True)
+                sender.setChecked(True)
+                sender.blockSignals(False)
+            return
+        for action, panel in self._panel_toggles:
+            self._set_tab_visible(panel, action.isChecked())
+        self._ensure_visible_tab()
+        QTimer.singleShot(0, self._finalize_panel_layout)
+
     def _finalize_panel_layout(self):
         if not self._is_chart_tab_active():
             self.hide_tooltip()
@@ -995,6 +1226,7 @@ class MonitorWindow(QMainWindow):
         if not getattr(self, '_initial_layout_done', False):
             QTimer.singleShot(0, self._finalize_panel_layout)
             self._initial_layout_done = True
+        QTimer.singleShot(0, self._cache_header_height)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -1008,6 +1240,21 @@ class MonitorWindow(QMainWindow):
             self.hide_tooltip()
 
     def eventFilter(self, obj, event):
+        if self._is_header_context_menu_event(event) and self.isActiveWindow() and self._pointer_in_header_reveal_zone():
+            self._show_header_context_menu(event.globalPos())
+            return True
+        if getattr(self, '_menu_bar_auto_hide', False):
+            header_widgets = set(self._main_header_widgets())
+            if obj in header_widgets:
+                if event.type() == QEvent.Enter:
+                    self._menu_bar_hide_timer.stop()
+                    self._show_main_header()
+                elif event.type() == QEvent.Leave:
+                    self._menu_bar_hide_timer.start()
+            elif obj in (self, self.centralWidget(), self.ui.main_tabs):
+                if event.type() == QEvent.MouseMove and self._pointer_in_header_reveal_zone():
+                    self._menu_bar_hide_timer.stop()
+                    self._show_main_header()
         if obj == self.ui.graph_widget and event.type() in (QEvent.Leave, QEvent.Hide):
             self.hide_tooltip()
         edit = self._log_edit_for_viewport(obj)
@@ -1084,7 +1331,8 @@ class MonitorWindow(QMainWindow):
 
             if d['t'] >= temp_w:
                 self.ui.lcd_temp.setStyleSheet(
-                    'background-color: #450A0A; color: #FECACA; border: 2px solid #EF4444; border-radius: 4px;'
+                    f'background-color: {TEMP_ALERT_BG}; color: {TEMP_ALERT_FG}; '
+                    f'border: 2px solid {TEMP_ALERT_BORDER}; border-radius: 4px;'
                 )
                 if not getattr(self, '_temp_warned', False):
                     self.append_log(
@@ -1096,9 +1344,7 @@ class MonitorWindow(QMainWindow):
                     self._active_alerts.add('OTP')
                     self.show_protection_alert(tr('protect.otp'), d['t'], temp_w, "°C")
             else:
-                self.ui.lcd_temp.setStyleSheet(
-                    f'background-color: #151D2E; color: {LCD_TEMP}; border: 1px solid #5B6B7C; border-radius: 4px;'
-                )
+                apply_lcd_style(self.ui.lcd_temp, LCD_TEMP)
                 if d['t'] < temp_r: self._temp_warned = False; self._active_alerts.discard('OTP')
 
             if self.worker and self.worker.isRunning():
@@ -1401,6 +1647,4 @@ class MonitorWindow(QMainWindow):
             self.db_worker.stop()
         if hasattr(self, 'fetch_worker'):
             self.fetch_worker.stop()
-        if self._tek_scope_window is not None:
-            self._tek_scope_window.close()
         event.accept()

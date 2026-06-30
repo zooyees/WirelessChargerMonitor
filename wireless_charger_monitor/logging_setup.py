@@ -11,7 +11,7 @@ def setup_logging() -> logging.Logger:
     level_name = sys_cfg.get('log_level', 'INFO').upper()
     level = getattr(logging, level_name, logging.INFO)
     log_file = project_path(sys_cfg.get('log_file', 'monitor.log'))
-    root = logging.getLogger('WirelessChargerMonitor')
+    root = logging.getLogger('WiParse')
     if root.handlers:
         return root
     root.setLevel(level)

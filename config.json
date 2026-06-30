@@ -10,7 +10,9 @@
     "render_interval_ms": 100,
     "chart_max_points": 500,
     "default_window_size_sec": 60.0,
-    "language": "zh"
+    "language": "zh",
+    "menu_bar_auto_hide": false,
+    "theme": "light"
   },
   "alerts": {
     "temp_warning_threshold": 60,
@@ -33,7 +35,7 @@
   "serial": {
     "default_baudrates": [
       "115200",
-      "921600",
+      "1000000",
       "2000000"
     ],
     "demo_mode": false,
@@ -45,10 +47,5 @@
     "default_filename": "实时报文",
     "save_dir": "logs",
     "file_extension": "txt"
-  },
-  "apps": {
-    "tektronix_scope": {
-      "save_dir": "scope_captures"
-    }
   }
 }

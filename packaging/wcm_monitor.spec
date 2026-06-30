@@ -27,8 +27,6 @@ excludes = [
     'pandas',
     'PIL',
     'cv2',
-    'pydoc',
-    'doctest',
     'unittest',
     'xmlrpc',
     'numpy.tests',
@@ -58,7 +56,15 @@ excludes = [
 datas = [
     (str(PKG / 'ui' / 'monitor_window.ui'), 'wireless_charger_monitor/ui'),
     (str(ROOT / 'packaging' / 'default_config.json'), '.'),
+    (str(ROOT / 'packaging' / 'WiParse.ico'), 'Icon'),
 ]
+
+_icon_file = (ROOT / 'packaging' / 'WiParse.ico').resolve()
+if not _icon_file.is_file():
+    raise SystemExit(
+        f'Missing build icon: {_icon_file}\n'
+        'Run: python packaging/prepare_icon.py'
+    )
 
 hiddenimports = [
     'serial.tools.list_ports',
@@ -66,13 +72,10 @@ hiddenimports = [
     'serial.tools.list_ports_windows',
     'pyqtgraph',
     'numpy.lib.format',
-    'pyvisa',
-    'pyvisa.constants',
-    'pyvisa.resources',
-    'pyvisa.resources.usb',
-    'pyvisa_py',
-    'pyvisa_py.protocols',
-    'pyvisa_py.protocols.usbtmc',
+    # pyqtgraph.parametertree.interactive imports pydoc at startup
+    'pydoc',
+    'pydoc_data',
+    'doctest',
 ]
 
 a = Analysis(
@@ -98,11 +101,12 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='WirelessChargerMonitor',
+    name='WiParse',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    # UPX can break the PE icon resource table; Explorer / shortcuts then show generic icon.
+    upx=False,
     upx_exclude=[
         'vcruntime140.dll',
         'python*.dll',
@@ -117,4 +121,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=str(_icon_file),
 )

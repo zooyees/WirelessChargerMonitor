@@ -7,28 +7,24 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QSizePolicy, QVBoxLayout, QWidget
 
-from ..apps.waveform_scope import attach_waveform_charts
 from .tab_utils import refresh_tab_widget
 
+from . import theme as ui_theme
+
 from .theme import (
-    MONITOR_WINDOW_STYLESHEET,
-    CANVAS_BG,
-    CHART_TEXT,
+    full_stylesheet,
     LCD_STYLES,
-    PANEL_BG,
-    SURFACE_BG,
-    TEXT_PRIMARY,
-    TEXT_SECONDARY,
-    BORDER,
     apply_data_label_style,
     apply_lcd_style,
     apply_log_control_panel_metrics,
     apply_log_tool_label_style,
+    FS_CAPTION,
+    FS_SUBTITLE,
 )
 
 pg.setConfigOptions(antialias=True)
-pg.setConfigOption('background', PANEL_BG)
-pg.setConfigOption('foreground', CHART_TEXT)
+pg.setConfigOption('background', ui_theme.PANEL_BG)
+pg.setConfigOption('foreground', ui_theme.CHART_TEXT)
 
 _UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 UI_FILE = os.path.join(_UI_DIR, 'monitor_window.ui')
@@ -50,13 +46,6 @@ _WIDGET_NAMES = (
 
 
 class Ui_MonitorWindow:
-    _PANEL_BG = PANEL_BG
-    _CANVAS_BG = CANVAS_BG
-    _SURFACE_BG = SURFACE_BG
-    _TEXT_PRIMARY = TEXT_PRIMARY
-    _TEXT_SECONDARY = TEXT_SECONDARY
-    _BORDER = BORDER
-
     def _ui_scale(self):
         screen = QApplication.primaryScreen()
         if not screen:
@@ -64,23 +53,69 @@ class Ui_MonitorWindow:
         return max(1.0, screen.logicalDotsPerInchX() / 96.0)
 
     @staticmethod
-    def _apply_dark_bg(widget, color):
+    def _apply_panel_bg(widget, color):
         widget.setAutoFillBackground(True)
         pal = widget.palette()
         pal.setColor(QPalette.Window, QColor(color))
         widget.setPalette(pal)
+
+    def reapply_theme(self, MainWindow):
+        MainWindow.setStyleSheet(full_stylesheet())
+        self._apply_panel_bg(self.centralwidget, ui_theme.CANVAS_BG)
+        self._apply_panel_bg(self.main_tabs, ui_theme.CANVAS_BG)
+        self._apply_panel_bg(self.chart_lcd_scroll, ui_theme.PANEL_BG)
+        self._apply_panel_bg(self.chart_lcd_content, ui_theme.PANEL_BG)
+        chart_lcd_pal = self.chart_lcd_content.palette()
+        chart_lcd_pal.setColor(QPalette.WindowText, QColor(ui_theme.TEXT_PRIMARY))
+        self.chart_lcd_content.setPalette(chart_lcd_pal)
+        self._apply_panel_bg(self.chart_panel, ui_theme.PANEL_BG)
+        self._apply_panel_bg(self.log_panel, ui_theme.PANEL_BG)
+        self._apply_panel_bg(self.log_control_panel, ui_theme.PANEL_BG)
+        self._apply_panel_bg(self.log_file_tabs, ui_theme.PANEL_BG)
+        self._setup_scroll_palettes()
+        self._apply_widget_styles()
+        self._reapply_chart_colors()
+        pg.setConfigOption('background', ui_theme.PANEL_BG)
+        pg.setConfigOption('foreground', ui_theme.CHART_TEXT)
+        if hasattr(self, 'graph_widget'):
+            self.graph_widget.setBackground(ui_theme.CHART_BG)
+
+    def _reapply_chart_colors(self):
+        if not hasattr(self, 'p_p'):
+            return
+        axis_pen = pg.mkPen(color=ui_theme.CHART_AXIS, width=1.2)
+        text_pen = pg.mkPen(color=ui_theme.CHART_TEXT)
+        plots = [self.p_p, self.p_in, self.p_out, self.p_bat]
+        for plot in plots:
+            plot.getViewBox().setBackgroundColor(ui_theme.CHART_BG)
+            for axis_name in ('left', 'bottom', 'right'):
+                axis = plot.getAxis(axis_name)
+                if axis is not None:
+                    axis.setPen(axis_pen)
+                    axis.setTextPen(text_pen)
+        for line, color, width in getattr(self, 'line_specs', ()):
+            if line is not None:
+                line.setPen(pg.mkPen(color=color, width=width))
+        self._apply_panel_bg(self.chart_container, ui_theme.CHART_BG)
+        placeholder = getattr(self, 'chart_placeholder', None)
+        if placeholder is None:
+            placeholder = self.chart_container.findChild(QWidget, 'chart_placeholder')
+        if placeholder is not None:
+            pal = placeholder.palette()
+            pal.setColor(QPalette.WindowText, QColor(ui_theme.TEXT_MUTED))
+            placeholder.setPalette(pal)
 
     def setupUi(self, MainWindow):
         if not os.path.isfile(UI_FILE):
             raise FileNotFoundError(f'未找到 UI 文件: {UI_FILE}')
 
         uic.loadUi(UI_FILE, MainWindow)
-        MainWindow.setStyleSheet(MONITOR_WINDOW_STYLESHEET)
+        MainWindow.setStyleSheet(full_stylesheet())
         self._bind_widgets(MainWindow)
         self._apply_scaled_layout(MainWindow)
         self._apply_widget_styles()
         self._setup_scroll_palettes()
-        attach_waveform_charts(self)
+        self._setup_charts()
         self._configure_tabs()
 
     def _bind_widgets(self, MainWindow):
@@ -99,20 +134,20 @@ class Ui_MonitorWindow:
             geo = screen.availableGeometry()
             MainWindow.resize(int(geo.width() * 0.88), int(geo.height() * 0.88))
 
-        self.log_control_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.log_control_panel.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         apply_log_control_panel_metrics(self, scale)
         self.edit_live_log_dir.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.chart_lcd_scroll.setMinimumWidth(int(220 * scale))
-        self._apply_dark_bg(self.centralwidget, self._CANVAS_BG)
-        self._apply_dark_bg(self.main_tabs, self._CANVAS_BG)
-        self._apply_dark_bg(self.chart_lcd_scroll, self._PANEL_BG)
-        self._apply_dark_bg(self.chart_lcd_content, self._PANEL_BG)
+        self._apply_panel_bg(self.centralwidget, ui_theme.CANVAS_BG)
+        self._apply_panel_bg(self.main_tabs, ui_theme.CANVAS_BG)
+        self._apply_panel_bg(self.chart_lcd_scroll, ui_theme.PANEL_BG)
+        self._apply_panel_bg(self.chart_lcd_content, ui_theme.PANEL_BG)
         chart_lcd_pal = self.chart_lcd_content.palette()
-        chart_lcd_pal.setColor(QPalette.WindowText, QColor(self._TEXT_PRIMARY))
+        chart_lcd_pal.setColor(QPalette.WindowText, QColor(ui_theme.TEXT_PRIMARY))
         self.chart_lcd_content.setPalette(chart_lcd_pal)
-        self._apply_dark_bg(self.chart_panel, self._PANEL_BG)
-        self._apply_dark_bg(self.log_panel, self._PANEL_BG)
-        self._apply_dark_bg(self.log_control_panel, self._PANEL_BG)
+        self._apply_panel_bg(self.chart_panel, ui_theme.PANEL_BG)
+        self._apply_panel_bg(self.log_panel, ui_theme.PANEL_BG)
+        self._apply_panel_bg(self.log_control_panel, ui_theme.PANEL_BG)
         panel_layout = self.log_panel.layout()
         if panel_layout is not None:
             panel_layout.setStretch(0, 0)
@@ -129,12 +164,12 @@ class Ui_MonitorWindow:
         self._configure_log_file_tabs()
 
         for btn in (self.btn_start, self.btn_open_log, self.btn_browse_log_dir, self.btn_new_live_log):
-            btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         for lbl in (self.lbl_live_log_name, self.lbl_live_log_dir):
-            lbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.cb_port.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.cb_baudrate.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.edit_live_log_name.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            lbl.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        self.cb_port.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.cb_baudrate.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.edit_live_log_name.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.main_tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.chart_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -145,7 +180,7 @@ class Ui_MonitorWindow:
         tabs.setTabPosition(tabs.North)
         tabs.setTabsClosable(True)
         tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self._apply_dark_bg(tabs, self._PANEL_BG)
+        self._apply_panel_bg(tabs, ui_theme.PANEL_BG)
         refresh_tab_widget(tabs, preset='file')
 
     def _apply_widget_styles(self):
@@ -176,7 +211,7 @@ class Ui_MonitorWindow:
         for scroll in (self.chart_lcd_scroll,):
             scroll.viewport().setAutoFillBackground(True)
             vp_pal = scroll.viewport().palette()
-            vp_pal.setColor(QPalette.Background, QColor(self._PANEL_BG))
+            vp_pal.setColor(QPalette.Background, QColor(ui_theme.PANEL_BG))
             scroll.viewport().setPalette(vp_pal)
 
     def _configure_tabs(self):
@@ -188,3 +223,113 @@ class Ui_MonitorWindow:
             tabs.tabBar().moveTab(log_idx, 0)
         tabs.setCurrentWidget(self.log_panel)
         refresh_tab_widget(tabs, preset='main')
+
+    def _setup_charts(self):
+        layout = self.chart_container.layout()
+        if layout is None:
+            layout = QVBoxLayout(self.chart_container)
+        else:
+            while layout.count():
+                item = layout.takeAt(0)
+                w = item.widget()
+                if w is not None:
+                    w.deleteLater()
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.graph_widget = pg.GraphicsLayoutWidget()
+        layout.addWidget(self.graph_widget)
+
+        scale = self._ui_scale()
+        self.graph_widget.ci.layout.setSpacing(12)
+        self.graph_widget.ci.layout.setContentsMargins(10, 10, 15, 10)
+
+        self.vbs = []
+        self.dual_plots = []
+        chart_fs = max(FS_CAPTION, min(FS_SUBTITLE, round(FS_CAPTION * scale)))
+        font_css = {'font-size': f'{chart_fs}pt', 'font-family': 'Microsoft YaHei', 'font-weight': 'bold'}
+        axis_pen = pg.mkPen(color=ui_theme.CHART_AXIS, width=1.2)
+        text_pen = pg.mkPen(color=ui_theme.CHART_TEXT)
+
+        def add_plot(row, label1, color1, label2=None, color2=None, link_plot=None):
+            p = self.graph_widget.addPlot(row=row, col=0)
+            p.getViewBox().setBackgroundColor(ui_theme.CHART_BG)
+            p.setDefaultPadding(0.08)
+            p.setMinimumHeight(int(120 * scale))
+            p.enableAutoRange(x=False, y=True)
+            p.getViewBox().enableAutoRange(x=False, y=True)
+
+            ax_left = p.getAxis('left')
+            ax_left.setLabel(label1, color=color1, **font_css)
+            ax_left.setPen(axis_pen)
+            ax_left.setTextPen(text_pen)
+            ax_left.setGrid(100)
+
+            ax_bottom = p.getAxis('bottom')
+            ax_bottom.setPen(axis_pen)
+            ax_bottom.setTextPen(text_pen)
+            ax_bottom.setGrid(100)
+
+            if link_plot:
+                p.setXLink(link_plot)
+            else:
+                self.p_main = p
+
+            line1 = p.plot(pen=pg.mkPen(color=color1, width=2.2))
+            line2 = None
+            if label2 and color2:
+                vb2 = pg.ViewBox()
+                vb2.enableAutoRange(x=False, y=True)
+                self.vbs.append((p, vb2))
+                p.scene().addItem(vb2)
+                p.getAxis('right').linkToView(vb2)
+                vb2.setXLink(p)
+                vb2.setZValue(10)
+                ax_right = p.getAxis('right')
+                ax_right.setLabel(label2, color=color2, **font_css)
+                ax_right.setPen(axis_pen)
+                ax_right.setTextPen(text_pen)
+                p.showAxis('right')
+                line2 = pg.PlotDataItem(pen=pg.mkPen(color=color2, width=2.0))
+                vb2.addItem(line2)
+            return p, line1, line2
+
+        self.p_p, self.line_power, _ = add_plot(0, 'POWER (W)', ui_theme.CHART_POWER)
+        self.p_in, self.line_v_in, self.line_i_in = add_plot(
+            1, 'INPUT (V)', ui_theme.CHART_VOLTAGE, 'INPUT (A)', ui_theme.CHART_CURRENT, link_plot=self.p_p,
+        )
+        self.p_out, self.line_v_out, self.line_i_out = add_plot(
+            2, 'OUTPUT (V)', ui_theme.CHART_VOLTAGE, 'OUTPUT (A)', ui_theme.CHART_CURRENT, link_plot=self.p_p,
+        )
+        self.p_bat, self.line_v_bat, self.line_i_bat = add_plot(
+            3, 'BATTERY (V)', ui_theme.CHART_VOLTAGE, 'BATTERY (A)', ui_theme.CHART_CURRENT, link_plot=self.p_p,
+        )
+
+        self.dual_plots = [
+            (self.p_in, self.vbs[0][1], 'vi', 'ii'),
+            (self.p_out, self.vbs[1][1], 'vo', 'io'),
+            (self.p_bat, self.vbs[2][1], 'vb', 'ib'),
+        ]
+
+        self.line_specs = [
+            (self.line_power, ui_theme.CHART_POWER, 2.2),
+            (self.line_v_in, ui_theme.CHART_VOLTAGE, 2.2),
+            (self.line_i_in, ui_theme.CHART_CURRENT, 2.0),
+            (self.line_v_out, ui_theme.CHART_VOLTAGE, 2.2),
+            (self.line_i_out, ui_theme.CHART_CURRENT, 2.0),
+            (self.line_v_bat, ui_theme.CHART_VOLTAGE, 2.2),
+            (self.line_i_bat, ui_theme.CHART_CURRENT, 2.0),
+        ]
+        self._reapply_chart_colors()
+
+        self.p_p.getAxis('bottom').setStyle(showValues=False)
+        self.p_in.getAxis('bottom').setStyle(showValues=False)
+        self.p_out.getAxis('bottom').setStyle(showValues=False)
+
+        def update_views():
+            for p, vb in self.vbs:
+                vb.setGeometry(p.vb.sceneBoundingRect())
+                vb.linkedViewChanged(p.vb, vb.XAxis)
+
+        update_views()
+        for p, _ in self.vbs:
+            p.vb.sigResized.connect(update_views)

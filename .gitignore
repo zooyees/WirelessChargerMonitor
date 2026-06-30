@@ -17,7 +17,6 @@ Unknown_Qi_Commands_Log.txt
 Report_*.pdf
 Logs_*.txt
 Qi_Monitor_*.csv
-scope_captures/
 
 # IDE
 .idea/

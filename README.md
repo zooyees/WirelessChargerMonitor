@@ -1,4 +1,4 @@
-# 手机无线充电监控系统 (WirelessChargerMonitor)
+# WiParse
 
 面向 Qi 2.2.1 协议的手机无线充电测试上位机，支持实时波形监控、报文解析、安全告警、数据持久化与 PDF 测试报告导出。
 
@@ -84,7 +84,7 @@ TX0:[HH:MM:SS.mmm] FSK 40 03 F
 ## 工程结构
 
 ```
-WirelessChargerMonitor/
+WiParse/
 ├── main.py                          # 启动入口（薄封装）
 ├── config.json                      # 用户配置（相对路径基于项目根目录）
 ├── requirements.txt
@@ -108,8 +108,6 @@ WirelessChargerMonitor/
     │   └── main_window.py           # 主窗口业务逻辑
     ├── protocol/
     │   └── qi_parser.py             # Qi 2.2.1 协议解析
-    └── report/
-        └── engine.py                # PDF 测试报告
 ```
 
 运行时自动生成（已在 `.gitignore` 中忽略）：`charging_data.db`、`monitor.log`、`Unknown_Qi_Commands_Log.txt`、导出 PDF/CSV 等。
@@ -137,4 +135,4 @@ WirelessChargerMonitor/
 演示模式在串口不可用时生成模拟数据，界面会显示橙色「演示模式」警示，不可用于正式测试报告。
 
 **Q: 如何用 Qt Designer 修改界面？**  
-用 Designer 打开 `wireless_charger_monitor/ui/monitor_window.ui`，保存后直接运行即可。样式以 `theme.py` 为单一来源；修改主题后请运行 `python tools/generate_monitor_ui.py` 同步 `.ui` 预览效果。PyQtGraph 图表区域由 `loader.py` 运行时注入，Design 模式下显示占位提示。
+用 Designer 打开 `wireless_charger_monitor/ui/monitor_window.ui`，保存后直接运行即可。样式以 `theme.py` 为单一来源，运行时由 `loader.py` 注入；`.ui` 内嵌 QSS 仅用于 Designer 预览。PyQtGraph 图表区域由 `loader.py` 运行时注入，Design 模式下显示占位提示。

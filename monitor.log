@@ -725,7 +725,110 @@ serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle
 2026-06-27 01:59:09,485 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
 2026-06-27 02:05:03,450 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
 2026-06-27 02:05:04,116 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
-2026-06-30 18:14:26,247 [INFO] WirelessChargerMonitor: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
-2026-06-30 18:14:27,080 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
-2026-06-30 18:22:18,963 [INFO] WirelessChargerMonitor: DBWorker stopped
-2026-06-30 18:22:19,027 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-06-27 08:01:15,914 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:01:16,341 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 08:10:27,946 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:10:28,146 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 08:14:51,834 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:14:52,288 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 08:17:50,382 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:17:50,554 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 08:18:58,388 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:18:58,842 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 08:18:59,070 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-06-27 08:18:59,133 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-06-27 08:20:07,158 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:20:07,537 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 08:23:34,251 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:23:34,811 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 08:24:50,651 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:24:51,018 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 08:30:22,100 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:30:22,551 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 08:32:19,729 [INFO] WirelessChargerMonitor: Session created: id=32 uuid=713398CC port=COM5
+2026-06-27 08:32:19,741 [INFO] WirelessChargerMonitor: Monitoring start requested: session=32 port=COM5 baud=2000000 demo=False
+2026-06-27 08:32:24,926 [ERROR] WirelessChargerMonitor: Failed to open COM5 @ 2000000 baud: could not open port 'COM5': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 08:32:24,928 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: Failed to open COM5 @ 2000000 baud: could not open port 'COM5': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 08:32:27,813 [INFO] WirelessChargerMonitor: Session closed: id=32 ended_at=2026-06-27 08:32:27
+2026-06-27 08:32:48,018 [INFO] WirelessChargerMonitor: Session created: id=33 uuid=D9FD6E93 port=COM3
+2026-06-27 08:32:48,024 [INFO] WirelessChargerMonitor: Monitoring start requested: session=33 port=COM3 baud=2000000 demo=False
+2026-06-27 08:32:48,167 [ERROR] WirelessChargerMonitor: Failed to open COM3 @ 2000000 baud: Cannot configure port, something went wrong. Original message: OSError(22, 'The parameter is incorrect.', None, 87)
+2026-06-27 08:32:48,168 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: Failed to open COM3 @ 2000000 baud: Cannot configure port, something went wrong. Original message: OSError(22, 'The parameter is incorrect.', None, 87)
+2026-06-27 08:32:49,719 [INFO] WirelessChargerMonitor: Session closed: id=33 ended_at=2026-06-27 08:32:49
+2026-06-27 08:33:07,988 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-27 08:33:13,513 [INFO] WirelessChargerMonitor: Session created: id=34 uuid=FCF05646 port=COM12
+2026-06-27 08:33:13,520 [INFO] WirelessChargerMonitor: Monitoring start requested: session=34 port=COM12 baud=2000000 demo=False
+2026-06-27 08:33:13,523 [INFO] WirelessChargerMonitor: Serial connected: COM12 @ 2000000
+2026-06-27 08:33:13,524 [INFO] WirelessChargerMonitor: Serial port opened; monitoring active
+2026-06-27 08:33:15,440 [INFO] WirelessChargerMonitor: Session closed: id=34 ended_at=2026-06-27 08:33:15
+2026-06-27 08:33:15,441 [INFO] WirelessChargerMonitor: Monitoring stopped after serial close confirmed
+2026-06-27 08:33:16,456 [INFO] WirelessChargerMonitor: Session created: id=35 uuid=964AF050 port=COM12
+2026-06-27 08:33:16,463 [INFO] WirelessChargerMonitor: Monitoring start requested: session=35 port=COM12 baud=2000000 demo=False
+2026-06-27 08:33:16,465 [INFO] WirelessChargerMonitor: Serial connected: COM12 @ 2000000
+2026-06-27 08:33:16,467 [INFO] WirelessChargerMonitor: Serial port opened; monitoring active
+2026-06-27 08:33:16,865 [INFO] WirelessChargerMonitor: Session closed: id=35 ended_at=2026-06-27 08:33:16
+2026-06-27 08:33:16,865 [INFO] WirelessChargerMonitor: Monitoring stopped after serial close confirmed
+2026-06-27 08:33:17,322 [INFO] WirelessChargerMonitor: Session created: id=36 uuid=BF52D66E port=COM12
+2026-06-27 08:33:17,329 [INFO] WirelessChargerMonitor: Monitoring start requested: session=36 port=COM12 baud=2000000 demo=False
+2026-06-27 08:33:17,331 [INFO] WirelessChargerMonitor: Serial connected: COM12 @ 2000000
+2026-06-27 08:33:17,334 [INFO] WirelessChargerMonitor: Serial port opened; monitoring active
+2026-06-27 08:33:17,759 [INFO] WirelessChargerMonitor: Session closed: id=36 ended_at=2026-06-27 08:33:17
+2026-06-27 08:33:17,759 [INFO] WirelessChargerMonitor: Monitoring stopped after serial close confirmed
+2026-06-27 08:33:18,149 [INFO] WirelessChargerMonitor: Session created: id=37 uuid=EDEF99C2 port=COM12
+2026-06-27 08:33:18,157 [INFO] WirelessChargerMonitor: Monitoring start requested: session=37 port=COM12 baud=2000000 demo=False
+2026-06-27 08:33:18,159 [INFO] WirelessChargerMonitor: Serial connected: COM12 @ 2000000
+2026-06-27 08:33:18,163 [INFO] WirelessChargerMonitor: Serial port opened; monitoring active
+2026-06-27 08:33:19,395 [INFO] WirelessChargerMonitor: Session closed: id=37 ended_at=2026-06-27 08:33:19
+2026-06-27 08:33:19,395 [INFO] WirelessChargerMonitor: Monitoring stopped after serial close confirmed
+2026-06-27 08:33:19,781 [INFO] WirelessChargerMonitor: Session created: id=38 uuid=3B4071F9 port=COM12
+2026-06-27 08:33:19,789 [INFO] WirelessChargerMonitor: Monitoring start requested: session=38 port=COM12 baud=2000000 demo=False
+2026-06-27 08:33:19,791 [INFO] WirelessChargerMonitor: Serial connected: COM12 @ 2000000
+2026-06-27 08:33:19,794 [INFO] WirelessChargerMonitor: Serial port opened; monitoring active
+2026-06-27 08:33:21,072 [INFO] WirelessChargerMonitor: Session closed: id=38 ended_at=2026-06-27 08:33:21
+2026-06-27 08:33:21,073 [INFO] WirelessChargerMonitor: Monitoring stopped after serial close confirmed
+2026-06-27 08:33:21,324 [INFO] WirelessChargerMonitor: Session created: id=39 uuid=AC6C3939 port=COM12
+2026-06-27 08:33:21,332 [INFO] WirelessChargerMonitor: Monitoring start requested: session=39 port=COM12 baud=2000000 demo=False
+2026-06-27 08:33:21,335 [INFO] WirelessChargerMonitor: Serial connected: COM12 @ 2000000
+2026-06-27 08:33:21,336 [INFO] WirelessChargerMonitor: Serial port opened; monitoring active
+2026-06-27 08:33:21,902 [INFO] WirelessChargerMonitor: Session closed: id=39 ended_at=2026-06-27 08:33:21
+2026-06-27 08:33:21,904 [INFO] WirelessChargerMonitor: Monitoring stopped after serial close confirmed
+2026-06-27 08:33:22,280 [INFO] WirelessChargerMonitor: Session created: id=40 uuid=AE8D89E0 port=COM12
+2026-06-27 08:33:22,295 [INFO] WirelessChargerMonitor: Monitoring start requested: session=40 port=COM12 baud=2000000 demo=False
+2026-06-27 08:33:22,298 [INFO] WirelessChargerMonitor: Serial connected: COM12 @ 2000000
+2026-06-27 08:33:22,303 [INFO] WirelessChargerMonitor: Serial port opened; monitoring active
+2026-06-27 08:33:22,538 [INFO] WirelessChargerMonitor: Session closed: id=40 ended_at=2026-06-27 08:33:22
+2026-06-27 08:33:22,538 [INFO] WirelessChargerMonitor: Monitoring stopped after serial close confirmed
+2026-06-27 08:33:22,789 [INFO] WirelessChargerMonitor: Session created: id=41 uuid=56AF3AD8 port=COM12
+2026-06-27 08:33:22,795 [INFO] WirelessChargerMonitor: Monitoring start requested: session=41 port=COM12 baud=2000000 demo=False
+2026-06-27 08:33:22,799 [INFO] WirelessChargerMonitor: Serial connected: COM12 @ 2000000
+2026-06-27 08:33:22,802 [INFO] WirelessChargerMonitor: Serial port opened; monitoring active
+2026-06-27 08:33:23,034 [INFO] WirelessChargerMonitor: Session closed: id=41 ended_at=2026-06-27 08:33:23
+2026-06-27 08:33:23,035 [INFO] WirelessChargerMonitor: Monitoring stopped after serial close confirmed
+2026-06-27 08:33:33,993 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:33:34,211 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-27 08:40:44,872 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:40:45,366 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-27 08:55:16,565 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 08:55:17,002 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-27 09:01:58,625 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 09:01:59,037 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-27 09:07:44,278 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 09:07:44,642 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-27 09:34:23,143 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 09:34:23,625 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-29 22:05:21,541 [INFO] WiParse: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-29 22:05:22,263 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-06-29 22:13:39,609 [INFO] WiParse: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-29 22:13:40,299 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-06-29 22:37:57,694 [INFO] WiParse: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-29 22:37:58,734 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-06-29 22:43:12,039 [INFO] WiParse: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-29 22:43:12,809 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-06-29 22:45:48,099 [INFO] WiParse: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-29 22:45:48,530 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-06-29 23:05:17,041 [INFO] WiParse: DBWorker stopped
+2026-06-29 23:05:17,088 [INFO] WiParse: FetchWorker stopped
+2026-06-29 23:29:01,311 [INFO] WiParse: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-29 23:29:01,975 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-06-29 23:30:02,519 [INFO] WiParse: DBWorker stopped
+2026-06-29 23:30:02,552 [INFO] WiParse: FetchWorker stopped

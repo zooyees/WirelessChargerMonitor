@@ -1,0 +1,214 @@
+"""Dark / light UI color palettes."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class ThemeTokens:
+    TEXT_PRIMARY: str
+    TEXT_SECONDARY: str
+    TEXT_MUTED: str
+    CANVAS_BG: str
+    PANEL_BG: str
+    SURFACE_BG: str
+    LCD_BG: str
+    BORDER: str
+    BORDER_STRONG: str
+    HEADER_BG: str
+    INPUT_BG: str
+    INPUT_BTN_BG: str
+    BUTTON_BG: str
+    BUTTON_HOVER: str
+    ACCENT: str
+    ACCENT_HOVER: str
+    ACCENT_BORDER: str
+    ACCENT_TEXT: str
+    TOOLTIP_BG: str
+    TOOLTIP_BORDER: str
+    MENU_ITEM_HOVER: str
+    SETTINGS_BTN_HOVER: str
+    TAB_INACTIVE_BG: str
+    TAB_BORDER: str
+    TAB_ACCENT: str
+    TAB_HOVER_BG: str
+    TAB_INACTIVE_TEXT: str
+    TAB_CLOSE_HOVER: str
+    TAB_CLOSE_PRESSED: str
+    CHART_BG: str
+    CHART_AXIS: str
+    CHART_TEXT: str
+    CHART_POWER: str
+    CHART_VOLTAGE: str
+    CHART_CURRENT: str
+    LCD_VOLTAGE: str
+    LCD_CURRENT: str
+    LCD_POWER: str
+    LCD_TEMP: str
+    LCD_BATTERY: str
+    STATUS_SESSION: str
+    STATUS_INFO: str
+    STATUS_WARN: str
+    STATUS_ERROR: str
+    STATUS_SUCCESS: str
+    SELECTION_BG: str
+    SELECTION_TEXT: str
+    BTN_STOP_BG: str
+    BTN_STOP_DISABLED_BG: str
+    HUD_BG_RGBA: str
+    HUD_BORDER: str
+    HUD_TEXT: str
+    CROSSHAIR_COLOR: str
+    TEMP_ALERT_BG: str
+    TEMP_ALERT_FG: str
+    TEMP_ALERT_BORDER: str
+    TEMP_NORMAL_BORDER: str
+    FILTER_HIGHLIGHT: str
+
+
+DARK = ThemeTokens(
+    TEXT_PRIMARY='#FFFFFF',
+    TEXT_SECONDARY='#F1F5F9',
+    TEXT_MUTED='#CBD5E1',
+    CANVAS_BG='#0B1220',
+    PANEL_BG='#162032',
+    SURFACE_BG='#1A2332',
+    LCD_BG='#070B14',
+    BORDER='#8BA3BD',
+    BORDER_STRONG='#C7D2E0',
+    HEADER_BG='#111827',
+    INPUT_BG='#243049',
+    INPUT_BTN_BG='#3D526E',
+    BUTTON_BG='#3D526E',
+    BUTTON_HOVER='#52657A',
+    ACCENT='#0284C7',
+    ACCENT_HOVER='#0369A1',
+    ACCENT_BORDER='#38BDF8',
+    ACCENT_TEXT='#FFFFFF',
+    TOOLTIP_BG='#1E293B',
+    TOOLTIP_BORDER='#38BDF8',
+    MENU_ITEM_HOVER='#243049',
+    SETTINGS_BTN_HOVER='#243049',
+    TAB_INACTIVE_BG='#151D2E',
+    TAB_BORDER='#334155',
+    TAB_ACCENT='#38BDF8',
+    TAB_HOVER_BG='#243049',
+    TAB_INACTIVE_TEXT='#94A3B8',
+    TAB_CLOSE_HOVER='#475569',
+    TAB_CLOSE_PRESSED='#64748B',
+    CHART_BG='#0B1220',
+    CHART_AXIS='#94A3B8',
+    CHART_TEXT='#F1F5F9',
+    CHART_POWER='#E879F9',
+    CHART_VOLTAGE='#FFE566',
+    CHART_CURRENT='#4ADE80',
+    LCD_VOLTAGE='#FFEB3B',
+    LCD_CURRENT='#69F0AE',
+    LCD_POWER='#EA80FC',
+    LCD_TEMP='#FFB74D',
+    LCD_BATTERY='#64FFDA',
+    STATUS_SESSION='#7DD3FC',
+    STATUS_INFO='#BAE6FD',
+    STATUS_WARN='#FDE047',
+    STATUS_ERROR='#FCA5A5',
+    STATUS_SUCCESS='#86EFAC',
+    SELECTION_BG='#0284C7',
+    SELECTION_TEXT='#FFFFFF',
+    BTN_STOP_BG='#475569',
+    BTN_STOP_DISABLED_BG='#334155',
+    HUD_BG_RGBA='rgba(15, 23, 42, 250)',
+    HUD_BORDER='#38BDF8',
+    HUD_TEXT='#FFFFFF',
+    CROSSHAIR_COLOR='#38BDF8',
+    TEMP_ALERT_BG='#450A0A',
+    TEMP_ALERT_FG='#FECACA',
+    TEMP_ALERT_BORDER='#EF4444',
+    TEMP_NORMAL_BORDER='#5B6B7C',
+    FILTER_HIGHLIGHT='#FACC15',
+)
+
+LIGHT = ThemeTokens(
+    TEXT_PRIMARY='#0F172A',
+    TEXT_SECONDARY='#1E293B',
+    TEXT_MUTED='#64748B',
+    CANVAS_BG='#E2E8F0',
+    PANEL_BG='#FFFFFF',
+    SURFACE_BG='#F8FAFC',
+    LCD_BG='#E2E8F0',
+    BORDER='#94A3B8',
+    BORDER_STRONG='#64748B',
+    HEADER_BG='#F1F5F9',
+    INPUT_BG='#FFFFFF',
+    INPUT_BTN_BG='#CBD5E1',
+    BUTTON_BG='#CBD5E1',
+    BUTTON_HOVER='#94A3B8',
+    ACCENT='#0284C7',
+    ACCENT_HOVER='#0369A1',
+    ACCENT_BORDER='#0284C7',
+    ACCENT_TEXT='#FFFFFF',
+    TOOLTIP_BG='#FFFFFF',
+    TOOLTIP_BORDER='#0284C7',
+    MENU_ITEM_HOVER='#E2E8F0',
+    SETTINGS_BTN_HOVER='#E2E8F0',
+    TAB_INACTIVE_BG='#E2E8F0',
+    TAB_BORDER='#CBD5E1',
+    TAB_ACCENT='#0284C7',
+    TAB_HOVER_BG='#F1F5F9',
+    TAB_INACTIVE_TEXT='#64748B',
+    TAB_CLOSE_HOVER='#CBD5E1',
+    TAB_CLOSE_PRESSED='#94A3B8',
+    CHART_BG='#FFFFFF',
+    CHART_AXIS='#64748B',
+    CHART_TEXT='#1E293B',
+    CHART_POWER='#C026D3',
+    CHART_VOLTAGE='#CA8A04',
+    CHART_CURRENT='#16A34A',
+    LCD_VOLTAGE='#B45309',
+    LCD_CURRENT='#15803D',
+    LCD_POWER='#9333EA',
+    LCD_TEMP='#C2410C',
+    LCD_BATTERY='#0F766E',
+    STATUS_SESSION='#0369A1',
+    STATUS_INFO='#0284C7',
+    STATUS_WARN='#A16207',
+    STATUS_ERROR='#DC2626',
+    STATUS_SUCCESS='#15803D',
+    SELECTION_BG='#0284C7',
+    SELECTION_TEXT='#FFFFFF',
+    BTN_STOP_BG='#64748B',
+    BTN_STOP_DISABLED_BG='#CBD5E1',
+    HUD_BG_RGBA='rgba(255, 255, 255, 245)',
+    HUD_BORDER='#0284C7',
+    HUD_TEXT='#0F172A',
+    CROSSHAIR_COLOR='#0284C7',
+    TEMP_ALERT_BG='#FEE2E2',
+    TEMP_ALERT_FG='#B91C1C',
+    TEMP_ALERT_BORDER='#EF4444',
+    TEMP_NORMAL_BORDER='#94A3B8',
+    FILTER_HIGHLIGHT='#CA8A04',
+)
+
+_ACTIVE = DARK
+
+
+def normalize_theme(name: str | None) -> str:
+    return 'light' if str(name or '').lower() == 'light' else 'dark'
+
+
+def get_theme() -> str:
+    return 'light' if _ACTIVE is LIGHT else 'dark'
+
+
+def active_tokens() -> ThemeTokens:
+    return _ACTIVE
+
+
+def set_theme(name: str | None) -> str:
+    global _ACTIVE
+    theme = normalize_theme(name)
+    _ACTIVE = LIGHT if theme == 'light' else DARK
+    return theme
+
+
+def init_theme(name: str | None = None) -> str:
+    return set_theme(name or 'dark')

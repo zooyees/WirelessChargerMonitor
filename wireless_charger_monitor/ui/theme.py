@@ -1,4 +1,4 @@
-"""高对比度 UI 主题（深色背景 + 高亮文字）。"""
+"""高对比度 UI 主题（深色 / 浅色可切换）。"""
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QPalette
@@ -16,19 +16,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-# 文字
-TEXT_PRIMARY = '#FFFFFF'
-TEXT_SECONDARY = '#F1F5F9'
-TEXT_MUTED = '#CBD5E1'
-LABEL_ACCENT = '#FFFFFF'
-
-# 背景 / 边框
-CANVAS_BG = '#0B1220'
-PANEL_BG = '#162032'
-SURFACE_BG = '#1A2332'
-LCD_BG = '#070B14'
-BORDER = '#8BA3BD'
-BORDER_STRONG = '#C7D2E0'
+from .theme_palette import active_tokens, get_theme, set_theme as _set_palette_theme
 
 # Typography — single scale for the whole app
 FONT_FAMILY_UI = "'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif"
@@ -43,11 +31,176 @@ FW_SEMIBOLD = '600'
 # Compact log header stack (connection row + file tabs + split/filter toolbar)
 LOG_TOOLBAR_CTRL_H = 28
 LOG_TOOLBAR_BTN_START_H = 28
-LOG_CONTROL_PANEL_MAX_H = 44
+LOG_CONTROL_PANEL_WIDTH = 140
 LOG_SPLIT_TOOLBAR_H = 34
 LOG_FILTER_SCROLL_H = 28
 CTRL_MIN_H_COMBO = 22
 CTRL_MIN_H_INPUT = 20
+
+# Runtime color tokens (updated by set_theme / init_theme)
+TEXT_PRIMARY = '#FFFFFF'
+TEXT_SECONDARY = '#F1F5F9'
+TEXT_MUTED = '#CBD5E1'
+LABEL_ACCENT = '#FFFFFF'
+CANVAS_BG = '#0B1220'
+PANEL_BG = '#162032'
+SURFACE_BG = '#1A2332'
+LCD_BG = '#070B14'
+BORDER = '#8BA3BD'
+BORDER_STRONG = '#C7D2E0'
+HEADER_BG = '#111827'
+INPUT_BG = '#243049'
+INPUT_BTN_BG = '#3D526E'
+BUTTON_BG = '#3D526E'
+BUTTON_HOVER = '#52657A'
+ACCENT = '#0284C7'
+ACCENT_HOVER = '#0369A1'
+ACCENT_BORDER = '#38BDF8'
+ACCENT_TEXT = '#FFFFFF'
+TOOLTIP_BG = '#1E293B'
+TOOLTIP_BORDER = '#38BDF8'
+MENU_ITEM_HOVER = '#243049'
+SETTINGS_BTN_HOVER = '#243049'
+TAB_INACTIVE_BG = '#151D2E'
+TAB_BORDER = '#334155'
+TAB_ACCENT = '#38BDF8'
+TAB_HOVER_BG = '#243049'
+TAB_INACTIVE_TEXT = '#94A3B8'
+TAB_CLOSE_HOVER = '#475569'
+TAB_CLOSE_PRESSED = '#64748B'
+CHART_BG = '#0B1220'
+CHART_AXIS = '#94A3B8'
+CHART_TEXT = '#F1F5F9'
+CHART_POWER = '#E879F9'
+CHART_VOLTAGE = '#FFE566'
+CHART_CURRENT = '#4ADE80'
+LCD_VOLTAGE = '#FFEB3B'
+LCD_CURRENT = '#69F0AE'
+LCD_POWER = '#EA80FC'
+LCD_TEMP = '#FFB74D'
+LCD_BATTERY = '#64FFDA'
+STATUS_SESSION = '#7DD3FC'
+STATUS_INFO = '#BAE6FD'
+STATUS_WARN = '#FDE047'
+STATUS_ERROR = '#FCA5A5'
+STATUS_SUCCESS = '#86EFAC'
+SELECTION_BG = '#0284C7'
+SELECTION_TEXT = '#FFFFFF'
+BTN_STOP_BG = '#475569'
+BTN_STOP_DISABLED_BG = '#334155'
+HUD_BG_RGBA = 'rgba(15, 23, 42, 250)'
+HUD_BORDER = '#38BDF8'
+HUD_TEXT = '#FFFFFF'
+CROSSHAIR_COLOR = '#38BDF8'
+TEMP_ALERT_BG = '#450A0A'
+TEMP_ALERT_FG = '#FECACA'
+TEMP_ALERT_BORDER = '#EF4444'
+TEMP_NORMAL_BORDER = '#5B6B7C'
+FILTER_HIGHLIGHT = '#FACC15'
+LCD_STYLES: dict[str, str] = {}
+
+
+def _sync_exports() -> None:
+    global TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, LABEL_ACCENT
+    global CANVAS_BG, PANEL_BG, SURFACE_BG, LCD_BG, BORDER, BORDER_STRONG
+    global HEADER_BG, INPUT_BG, INPUT_BTN_BG, BUTTON_BG, BUTTON_HOVER
+    global ACCENT, ACCENT_HOVER, ACCENT_BORDER, ACCENT_TEXT
+    global TOOLTIP_BG, TOOLTIP_BORDER, MENU_ITEM_HOVER, SETTINGS_BTN_HOVER
+    global TAB_INACTIVE_BG, TAB_BORDER, TAB_ACCENT, TAB_HOVER_BG, TAB_INACTIVE_TEXT
+    global TAB_CLOSE_HOVER, TAB_CLOSE_PRESSED
+    global CHART_BG, CHART_AXIS, CHART_TEXT, CHART_POWER, CHART_VOLTAGE, CHART_CURRENT
+    global LCD_VOLTAGE, LCD_CURRENT, LCD_POWER, LCD_TEMP, LCD_BATTERY
+    global STATUS_SESSION, STATUS_INFO, STATUS_WARN, STATUS_ERROR, STATUS_SUCCESS
+    global SELECTION_BG, SELECTION_TEXT, BTN_STOP_BG, BTN_STOP_DISABLED_BG
+    global HUD_BG_RGBA, HUD_BORDER, HUD_TEXT, CROSSHAIR_COLOR
+    global TEMP_ALERT_BG, TEMP_ALERT_FG, TEMP_ALERT_BORDER, TEMP_NORMAL_BORDER, FILTER_HIGHLIGHT
+    global LCD_STYLES
+
+    t = active_tokens()
+    TEXT_PRIMARY = t.TEXT_PRIMARY
+    TEXT_SECONDARY = t.TEXT_SECONDARY
+    TEXT_MUTED = t.TEXT_MUTED
+    LABEL_ACCENT = t.TEXT_PRIMARY
+    CANVAS_BG = t.CANVAS_BG
+    PANEL_BG = t.PANEL_BG
+    SURFACE_BG = t.SURFACE_BG
+    LCD_BG = t.LCD_BG
+    BORDER = t.BORDER
+    BORDER_STRONG = t.BORDER_STRONG
+    HEADER_BG = t.HEADER_BG
+    INPUT_BG = t.INPUT_BG
+    INPUT_BTN_BG = t.INPUT_BTN_BG
+    BUTTON_BG = t.BUTTON_BG
+    BUTTON_HOVER = t.BUTTON_HOVER
+    ACCENT = t.ACCENT
+    ACCENT_HOVER = t.ACCENT_HOVER
+    ACCENT_BORDER = t.ACCENT_BORDER
+    ACCENT_TEXT = t.ACCENT_TEXT
+    TOOLTIP_BG = t.TOOLTIP_BG
+    TOOLTIP_BORDER = t.TOOLTIP_BORDER
+    MENU_ITEM_HOVER = t.MENU_ITEM_HOVER
+    SETTINGS_BTN_HOVER = t.SETTINGS_BTN_HOVER
+    TAB_INACTIVE_BG = t.TAB_INACTIVE_BG
+    TAB_BORDER = t.TAB_BORDER
+    TAB_ACCENT = t.TAB_ACCENT
+    TAB_HOVER_BG = t.TAB_HOVER_BG
+    TAB_INACTIVE_TEXT = t.TAB_INACTIVE_TEXT
+    TAB_CLOSE_HOVER = t.TAB_CLOSE_HOVER
+    TAB_CLOSE_PRESSED = t.TAB_CLOSE_PRESSED
+    CHART_BG = t.CHART_BG
+    CHART_AXIS = t.CHART_AXIS
+    CHART_TEXT = t.CHART_TEXT
+    CHART_POWER = t.CHART_POWER
+    CHART_VOLTAGE = t.CHART_VOLTAGE
+    CHART_CURRENT = t.CHART_CURRENT
+    LCD_VOLTAGE = t.LCD_VOLTAGE
+    LCD_CURRENT = t.LCD_CURRENT
+    LCD_POWER = t.LCD_POWER
+    LCD_TEMP = t.LCD_TEMP
+    LCD_BATTERY = t.LCD_BATTERY
+    STATUS_SESSION = t.STATUS_SESSION
+    STATUS_INFO = t.STATUS_INFO
+    STATUS_WARN = t.STATUS_WARN
+    STATUS_ERROR = t.STATUS_ERROR
+    STATUS_SUCCESS = t.STATUS_SUCCESS
+    SELECTION_BG = t.SELECTION_BG
+    SELECTION_TEXT = t.SELECTION_TEXT
+    BTN_STOP_BG = t.BTN_STOP_BG
+    BTN_STOP_DISABLED_BG = t.BTN_STOP_DISABLED_BG
+    HUD_BG_RGBA = t.HUD_BG_RGBA
+    HUD_BORDER = t.HUD_BORDER
+    HUD_TEXT = t.HUD_TEXT
+    CROSSHAIR_COLOR = t.CROSSHAIR_COLOR
+    TEMP_ALERT_BG = t.TEMP_ALERT_BG
+    TEMP_ALERT_FG = t.TEMP_ALERT_FG
+    TEMP_ALERT_BORDER = t.TEMP_ALERT_BORDER
+    TEMP_NORMAL_BORDER = t.TEMP_NORMAL_BORDER
+    FILTER_HIGHLIGHT = t.FILTER_HIGHLIGHT
+    LCD_STYLES = {
+        'lcd_v_in': LCD_VOLTAGE,
+        'lcd_i_in': LCD_CURRENT,
+        'lcd_v_out': LCD_VOLTAGE,
+        'lcd_i_out': LCD_CURRENT,
+        'lcd_power': LCD_POWER,
+        'lcd_v_bat': LCD_VOLTAGE,
+        'lcd_i_bat': LCD_CURRENT,
+        'lcd_temp': LCD_TEMP,
+        'lcd_battery': LCD_BATTERY,
+    }
+
+
+def set_theme(name: str | None) -> str:
+    theme = _set_palette_theme(name)
+    _sync_exports()
+    return theme
+
+
+def init_theme(name: str | None = None) -> str:
+    return set_theme(name or 'dark')
+
+
+def full_stylesheet() -> str:
+    return _build_app_stylesheet() + _monitor_widget_styles()
 
 
 def ui_font_css(size_pt: int, weight: str = FW_NORMAL, *, family: str | None = None) -> str:
@@ -75,7 +228,7 @@ QStatusBar QLabel {{
 def menu_bar_stylesheet() -> str:
     return f"""
 QMenuBar {{
-    background: #111827;
+    background: {HEADER_BG};
     color: {TEXT_SECONDARY};
     border-bottom: 1px solid {BORDER};
     {ui_font_css(FS_BODY, FW_NORMAL)}
@@ -87,7 +240,7 @@ QMenuBar::item {{
     border-radius: 4px;
 }}
 QMenuBar::item:selected {{
-    background: #243049;
+    background: {MENU_ITEM_HOVER};
     color: {TEXT_PRIMARY};
 }}
 QMenu {{
@@ -101,7 +254,8 @@ QMenu::item {{
     padding: 6px 28px 6px 20px;
 }}
 QMenu::item:selected {{
-    background: #0284C7;
+    background: {ACCENT};
+    color: {ACCENT_TEXT};
 }}
 QMenu::indicator {{
     width: 16px;
@@ -116,42 +270,7 @@ def apply_status_message_style(label: QLabel, color: str, *, weight: str = FW_NO
 
 
 def apply_status_session_style(label: QLabel) -> None:
-    apply_status_message_style(label, '#7DD3FC', weight=FW_MEDIUM)
-
-
-# LCD 数值色（高亮，与深底强对比）
-LCD_VOLTAGE = '#FFEB3B'
-LCD_CURRENT = '#69F0AE'
-LCD_POWER = '#EA80FC'
-LCD_TEMP = '#FFB74D'
-LCD_BATTERY = '#64FFDA'
-
-# Tab strip (shared palette)
-TAB_INACTIVE_BG = '#151D2E'
-TAB_BORDER = '#334155'
-TAB_ACCENT = '#38BDF8'
-TAB_HOVER_BG = '#243049'
-TAB_INACTIVE_TEXT = '#94A3B8'
-
-# 图表
-CHART_BG = '#0B1220'
-CHART_AXIS = '#94A3B8'
-CHART_TEXT = '#F1F5F9'
-CHART_POWER = '#E879F9'
-CHART_VOLTAGE = '#FFE566'
-CHART_CURRENT = '#4ADE80'
-
-LCD_STYLES = {
-    'lcd_v_in': LCD_VOLTAGE,
-    'lcd_i_in': LCD_CURRENT,
-    'lcd_v_out': LCD_VOLTAGE,
-    'lcd_i_out': LCD_CURRENT,
-    'lcd_power': LCD_POWER,
-    'lcd_v_bat': LCD_VOLTAGE,
-    'lcd_i_bat': LCD_CURRENT,
-    'lcd_temp': LCD_TEMP,
-    'lcd_battery': LCD_BATTERY,
-}
+    apply_status_message_style(label, STATUS_SESSION, weight=FW_MEDIUM)
 
 
 def lcd_stylesheet(color: str) -> str:
@@ -228,33 +347,33 @@ def apply_log_split_checkbox_style(checkbox: QCheckBox):
         f'{ui_font_css(FS_CAPTION, FW_MEDIUM)} spacing: 4px; }}'
         f'QCheckBox#log_split_chk::indicator {{ width: 13px; height: 13px; border: 1px solid {BORDER_STRONG}; '
         f'border-radius: 3px; background-color: {SURFACE_BG}; }}'
-        f'QCheckBox#log_split_chk::indicator:checked {{ background-color: #0284C7; border-color: #38BDF8; }}'
+        f'QCheckBox#log_split_chk::indicator:checked {{ background-color: {ACCENT}; border-color: {ACCENT_BORDER}; }}'
     )
 
 
 def apply_log_split_spinbox_style(spinbox: QSpinBox):
     spinbox.setObjectName('log_split_count')
     spinbox.setStyleSheet(
-        f'QSpinBox#log_split_count {{ background-color: #243049; border: 1px solid {BORDER}; '
+        f'QSpinBox#log_split_count {{ background-color: {INPUT_BG}; border: 1px solid {BORDER}; '
         f'border-radius: 4px; color: {TEXT_PRIMARY}; padding: 1px 4px; min-height: 20px; '
         f'{ui_font_css(FS_CAPTION, FW_NORMAL)} }}'
         f'QSpinBox#log_split_count::up-button, QSpinBox#log_split_count::down-button '
-        f'{{ width: 16px; border: none; background-color: #3D526E; }}'
+        f'{{ width: 16px; border: none; background-color: {INPUT_BTN_BG}; }}'
     )
 
 
 def apply_log_split_line_edit_style(edit: QLineEdit):
     edit.setObjectName('log_split_filter')
     pal = edit.palette()
-    pal.setColor(QPalette.Base, QColor('#243049'))
+    pal.setColor(QPalette.Base, QColor(INPUT_BG))
     pal.setColor(QPalette.Text, QColor(TEXT_PRIMARY))
     pal.setColor(QPalette.PlaceholderText, QColor(TEXT_MUTED))
     edit.setPalette(pal)
     edit.setStyleSheet(
-        f'QLineEdit#log_split_filter {{ background-color: #243049; border: 1px solid {BORDER}; '
+        f'QLineEdit#log_split_filter {{ background-color: {INPUT_BG}; border: 1px solid {BORDER}; '
         f'border-radius: 4px; color: {TEXT_PRIMARY}; padding: 2px 6px; min-height: 20px; '
         f'{ui_font_css(FS_CAPTION, FW_NORMAL)} }}'
-        f'QLineEdit#log_split_filter:focus {{ border: 1px solid #38BDF8; }}'
+        f'QLineEdit#log_split_filter:focus {{ border: 1px solid {ACCENT_BORDER}; }}'
     )
 
 
@@ -317,7 +436,8 @@ def apply_data_label_style(label: QLabel, *, compact: bool = False):
     )
 
 
-APP_STYLESHEET = f"""
+def _build_app_stylesheet() -> str:
+    return f"""
 QMainWindow, QWidget#centralwidget {{
     background-color: {CANVAS_BG};
     color: {TEXT_PRIMARY};
@@ -327,7 +447,7 @@ QLabel#main_title {{
     {ui_font_css(FS_SUBTITLE, FW_SEMIBOLD)}
     color: {TEXT_PRIMARY};
     padding: 4px 2px;
-    background-color: #111827;
+    background-color: {HEADER_BG};
     border-radius: 4px;
 }}
 QGroupBox {{
@@ -383,7 +503,7 @@ QLCDNumber {{
     border-radius: 4px;
 }}
 QComboBox {{
-    background-color: #243049;
+    background-color: {INPUT_BG};
     border: 1px solid {BORDER};
     border-radius: 4px;
     color: {TEXT_PRIMARY};
@@ -392,26 +512,26 @@ QComboBox {{
     {ui_font_css(FS_BODY, FW_NORMAL)}
 }}
 QComboBox QAbstractItemView {{
-    background-color: #243049;
+    background-color: {INPUT_BG};
     color: {TEXT_PRIMARY};
-    selection-background-color: #0284C7;
-    selection-color: #FFFFFF;
+    selection-background-color: {SELECTION_BG};
+    selection-color: {SELECTION_TEXT};
 }}
 QComboBox:editable {{
-    background-color: #243049;
+    background-color: {INPUT_BG};
 }}
 QComboBox QLineEdit {{
-    background-color: #243049;
+    background-color: {INPUT_BG};
     color: {TEXT_PRIMARY};
     border: none;
     border-radius: 0;
     padding: 0 2px;
     min-height: 0;
-    selection-background-color: #0284C7;
-    selection-color: #FFFFFF;
+    selection-background-color: {SELECTION_BG};
+    selection-color: {SELECTION_TEXT};
 }}
 QLineEdit {{
-    background-color: #243049;
+    background-color: {INPUT_BG};
     border: 1px solid {BORDER};
     border-radius: 4px;
     color: {TEXT_PRIMARY};
@@ -420,7 +540,7 @@ QLineEdit {{
     {ui_font_css(FS_BODY, FW_NORMAL)}
 }}
 QLineEdit:focus {{
-    border: 1px solid #38BDF8;
+    border: 1px solid {ACCENT_BORDER};
 }}
 QPushButton {{
     {ui_font_css(FS_BODY, FW_SEMIBOLD)}
@@ -428,25 +548,25 @@ QPushButton {{
     padding: 4px 10px;
     color: {TEXT_PRIMARY};
     border: none;
-    background-color: #3D526E;
+    background-color: {BUTTON_BG};
 }}
 QPushButton#btn_start {{
-    background-color: #0284C7;
-    color: #FFFFFF;
+    background-color: {ACCENT};
+    color: {ACCENT_TEXT};
     padding: 3px 10px;
     min-height: 0;
     {ui_font_css(FS_BODY, FW_SEMIBOLD)}
 }}
 QPushButton#btn_stop {{
-    background-color: #475569;
-    color: #FFFFFF;
+    background-color: {BTN_STOP_BG};
+    color: {ACCENT_TEXT};
 }}
 QPushButton#btn_stop:disabled {{
-    background-color: #334155;
+    background-color: {BTN_STOP_DISABLED_BG};
     color: {TEXT_MUTED};
 }}
 QPushButton#btn_log_tool {{
-    background-color: #3D526E;
+    background-color: {BUTTON_BG};
     border: 1px solid {BORDER};
     border-radius: 4px;
     padding: 2px 8px;
@@ -455,14 +575,14 @@ QPushButton#btn_log_tool {{
     min-height: 0;
 }}
 QPushButton#btn_log_tool:hover {{
-    background-color: #52657A;
+    background-color: {BUTTON_HOVER};
     color: {TEXT_PRIMARY};
 }}
 QPushButton:hover {{
-    background-color: #52657A;
+    background-color: {BUTTON_HOVER};
 }}
 QPushButton#btn_start:hover {{
-    background-color: #0369A1;
+    background-color: {ACCENT_HOVER};
 }}
 QPlainTextEdit {{
     background-color: {SURFACE_BG};
@@ -471,13 +591,13 @@ QPlainTextEdit {{
     border-radius: 6px;
     {ui_font_css(FS_BODY, FW_NORMAL, family=FONT_FAMILY_MONO)}
     padding: 6px;
-    selection-background-color: #0369A1;
-    selection-color: #FFFFFF;
+    selection-background-color: {ACCENT_HOVER};
+    selection-color: {SELECTION_TEXT};
 }}
 QToolTip {{
     color: {TEXT_PRIMARY};
-    background-color: #1E293B;
-    border: 1px solid #38BDF8;
+    background-color: {TOOLTIP_BG};
+    border: 1px solid {TOOLTIP_BORDER};
     border-radius: 6px;
     padding: 8px 10px;
     {ui_font_css(FS_CAPTION, FW_NORMAL)}
@@ -497,10 +617,10 @@ def _tab_close_button_styles(scope: str) -> str:
     background: transparent;
 }}
 {scope} QTabBar::close-button:hover {{
-    background: #475569;
+    background: {TAB_CLOSE_HOVER};
 }}
 {scope} QTabBar::close-button:pressed {{
-    background: #64748B;
+    background: {TAB_CLOSE_PRESSED};
 }}
 """
 
@@ -557,6 +677,23 @@ def _monitor_widget_styles() -> str:
 QTabWidget#main_tabs {{
     background-color: {CANVAS_BG};
 }}
+QToolButton#settings_menu_btn {{
+    background: transparent;
+    color: {TEXT_SECONDARY};
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px 5px 12px;
+    margin: 2px 6px 0 4px;
+    {ui_font_css(FS_BODY, FW_NORMAL)}
+}}
+QToolButton#settings_menu_btn:hover {{
+    background: {SETTINGS_BTN_HOVER};
+    color: {TEXT_PRIMARY};
+}}
+QToolButton#settings_menu_btn::menu-indicator {{
+    image: none;
+    width: 0;
+}}
 QTabWidget::pane {{
     border: 1px solid {BORDER};
     border-radius: 8px;
@@ -564,6 +701,10 @@ QTabWidget::pane {{
     top: -1px;
 }}
 {_tab_strip_styles('QTabWidget#main_tabs', PANEL_BG, font_weight=FW_SEMIBOLD)}
+QTabWidget#main_tabs QTabBar {{
+    background: {HEADER_BG};
+    border-bottom: 1px solid {BORDER};
+}}
 QScrollArea#chart_lcd_scroll {{
     background-color: {PANEL_BG};
     border: none;
@@ -572,7 +713,7 @@ QScrollArea#chart_lcd_scroll {{
 QFrame#log_control_panel {{
     background-color: {PANEL_BG};
     border: none;
-    border-bottom: 1px solid {BORDER};
+    border-right: 1px solid {BORDER};
 }}
 QTabWidget#log_file_tabs {{
     background-color: {PANEL_BG};
@@ -625,8 +766,8 @@ QCheckBox#log_split_chk::indicator {{
     background-color: {PANEL_BG};
 }}
 QCheckBox#log_split_chk::indicator:checked {{
-    background-color: #0284C7;
-    border-color: #38BDF8;
+    background-color: {ACCENT};
+    border-color: {ACCENT_BORDER};
 }}
 QLabel#log_split_filter_label {{
     color: {TEXT_MUTED};
@@ -635,7 +776,7 @@ QLabel#log_split_filter_label {{
     padding: 0;
 }}
 QSpinBox#log_split_count {{
-    background-color: #243049;
+    background-color: {INPUT_BG};
     border: 1px solid {BORDER};
     border-radius: 4px;
     color: {TEXT_PRIMARY};
@@ -646,10 +787,10 @@ QSpinBox#log_split_count {{
 QSpinBox#log_split_count::up-button, QSpinBox#log_split_count::down-button {{
     width: 16px;
     border: none;
-    background-color: #3D526E;
+    background-color: {INPUT_BTN_BG};
 }}
 QLineEdit#log_split_filter {{
-    background-color: #243049;
+    background-color: {INPUT_BG};
     border: 1px solid {BORDER};
     border-radius: 4px;
     color: {TEXT_PRIMARY};
@@ -658,7 +799,7 @@ QLineEdit#log_split_filter {{
     {ui_font_css(FS_CAPTION, FW_NORMAL)}
 }}
 QLineEdit#log_split_filter:focus {{
-    border: 1px solid #38BDF8;
+    border: 1px solid {ACCENT_BORDER};
 }}
 QScrollArea#log_split_filter_scroll {{
     background: transparent;
@@ -732,10 +873,10 @@ def apply_editable_combo_line_edit(combo: QComboBox) -> None:
         return
     line_edit.setFrame(False)
     pal = line_edit.palette()
-    pal.setColor(QPalette.Base, QColor('#243049'))
+    pal.setColor(QPalette.Base, QColor(INPUT_BG))
     pal.setColor(QPalette.Text, QColor(TEXT_PRIMARY))
-    pal.setColor(QPalette.Highlight, QColor('#0284C7'))
-    pal.setColor(QPalette.HighlightedText, QColor('#FFFFFF'))
+    pal.setColor(QPalette.Highlight, QColor(ACCENT))
+    pal.setColor(QPalette.HighlightedText, QColor(ACCENT_TEXT))
     line_edit.setPalette(pal)
     line_edit.setAutoFillBackground(True)
 
@@ -747,10 +888,11 @@ def apply_log_toolbar_control_height(widget, *, primary=False, scale: float = 1.
 
 
 def apply_log_control_panel_metrics(ui, scale: float = 1.0) -> None:
-    """Apply compact vertical metrics to the log monitor connection toolbar."""
+    """Apply compact metrics to the log monitor left sidebar."""
     panel = getattr(ui, 'log_control_panel', None)
+    sidebar_w = int(LOG_CONTROL_PANEL_WIDTH * scale)
     if panel is not None:
-        panel.setMaximumHeight(int(LOG_CONTROL_PANEL_MAX_H * scale))
+        panel.setFixedWidth(sidebar_w)
     for name in ('btn_new_live_log', 'btn_browse_log_dir', 'btn_open_log'):
         widget = getattr(ui, name, None)
         if widget is not None:
@@ -765,6 +907,14 @@ def apply_log_control_panel_metrics(ui, scale: float = 1.0) -> None:
     btn_start = getattr(ui, 'btn_start', None)
     if btn_start is not None:
         apply_log_toolbar_control_height(btn_start, primary=True, scale=scale)
+    for name in (
+        'cb_port', 'cb_baudrate', 'btn_start', 'btn_new_live_log',
+        'edit_live_log_name', 'edit_live_log_dir', 'btn_browse_log_dir', 'btn_open_log',
+    ):
+        widget = getattr(ui, name, None)
+        if widget is not None:
+            widget.setMinimumWidth(0)
+            widget.setMaximumWidth(sidebar_w)
     layout = panel.layout() if panel is not None else None
     if layout is not None:
         m = int(4 * scale)
@@ -773,4 +923,5 @@ def apply_log_control_panel_metrics(ui, scale: float = 1.0) -> None:
 
 
 # Qt Designer 与运行时共用（单一来源）
-MONITOR_WINDOW_STYLESHEET = APP_STYLESHEET + _monitor_widget_styles()
+set_theme('dark')
+MONITOR_WINDOW_STYLESHEET = full_stylesheet()

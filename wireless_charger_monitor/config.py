@@ -19,6 +19,8 @@ DEFAULT_CONFIG = {
         'chart_max_points': 500,
         'default_window_size_sec': 60.0,
         'language': 'en',
+        'menu_bar_auto_hide': False,
+        'theme': 'dark',
     },
     'alerts': {
         'temp_warning_threshold': 60,
@@ -48,13 +50,8 @@ DEFAULT_CONFIG = {
     },
     'log_monitor': {
         'default_filename': 'Live Packet Log',
-        'save_dir': 'logs',
+        'save_dir': 'log',
         'file_extension': 'txt',
-    },
-    'apps': {
-        'tektronix_scope': {
-            'save_dir': 'scope_captures',
-        },
     },
 }
 

@@ -1,0 +1,4 @@
+2026-06-27 09:29:02,807 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\dist\charging_data.db
+2026-06-27 09:29:03,064 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-27 09:34:23,245 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-06-27 09:34:23,306 [INFO] WirelessChargerMonitor: FetchWorker stopped

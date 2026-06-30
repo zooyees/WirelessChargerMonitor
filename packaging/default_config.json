@@ -1,18 +1,14 @@
 {
   "ui": {
-    "language": "en"
+    "language": "en",
+    "theme": "dark"
   },
   "serial": {
     "default_baudrates": ["115200", "1000000", "2000000"]
   },
   "log_monitor": {
     "default_filename": "Live Packet Log",
-    "save_dir": "logs",
+    "save_dir": "log",
     "file_extension": "txt"
-  },
-  "apps": {
-    "tektronix_scope": {
-      "save_dir": "scope_captures"
-    }
   }
 }

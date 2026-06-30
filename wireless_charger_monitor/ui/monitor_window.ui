@@ -5,7 +5,7 @@
   <property name="geometry">
    <rect><x>0</x><y>0</y><width>1600</width><height>950</height></rect>
   </property>
-  <property name="windowTitle"><string>串口分析工具</string></property>
+  <property name="windowTitle"><string>WiParse</string></property>
   <property name="styleSheet"><string>QMainWindow, QWidget#centralwidget {
     background-color: #0B1220;
     color: #FFFFFF;
@@ -326,9 +326,9 @@ QLCDNumber#lcd_battery { background-color: #070B14; color: #64FFDA; border: 1px 
        </layout>
       </widget>
       <widget class="QFrame" name="log_panel">
-       <attribute name="title"><string>报文监控</string></attribute>
+       <attribute name="title"><string>串口</string></attribute>
        <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
-       <layout class="QVBoxLayout" name="log_layout">
+       <layout class="QHBoxLayout" name="log_layout">
         <property name="leftMargin"><number>0</number></property>
         <property name="topMargin"><number>0</number></property>
         <property name="rightMargin"><number>0</number></property>
@@ -338,34 +338,36 @@ QLCDNumber#lcd_battery { background-color: #070B14; color: #64FFDA; border: 1px 
          <widget class="QFrame" name="log_control_panel">
           <property name="objectName"><string>log_control_panel</string></property>
           <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+          <property name="minimumSize"><size><width>130</width><height>0</height></size></property>
+          <property name="maximumSize"><size><width>150</width><height>16777215</height></size></property>
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
-          <layout class="QHBoxLayout" name="log_control_layout">
+          <layout class="QVBoxLayout" name="log_control_layout">
            <property name="leftMargin"><number>8</number></property>
            <property name="topMargin"><number>4</number></property>
            <property name="rightMargin"><number>8</number></property>
            <property name="bottomMargin"><number>4</number></property>
            <property name="spacing"><number>6</number></property>
-           <item><widget class="QComboBox" name="cb_port"><property name="minimumSize"><size><width>110</width><height>0</height></size></property></widget></item>
+           <item><widget class="QComboBox" name="cb_port"><property name="minimumSize"><size><width>0</width><height>0</height></size></property></widget></item>
            <item><widget class="QComboBox" name="cb_baudrate">
-            <property name="minimumSize"><size><width>96</width><height>0</height></size></property>
+            <property name="minimumSize"><size><width>0</width><height>0</height></size></property>
             <item><property name="text"><string>115200</string></property></item>
             <item><property name="text"><string>1000000</string></property></item>
             <item><property name="text"><string>2000000</string></property></item>
            </widget></item>
-           <item><widget class="QPushButton" name="btn_start"><property name="minimumSize"><size><width>88</width><height>0</height></size></property><property name="text"><string>▶ 开始</string></property></widget></item>
-           <item><widget class="QPushButton" name="btn_new_live_log"><property name="objectName"><string>btn_log_tool</string></property><property name="minimumSize"><size><width>56</width><height>0</height></size></property><property name="text"><string>New</string></property><property name="toolTip"><string>新建实时报文文件，当前标签右移</string></property></widget></item>
+           <item><widget class="QPushButton" name="btn_start"><property name="minimumSize"><size><width>0</width><height>0</height></size></property><property name="text"><string>▶ 开始</string></property></widget></item>
+           <item><widget class="QPushButton" name="btn_new_live_log"><property name="objectName"><string>btn_log_tool</string></property><property name="minimumSize"><size><width>0</width><height>0</height></size></property><property name="text"><string>New</string></property><property name="toolTip"><string>新建实时报文文件，当前标签右移</string></property></widget></item>
            <item><widget class="QLabel" name="lbl_live_log_name"><property name="objectName"><string>log_tool_label</string></property><property name="text"><string>文件名</string></property></widget></item>
-           <item><widget class="QLineEdit" name="edit_live_log_name"><property name="minimumSize"><size><width>120</width><height>0</height></size></property><property name="maximumSize"><size><width>200</width><height>16777215</height></size></property><property name="placeholderText"><string>实时报文</string></property><property name="toolTip"><string>不含扩展名，保存为 TXT 格式，Enter 确认</string></property></widget></item>
+           <item><widget class="QLineEdit" name="edit_live_log_name"><property name="minimumSize"><size><width>0</width><height>0</height></size></property><property name="placeholderText"><string>实时报文</string></property><property name="toolTip"><string>不含扩展名，保存为 TXT 格式，Enter 确认</string></property></widget></item>
            <item><widget class="QLabel" name="lbl_live_log_dir"><property name="objectName"><string>log_tool_label</string></property><property name="text"><string>保存路径</string></property></widget></item>
-           <item><widget class="QLineEdit" name="edit_live_log_dir"><property name="minimumSize"><size><width>140</width><height>0</height></size></property><property name="toolTip"><string>实时报文 TXT 文件保存目录</string></property></widget></item>
-           <item><widget class="QPushButton" name="btn_browse_log_dir"><property name="objectName"><string>btn_log_tool</string></property><property name="minimumSize"><size><width>88</width><height>0</height></size></property><property name="text"><string>📁 选择路径</string></property></widget></item>
-           <item><widget class="QPushButton" name="btn_open_log"><property name="objectName"><string>btn_log_tool</string></property><property name="minimumSize"><size><width>88</width><height>0</height></size></property><property name="text"><string>📂 打开文件</string></property><property name="toolTip"><string>打开本地 TXT 日志文件（可多选）</string></property></widget></item>
-           <item><spacer name="log_control_spacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint"><size><width>40</width><height>20</height></size></property></spacer></item>
+           <item><widget class="QLineEdit" name="edit_live_log_dir"><property name="minimumSize"><size><width>0</width><height>0</height></size></property><property name="toolTip"><string>实时报文 TXT 文件保存目录</string></property></widget></item>
+           <item><widget class="QPushButton" name="btn_browse_log_dir"><property name="objectName"><string>btn_log_tool</string></property><property name="minimumSize"><size><width>0</width><height>0</height></size></property><property name="text"><string>📁 选择路径</string></property></widget></item>
+           <item><widget class="QPushButton" name="btn_open_log"><property name="objectName"><string>btn_log_tool</string></property><property name="minimumSize"><size><width>0</width><height>0</height></size></property><property name="text"><string>📂 打开文件</string></property><property name="toolTip"><string>打开本地 TXT 日志文件（可多选）</string></property></widget></item>
+           <item><spacer name="log_control_spacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint"><size><width>20</width><height>40</height></size></property></spacer></item>
           </layout>
          </widget>
         </item>
