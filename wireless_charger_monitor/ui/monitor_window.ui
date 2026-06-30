@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MonitorWindow</class>
+ <widget class="QMainWindow" name="MonitorWindow">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>1600</width><height>950</height></rect>
+  </property>
+  <property name="windowTitle"><string>WiParse</string></property>
+  <property name="styleSheet"><string>QMainWindow, QWidget#centralwidget {
+    background-color: #0B1220;
+    color: #FFFFFF;
+    font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+}
+QLabel#main_title {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #FFFFFF;
+    padding: 4px 2px;
+    background-color: #111827;
+    border-radius: 4px;
+}
+QGroupBox {
+    font-weight: bold;
+    color: #FFFFFF;
+    background-color: #162032;
+    border: 1px solid #8BA3BD;
+    border-radius: 6px;
+    margin-top: 8px;
+    padding: 10px 5px 5px 5px;
+    font-size: 10pt;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 8px;
+    padding: 0 4px;
+    color: #FFFFFF;
+}
+QFrame#log_panel, QFrame#chart_panel {
+    background-color: #162032;
+    border-radius: 12px;
+}
+QWidget#chart_lcd_content {
+    background-color: #162032;
+    color: #FFFFFF;
+}
+QScrollArea#chart_lcd_scroll {
+    background-color: #162032;
+    border: none;
+}
+QFrame#log_control_panel {
+    background-color: #162032;
+    border: none;
+}
+QScrollBar:vertical {
+    background: #162032;
+    width: 10px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background: #8BA3BD;
+    min-height: 24px;
+    border-radius: 4px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QLabel#data_label {
+    color: #FFFFFF;
+    background-color: transparent;
+    font-size: 10pt;
+    font-weight: 700;
+    padding: 2px 0;
+}
+QLCDNumber {
+    background-color: #070B14;
+    color: #FFFFFF;
+    border: 1px solid #C7D2E0;
+    border-radius: 4px;
+}
+QComboBox {
+    background-color: #243049;
+    border: 1px solid #8BA3BD;
+    border-radius: 4px;
+    color: #FFFFFF;
+    padding: 2px 6px;
+    min-height: 25px;
+    font-size: 10pt;
+}
+QComboBox QAbstractItemView {
+    background-color: #243049;
+    color: #FFFFFF;
+    selection-background-color: #0284C7;
+    selection-color: #FFFFFF;
+}
+QComboBox:editable {
+    background-color: #243049;
+}
+QComboBox QLineEdit {
+    background-color: #243049;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 0;
+    padding: 0 2px;
+    min-height: 0;
+    selection-background-color: #0284C7;
+    selection-color: #FFFFFF;
+}
+QLineEdit {
+    background-color: #243049;
+    border: 1px solid #8BA3BD;
+    border-radius: 4px;
+    color: #FFFFFF;
+    padding: 4px 6px;
+    min-height: 22px;
+    font-size: 9pt;
+}
+QLineEdit:focus {
+    border: 1px solid #38BDF8;
+}
+QPushButton {
+    font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    font-weight: bold;
+    border-radius: 5px;
+    padding: 4px 10px;
+    color: #FFFFFF;
+    border: none;
+    font-size: 10pt;
+    background-color: #3D526E;
+}
+QPushButton#btn_start {
+    background-color: #0284C7;
+    color: #FFFFFF;
+    padding: 3px 10px;
+    min-height: 0;
+}
+QPushButton#btn_stop {
+    background-color: #475569;
+    color: #FFFFFF;
+}
+QPushButton#btn_stop:disabled {
+    background-color: #334155;
+    color: #CBD5E1;
+}
+QPushButton#btn_log_tool {
+    background-color: #3D526E;
+    border: 1px solid #8BA3BD;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 9pt;
+    font-weight: 500;
+    color: #F1F5F9;
+    min-height: 0;
+}
+QPushButton#btn_log_tool:hover {
+    background-color: #52657A;
+    color: #FFFFFF;
+}
+QPushButton:hover {
+    background-color: #52657A;
+}
+QPushButton#btn_start:hover {
+    background-color: #0369A1;
+}
+QPlainTextEdit {
+    background-color: #1A2332;
+    color: #FFFFFF;
+    border: 1px solid #8BA3BD;
+    border-radius: 6px;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 10pt;
+    padding: 6px;
+    selection-background-color: #0369A1;
+    selection-color: #FFFFFF;
+}
+QToolTip {
+    color: #FFFFFF;
+    background-color: #1E293B;
+    border: 1px solid #38BDF8;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    font-size: 10pt;
+}
+
+QFrame#chart_panel, QFrame#log_panel {
+    border: none;
+}
+QWidget#chart_container {
+    background-color: #0B1220;
+    min-height: 480px;
+}
+QLabel#chart_placeholder {
+    color: #CBD5E1;
+    font-size: 10pt;
+    padding: 24px;
+    background-color: transparent;
+}
+QLCDNumber#lcd_v_in { background-color: #070B14; color: #FFEB3B; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_i_in { background-color: #070B14; color: #69F0AE; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_v_out { background-color: #070B14; color: #FFEB3B; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_i_out { background-color: #070B14; color: #69F0AE; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_power { background-color: #070B14; color: #EA80FC; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_v_bat { background-color: #070B14; color: #FFEB3B; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_i_bat { background-color: #070B14; color: #69F0AE; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_temp { background-color: #070B14; color: #FFB74D; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }
+QLCDNumber#lcd_battery { background-color: #070B14; color: #64FFDA; border: 1px solid #C7D2E0; border-radius: 4px; min-height: 32px; max-height: 36px; }</string></property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="root_layout">
+    <property name="leftMargin"><number>10</number></property>
+    <property name="topMargin"><number>5</number></property>
+    <property name="rightMargin"><number>10</number></property>
+    <property name="bottomMargin"><number>10</number></property>
+    <property name="spacing"><number>5</number></property>
+    <item>
+     <widget class="QTabWidget" name="main_tabs">
+      <property name="documentMode"><bool>false</bool></property>
+      <widget class="QFrame" name="chart_panel">
+       <attribute name="title"><string>示波器</string></attribute>
+       <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+       <layout class="QHBoxLayout" name="chart_layout">
+        <property name="leftMargin"><number>0</number></property>
+        <property name="topMargin"><number>0</number></property>
+        <property name="rightMargin"><number>0</number></property>
+        <property name="bottomMargin"><number>0</number></property>
+        <property name="spacing"><number>6</number></property>
+        <item>
+         <widget class="QScrollArea" name="chart_lcd_scroll">
+          <property name="objectName"><string>chart_lcd_scroll</string></property>
+          <property name="widgetResizable"><bool>true</bool></property>
+          <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+          <property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarAlwaysOff</enum></property>
+          <property name="minimumSize"><size><width>220</width><height>0</height></size></property>
+          <property name="maximumSize"><size><width>260</width><height>16777215</height></size></property>
+          <widget class="QWidget" name="chart_lcd_content">
+           <property name="objectName"><string>chart_lcd_content</string></property>
+           <layout class="QVBoxLayout" name="chart_lcd_layout">
+            <property name="leftMargin"><number>8</number></property>
+            <property name="topMargin"><number>8</number></property>
+            <property name="rightMargin"><number>8</number></property>
+            <property name="bottomMargin"><number>8</number></property>
+            <property name="spacing"><number>3</number></property>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_v_in">
+              <property name="spacing"><number>0</number></property>
+              <item><widget class="QLabel" name="lbl_lcd_v_in"><property name="objectName"><string>data_label</string></property><property name="text"><string>输入电压 (V_in)</string></property></widget></item>
+              <item><widget class="QLCDNumber" name="lcd_v_in"><property name="minimumHeight"><number>32</number></property><property name="maximumHeight"><number>36</number></property><property name="digitCount"><number>8</number></property><property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property></widget></item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_i_in">
+              <property name="spacing"><number>0</number></property>
+              <item><widget class="QLabel" name="lbl_lcd_i_in"><property name="objectName"><string>data_label</string></property><property name="text"><string>输入电流 (I_in)</string></property></widget></item>
+              <item><widget class="QLCDNumber" name="lcd_i_in"><property name="minimumHeight"><number>32</number></property><property name="maximumHeight"><number>36</number></property><property name="digitCount"><number>8</number></property><property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property></widget></item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_v_out">
+              <property name="spacing"><number>0</number></property>
+              <item><widget class="QLabel" name="lbl_lcd_v_out"><property name="objectName"><string>data_label</string></property><property name="text"><string>输出电压 (V_out)</string></property></widget></item>
+              <item><widget class="QLCDNumber" name="lcd_v_out"><property name="minimumHeight"><number>32</number></property><property name="maximumHeight"><number>36</number></property><property name="digitCount"><number>8</number></property><property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property></widget></item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_i_out">
+              <property name="spacing"><number>0</number></property>
+              <item><widget class="QLabel" name="lbl_lcd_i_out"><property name="objectName"><string>data_label</string></property><property name="text"><string>输出电流 (I_out)</string></property></widget></item>
+              <item><widget class="QLCDNumber" name="lcd_i_out"><property name="minimumHeight"><number>32</number></property><property name="maximumHeight"><number>36</number></property><property name="digitCount"><number>8</number></property><property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property></widget></item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_power">
+              <property name="spacing"><number>0</number></property>
+              <item><widget class="QLabel" name="lbl_lcd_power"><property name="objectName"><string>data_label</string></property><property name="text"><string>输出功率 (Power W)</string></property></widget></item>
+              <item><widget class="QLCDNumber" name="lcd_power"><property name="minimumHeight"><number>32</number></property><property name="maximumHeight"><number>36</number></property><property name="digitCount"><number>8</number></property><property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property></widget></item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_v_bat">
+              <property name="spacing"><number>0</number></property>
+              <item><widget class="QLabel" name="lbl_lcd_v_bat"><property name="objectName"><string>data_label</string></property><property name="text"><string>电池电压 (V_bat)</string></property></widget></item>
+              <item><widget class="QLCDNumber" name="lcd_v_bat"><property name="minimumHeight"><number>32</number></property><property name="maximumHeight"><number>36</number></property><property name="digitCount"><number>8</number></property><property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property></widget></item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_i_bat">
+              <property name="spacing"><number>0</number></property>
+              <item><widget class="QLabel" name="lbl_lcd_i_bat"><property name="objectName"><string>data_label</string></property><property name="text"><string>电池电流 (I_bat)</string></property></widget></item>
+              <item><widget class="QLCDNumber" name="lcd_i_bat"><property name="minimumHeight"><number>32</number></property><property name="maximumHeight"><number>36</number></property><property name="digitCount"><number>8</number></property><property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property></widget></item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_temp">
+              <property name="spacing"><number>0</number></property>
+              <item><widget class="QLabel" name="lbl_lcd_temp"><property name="objectName"><string>data_label</string></property><property name="text"><string>线圈温度 (°C)</string></property></widget></item>
+              <item><widget class="QLCDNumber" name="lcd_temp"><property name="minimumHeight"><number>32</number></property><property name="maximumHeight"><number>36</number></property><property name="digitCount"><number>8</number></property><property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property></widget></item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="layout_lcd_battery">
+              <property name="spacing"><number>0</number></property>
+              <item><widget class="QLabel" name="lbl_lcd_battery"><property name="objectName"><string>data_label</string></property><property name="text"><string>当前电量 (%)</string></property></widget></item>
+              <item><widget class="QLCDNumber" name="lcd_battery"><property name="minimumHeight"><number>32</number></property><property name="maximumHeight"><number>36</number></property><property name="digitCount"><number>8</number></property><property name="segmentStyle"><enum>QLCDNumber::Flat</enum></property></widget></item>
+             </layout>
+            </item>
+            <item><spacer name="chart_lcd_spacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint"><size><width>20</width><height>40</height></size></property></spacer></item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <widget class="QWidget" name="chart_container">
+          <layout class="QVBoxLayout" name="chart_container_layout">
+           <property name="leftMargin"><number>0</number></property>
+           <property name="topMargin"><number>0</number></property>
+           <property name="rightMargin"><number>0</number></property>
+           <property name="bottomMargin"><number>0</number></property>
+           <item>
+            <widget class="QLabel" name="chart_placeholder">
+             <property name="text"><string>📈 实时波形区域&#xa;（程序运行时由 PyQtGraph 加载）</string></property>
+             <property name="alignment"><set>Qt::AlignCenter</set></property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QFrame" name="log_panel">
+       <attribute name="title"><string>串口</string></attribute>
+       <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+       <layout class="QVBoxLayout" name="log_layout">
+        <property name="leftMargin"><number>0</number></property>
+        <property name="topMargin"><number>0</number></property>
+        <property name="rightMargin"><number>0</number></property>
+        <property name="bottomMargin"><number>0</number></property>
+        <property name="spacing"><number>0</number></property>
+        <item>
+         <widget class="QFrame" name="log_control_panel">
+          <property name="objectName"><string>log_control_panel</string></property>
+          <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <layout class="QHBoxLayout" name="log_control_layout">
+           <property name="leftMargin"><number>8</number></property>
+           <property name="topMargin"><number>4</number></property>
+           <property name="rightMargin"><number>8</number></property>
+           <property name="bottomMargin"><number>4</number></property>
+           <property name="spacing"><number>6</number></property>
+           <item><widget class="QComboBox" name="cb_port"><property name="minimumSize"><size><width>110</width><height>0</height></size></property></widget></item>
+           <item><widget class="QComboBox" name="cb_baudrate">
+            <property name="minimumSize"><size><width>96</width><height>0</height></size></property>
+            <item><property name="text"><string>115200</string></property></item>
+            <item><property name="text"><string>1000000</string></property></item>
+            <item><property name="text"><string>2000000</string></property></item>
+           </widget></item>
+           <item><widget class="QPushButton" name="btn_start"><property name="minimumSize"><size><width>88</width><height>0</height></size></property><property name="text"><string>▶ 开始</string></property></widget></item>
+           <item><widget class="QPushButton" name="btn_new_live_log"><property name="objectName"><string>btn_log_tool</string></property><property name="minimumSize"><size><width>56</width><height>0</height></size></property><property name="text"><string>New</string></property><property name="toolTip"><string>新建实时报文文件，当前标签右移</string></property></widget></item>
+           <item><widget class="QLabel" name="lbl_live_log_name"><property name="objectName"><string>log_tool_label</string></property><property name="text"><string>文件名</string></property></widget></item>
+           <item><widget class="QLineEdit" name="edit_live_log_name"><property name="minimumSize"><size><width>120</width><height>0</height></size></property><property name="maximumSize"><size><width>200</width><height>16777215</height></size></property><property name="placeholderText"><string>实时报文</string></property><property name="toolTip"><string>不含扩展名，保存为 TXT 格式，Enter 确认</string></property></widget></item>
+           <item><widget class="QLabel" name="lbl_live_log_dir"><property name="objectName"><string>log_tool_label</string></property><property name="text"><string>保存路径</string></property></widget></item>
+           <item><widget class="QLineEdit" name="edit_live_log_dir"><property name="minimumSize"><size><width>140</width><height>0</height></size></property><property name="toolTip"><string>实时报文 TXT 文件保存目录</string></property></widget></item>
+           <item><widget class="QPushButton" name="btn_browse_log_dir"><property name="objectName"><string>btn_log_tool</string></property><property name="minimumSize"><size><width>88</width><height>0</height></size></property><property name="text"><string>📁 选择路径</string></property></widget></item>
+           <item><widget class="QPushButton" name="btn_open_log"><property name="objectName"><string>btn_log_tool</string></property><property name="minimumSize"><size><width>88</width><height>0</height></size></property><property name="text"><string>📂 打开文件</string></property><property name="toolTip"><string>打开本地 TXT 日志文件（可多选）</string></property></widget></item>
+           <item><spacer name="log_control_spacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint"><size><width>40</width><height>20</height></size></property></spacer></item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="log_content_layout">
+          <property name="leftMargin"><number>8</number></property>
+          <property name="topMargin"><number>4</number></property>
+          <property name="rightMargin"><number>8</number></property>
+          <property name="bottomMargin"><number>6</number></property>
+          <property name="spacing"><number>3</number></property>
+          <item>
+           <widget class="QTabWidget" name="log_file_tabs">
+            <property name="documentMode"><bool>false</bool></property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -431,3 +431,297 @@ serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle
 2026-06-01 07:37:25,445 [INFO] WirelessChargerMonitor: Monitoring started: session=10 port=COM6 baud=2000000 demo=False
 2026-06-01 07:37:25,448 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
 2026-06-01 07:37:46,293 [INFO] WirelessChargerMonitor: Session closed: id=10 ended_at=2026-06-01 07:37:46
+2026-06-03 22:10:33,003 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-06-03 22:10:33,021 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-06-05 23:03:31,541 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-05 23:05:10,158 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-05 23:05:10,198 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-05 23:07:22,083 [INFO] WirelessChargerMonitor: Session created: id=11 uuid=1E15AA91 port=COM3
+2026-06-05 23:07:22,097 [INFO] WirelessChargerMonitor: Monitoring started: session=11 port=COM3 baud=2000000 demo=False
+2026-06-05 23:07:22,240 [ERROR] WirelessChargerMonitor: 无法打开串口 COM3 (波特率 2000000): Cannot configure port, something went wrong. Original message: OSError(22, 'The parameter is incorrect.', None, 87)
+2026-06-05 23:07:22,245 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM3 (波特率 2000000): Cannot configure port, something went wrong. Original message: OSError(22, 'The parameter is incorrect.', None, 87)
+2026-06-05 23:07:31,838 [INFO] WirelessChargerMonitor: Session closed: id=11 ended_at=2026-06-05 23:07:31
+2026-06-05 23:07:37,390 [INFO] WirelessChargerMonitor: Session created: id=12 uuid=D4035389 port=COM5
+2026-06-05 23:07:37,402 [INFO] WirelessChargerMonitor: Monitoring started: session=12 port=COM5 baud=2000000 demo=False
+2026-06-05 23:07:42,608 [ERROR] WirelessChargerMonitor: 无法打开串口 COM5 (波特率 2000000): could not open port 'COM5': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-05 23:07:42,608 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM5 (波特率 2000000): could not open port 'COM5': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-05 23:07:45,482 [INFO] WirelessChargerMonitor: Session closed: id=12 ended_at=2026-06-05 23:07:45
+2026-06-05 23:07:46,710 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-05 23:07:53,444 [INFO] WirelessChargerMonitor: Session created: id=13 uuid=75D9331E port=COM6
+2026-06-05 23:07:53,456 [INFO] WirelessChargerMonitor: Monitoring started: session=13 port=COM6 baud=2000000 demo=False
+2026-06-05 23:07:53,460 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-05 23:10:33,609 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-05 23:10:33,628 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-05 23:10:53,556 [INFO] WirelessChargerMonitor: Session created: id=14 uuid=034C3EA9 port=COM6
+2026-06-05 23:10:53,569 [INFO] WirelessChargerMonitor: Monitoring started: session=14 port=COM6 baud=2000000 demo=False
+2026-06-05 23:10:53,573 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-05 23:16:18,830 [INFO] WirelessChargerMonitor: Session closed: id=14 ended_at=2026-06-05 23:16:18
+2026-06-05 23:16:18,898 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-06-05 23:16:18,950 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-06-05 23:16:40,211 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-05 23:16:40,231 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-05 23:17:26,868 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-06-05 23:17:26,947 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-06-05 23:30:26,457 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-05 23:30:26,478 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-05 23:40:27,239 [INFO] WirelessChargerMonitor.report: PDF report generated: _test_report_s14.pdf (verdict=PASS, id=RPT-20260605-F591EA)
+2026-06-05 23:41:38,044 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-06-05 23:41:38,091 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-06-05 23:44:35,805 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-05 23:44:35,826 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-05 23:45:33,123 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-05 23:45:38,748 [INFO] WirelessChargerMonitor: Session created: id=15 uuid=9AA616D5 port=COM6
+2026-06-05 23:45:38,766 [INFO] WirelessChargerMonitor: Monitoring started: session=15 port=COM6 baud=2000000 demo=False
+2026-06-05 23:45:38,770 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-05 23:48:13,399 [INFO] WirelessChargerMonitor: Session closed: id=15 ended_at=2026-06-05 23:48:13
+2026-06-05 23:48:23,385 [INFO] WirelessChargerMonitor.report: PDF report generated: D:/windlink/windlink/WirelessChargerMonitor/Report_S15_20260605_2348.pdf (verdict=PASS, id=RPT-20260605-0FD84A)
+2026-06-05 23:52:36,745 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-06-05 23:52:36,816 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-06-05 23:52:53,328 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-05 23:52:53,353 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-05 23:53:07,333 [INFO] WirelessChargerMonitor: Session created: id=16 uuid=B0F7C1AA port=COM6
+2026-06-05 23:53:07,343 [INFO] WirelessChargerMonitor: Monitoring started: session=16 port=COM6 baud=2000000 demo=False
+2026-06-05 23:53:07,346 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-05 23:54:16,402 [INFO] WirelessChargerMonitor.report: PDF report generated: _test_cover.pdf (verdict=PASS, id=RPT-20260605-3853F9)
+2026-06-05 23:55:02,907 [INFO] WirelessChargerMonitor: Session closed: id=16 ended_at=2026-06-05 23:55:02
+2026-06-05 23:56:47,973 [INFO] WirelessChargerMonitor.report: PDF report generated: D:/windlink/windlink/WirelessChargerMonitor/Report_S16_20260605_2356.pdf (verdict=PASS, id=RPT-20260605-261C4B)
+2026-06-05 23:57:26,393 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-05 23:57:26,407 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-05 23:57:42,603 [INFO] WirelessChargerMonitor.report: PDF report generated: D:/windlink/windlink/WirelessChargerMonitor/Report_S16_20260605_2357.pdf (verdict=PASS, id=RPT-20260605-703910)
+2026-06-06 00:18:25,216 [INFO] WirelessChargerMonitor: DBWorker stopped
+2026-06-06 00:18:25,231 [INFO] WirelessChargerMonitor: FetchWorker stopped
+2026-06-06 00:18:37,828 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-06 00:18:37,850 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-06 00:19:06,869 [INFO] WirelessChargerMonitor: Session created: id=17 uuid=EB2BBB82 port=COM6
+2026-06-06 00:19:06,885 [INFO] WirelessChargerMonitor: Monitoring started: session=17 port=COM6 baud=2000000 demo=False
+2026-06-06 00:19:06,888 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-06 00:22:26,141 [INFO] WirelessChargerMonitor: Session closed: id=17 ended_at=2026-06-06 00:22:26
+2026-06-06 00:30:02,707 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-06 00:30:02,732 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-06 11:06:36,538 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-06 11:06:36,574 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-06 12:16:51,835 [INFO] WirelessChargerMonitor: Session created: id=18 uuid=95D77381 port=COM6
+2026-06-06 12:16:51,851 [INFO] WirelessChargerMonitor: Monitoring started: session=18 port=COM6 baud=2000000 demo=False
+2026-06-06 12:16:53,362 [ERROR] WirelessChargerMonitor: 无法打开串口 COM6 (波特率 2000000): Cannot configure port, something went wrong. Original message: PermissionError(13, 'A device attached to the system is not functioning.', None, 31)
+2026-06-06 12:16:53,369 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM6 (波特率 2000000): Cannot configure port, something went wrong. Original message: PermissionError(13, 'A device attached to the system is not functioning.', None, 31)
+2026-06-06 12:16:55,551 [INFO] WirelessChargerMonitor: Session closed: id=18 ended_at=2026-06-06 12:16:55
+2026-06-06 12:17:01,469 [INFO] WirelessChargerMonitor: Session created: id=19 uuid=8C28B686 port=COM6
+2026-06-06 12:17:01,480 [INFO] WirelessChargerMonitor: Monitoring started: session=19 port=COM6 baud=2000000 demo=False
+2026-06-06 12:17:03,049 [ERROR] WirelessChargerMonitor: 无法打开串口 COM6 (波特率 2000000): Cannot configure port, something went wrong. Original message: PermissionError(13, 'A device attached to the system is not functioning.', None, 31)
+2026-06-06 12:17:03,050 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM6 (波特率 2000000): Cannot configure port, something went wrong. Original message: PermissionError(13, 'A device attached to the system is not functioning.', None, 31)
+2026-06-06 12:17:04,889 [INFO] WirelessChargerMonitor: Session closed: id=19 ended_at=2026-06-06 12:17:04
+2026-06-06 12:17:12,698 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-06 12:17:17,566 [INFO] WirelessChargerMonitor: Session created: id=20 uuid=94C841E4 port=COM6
+2026-06-06 12:17:17,576 [INFO] WirelessChargerMonitor: Monitoring started: session=20 port=COM6 baud=2000000 demo=False
+2026-06-06 12:17:17,579 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-06 12:19:19,993 [INFO] WirelessChargerMonitor: Session closed: id=20 ended_at=2026-06-06 12:19:19
+2026-06-06 12:19:37,112 [INFO] WirelessChargerMonitor.report: PDF report generated: D:/windlink/windlink/WirelessChargerMonitor/Report_S20_20260606_1219.pdf (verdict=PASS, id=RPT-20260606-6E2D9D)
+2026-06-06 12:22:28,524 [INFO] WirelessChargerMonitor: Session created: id=21 uuid=3E4059BA port=COM6
+2026-06-06 12:22:28,537 [INFO] WirelessChargerMonitor: Monitoring started: session=21 port=COM6 baud=2000000 demo=False
+2026-06-06 12:22:28,539 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-06 12:22:34,180 [INFO] WirelessChargerMonitor: Session closed: id=21 ended_at=2026-06-06 12:22:34
+2026-06-06 12:22:38,557 [INFO] WirelessChargerMonitor: Session created: id=22 uuid=B1D775CD port=COM6
+2026-06-06 12:22:38,568 [INFO] WirelessChargerMonitor: Monitoring started: session=22 port=COM6 baud=2000000 demo=False
+2026-06-06 12:22:38,570 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-06 12:23:56,038 [INFO] WirelessChargerMonitor: Session closed: id=22 ended_at=2026-06-06 12:23:56
+2026-06-06 12:24:09,881 [INFO] WirelessChargerMonitor: Session created: id=23 uuid=6AA98AB4 port=COM6
+2026-06-06 12:24:09,891 [INFO] WirelessChargerMonitor: Monitoring started: session=23 port=COM6 baud=2000000 demo=False
+2026-06-06 12:24:09,893 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-06 12:28:31,548 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-06 12:28:31,573 [INFO] WirelessChargerMonitor: Ports scanned: 6 device(s)
+2026-06-06 12:29:23,678 [INFO] WirelessChargerMonitor: Session created: id=24 uuid=E436BD93 port=COM6
+2026-06-06 12:29:23,698 [INFO] WirelessChargerMonitor: Monitoring started: session=24 port=COM6 baud=2000000 demo=False
+2026-06-06 12:29:23,700 [INFO] WirelessChargerMonitor: Serial connected: COM6 @ 2000000
+2026-06-06 13:50:55,705 [INFO] WirelessChargerMonitor: Session closed: id=24 ended_at=2026-06-06 13:50:55
+2026-06-26 21:49:13,766 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 21:49:13,785 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 21:56:04,451 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 21:56:04,467 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 21:56:14,240 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 21:56:14,253 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 21:56:54,340 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 21:56:54,360 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:01:25,945 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:01:25,965 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:01:49,700 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:01:49,715 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:04:14,184 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:04:14,199 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:04:22,903 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:04:22,915 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:06:46,708 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:06:46,720 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:07:10,327 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:07:10,341 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:11:33,988 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:11:34,000 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:12:02,435 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:12:02,453 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:16:24,206 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:16:24,225 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:27:43,039 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:27:43,089 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:28:51,815 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:28:51,834 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:29:55,871 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:29:55,889 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:30:40,720 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:30:40,735 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:32:21,191 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:32:21,210 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:34:20,309 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:34:20,327 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:35:33,256 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:35:33,290 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:40:51,681 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:40:51,704 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:42:37,792 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:42:37,808 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:43:50,552 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:43:50,575 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:44:39,137 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:44:39,157 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:53:55,746 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:53:55,765 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:54:51,694 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:54:51,725 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:56:41,953 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:56:41,969 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 22:57:39,215 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 22:57:39,233 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:01:39,305 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:01:39,322 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:02:01,615 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:02:01,638 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:06:03,024 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:06:03,042 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:06:33,647 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:06:33,668 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:08:24,540 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:08:24,556 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:09:27,232 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:09:27,257 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:10:16,475 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:10:34,365 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:10:34,396 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:11:15,405 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:11:15,441 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:11:38,155 [INFO] WirelessChargerMonitor: Session created: id=25 uuid=4012B761 port=COM45
+2026-06-26 23:11:38,170 [INFO] WirelessChargerMonitor: Monitoring started: session=25 port=COM45 baud=115200 demo=False
+2026-06-26 23:11:43,361 [ERROR] WirelessChargerMonitor: 无法打开串口 COM45 (波特率 115200): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-26 23:11:43,367 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM45 (波特率 115200): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-26 23:11:46,062 [INFO] WirelessChargerMonitor: Session closed: id=25 ended_at=2026-06-26 23:11:46
+2026-06-26 23:14:27,293 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:14:27,313 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:17:09,315 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:17:09,337 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:17:27,435 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:17:27,463 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:19:31,489 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:19:31,511 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:20:04,260 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:20:04,287 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:20:42,898 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:20:42,932 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:22:26,765 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:22:26,791 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:22:43,747 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:22:43,780 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:23:10,561 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:23:10,595 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:23:55,947 [INFO] WirelessChargerMonitor: Session created: id=26 uuid=604DAFB3 port=COM45
+2026-06-26 23:23:55,956 [INFO] WirelessChargerMonitor: Monitoring started: session=26 port=COM45 baud=115200 demo=False
+2026-06-26 23:24:01,142 [ERROR] WirelessChargerMonitor: 无法打开串口 COM45 (波特率 115200): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-26 23:24:01,148 [INFO] WirelessChargerMonitor: Session closed: id=26 ended_at=2026-06-26 23:24:01
+2026-06-26 23:24:01,166 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM45 (波特率 115200): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-26 23:26:34,289 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:26:34,312 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:34:43,760 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:34:43,838 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:37:23,313 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:37:23,352 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:42:21,163 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:42:21,207 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:45:24,469 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:45:24,504 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:55:16,401 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:55:16,759 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-26 23:57:28,509 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-26 23:57:29,186 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:01:23,120 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:01:23,714 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:04:33,127 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:04:33,715 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:09:23,213 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:09:24,315 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:20:32,144 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:20:32,616 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:30:03,568 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:30:04,302 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:34:13,961 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:34:14,319 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:39:02,595 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:39:03,087 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:45:04,453 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:45:05,160 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:52:34,282 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:52:34,958 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 00:58:29,644 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 00:58:30,433 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:09:00,754 [INFO] WirelessChargerMonitor: Session created: id=27 uuid=A6BFCB2F port=COM45
+2026-06-27 01:09:00,768 [INFO] WirelessChargerMonitor: Monitoring started: session=27 port=COM45 baud=2000000 demo=False
+2026-06-27 01:09:05,953 [ERROR] WirelessChargerMonitor: 无法打开串口 COM45 (波特率 2000000): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:09:05,957 [INFO] WirelessChargerMonitor: Session closed: id=27 ended_at=2026-06-27 01:09:05
+2026-06-27 01:09:05,960 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM45 (波特率 2000000): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:09:11,642 [INFO] WirelessChargerMonitor: Session created: id=28 uuid=1F1F15F7 port=COM45
+2026-06-27 01:09:11,654 [INFO] WirelessChargerMonitor: Monitoring started: session=28 port=COM45 baud=2000000 demo=False
+2026-06-27 01:09:16,840 [ERROR] WirelessChargerMonitor: 无法打开串口 COM45 (波特率 2000000): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:09:16,847 [INFO] WirelessChargerMonitor: Session closed: id=28 ended_at=2026-06-27 01:09:16
+2026-06-27 01:09:16,858 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM45 (波特率 2000000): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:09:26,919 [INFO] WirelessChargerMonitor: Session created: id=29 uuid=93A05DB1 port=COM45
+2026-06-27 01:09:26,932 [INFO] WirelessChargerMonitor: Monitoring started: session=29 port=COM45 baud=2000000 demo=False
+2026-06-27 01:09:32,056 [ERROR] WirelessChargerMonitor: 无法打开串口 COM45 (波特率 2000000): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:09:32,056 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM45 (波特率 2000000): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:11:12,427 [INFO] WirelessChargerMonitor: Session closed: id=29 ended_at=2026-06-27 01:11:12
+2026-06-27 01:11:36,626 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:11:36,982 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:11:47,972 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:11:48,274 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:11:58,520 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:11:59,159 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:12:16,564 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:12:17,197 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:15:39,861 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:15:40,515 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:24:04,335 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:24:05,129 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:34:20,971 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:34:21,314 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:40:29,009 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:40:29,675 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:42:40,437 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:42:41,029 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:43:44,799 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:43:45,473 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:44:00,768 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:44:01,847 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:45:58,001 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:45:59,030 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:50:56,941 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:50:57,679 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:55:59,598 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:56:00,265 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 01:57:02,612 [INFO] WirelessChargerMonitor: Session created: id=30 uuid=DF782445 port=COM45
+2026-06-27 01:57:02,630 [INFO] WirelessChargerMonitor: Monitoring start requested: session=30 port=COM45 baud=115200 demo=False
+2026-06-27 01:57:07,819 [ERROR] WirelessChargerMonitor: 无法打开串口 COM45 (波特率 115200): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:57:07,822 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM45 (波特率 115200): could not open port 'COM45': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:57:09,501 [INFO] WirelessChargerMonitor: Session closed: id=30 ended_at=2026-06-27 01:57:09
+2026-06-27 01:57:13,024 [INFO] WirelessChargerMonitor: Session created: id=31 uuid=5E0D89B4 port=COM5
+2026-06-27 01:57:13,040 [INFO] WirelessChargerMonitor: Monitoring start requested: session=31 port=COM5 baud=115200 demo=False
+2026-06-27 01:57:18,224 [ERROR] WirelessChargerMonitor: 无法打开串口 COM5 (波特率 115200): could not open port 'COM5': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:57:18,225 [ERROR] WirelessChargerMonitor: Serial connection failed, monitoring stopped: 无法打开串口 COM5 (波特率 115200): could not open port 'COM5': OSError(22, 'The semaphore timeout period has expired.', None, 121)
+2026-06-27 01:57:20,014 [INFO] WirelessChargerMonitor: Session closed: id=31 ended_at=2026-06-27 01:57:20
+2026-06-27 01:59:08,772 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 01:59:09,485 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)
+2026-06-27 02:05:03,450 [INFO] WirelessChargerMonitor: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-27 02:05:04,116 [INFO] WirelessChargerMonitor: Ports scanned: 5 device(s)

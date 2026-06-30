@@ -1,9 +1,10 @@
 # ==========================================
 # Module: WPC Qi 2.2.1 / MPP 协议深度解析引擎
-# Author: Roy Zhao @ 御风智联
 # Reference: Qi 2.2.1 Communications Protocol + MPP Communications Protocol (WPC)
 # ==========================================
 import re
+
+from ..i18n import get_language, tr
 
 # ---------------------------------------------------------------------------
 # 常量与查找表
@@ -64,7 +65,7 @@ FSK_RESPONSE = {
 # 完整表见 WPC《Power Receiver Manufacturer Codes》独立文档
 PRMC_VENDORS = {
     0x005A: 'Apple',
-    0x0060: 'Samsung',
+    0x0042: 'Samsung',
     0x010E: 'Google',
     0x0173: 'Xiaomi',
     0x0186: 'Huawei',
@@ -278,7 +279,16 @@ def _qi_message_size(header, overrides=None):
 
 
 def _ptmc_vendor(prmc):
-    return PRMC_VENDORS.get(prmc, f'未知厂商 (PRMC 0x{prmc:04X})')
+    return PRMC_VENDORS.get(prmc, tr('qi.unknown_vendor', code=prmc))
+
+
+def _localize_pkt_desc(desc: str) -> str:
+    if get_language() != 'en':
+        return desc
+    match = re.search(r'\(([A-Za-z][A-Za-z0-9 /\-_.]*)\)\s*$', desc)
+    if match:
+        return match.group(1).strip()
+    return desc
 
 
 def _split_payload_checksum(header, body, overrides=None):
@@ -335,6 +345,14 @@ class _Html:
 class Qi22Parser:
     """Qi 2.2.1 / MPP ASK·FSK 报文字段解析器。"""
 
+    @staticmethod
+    def _insufficient():
+        return f'<i>{tr("qi.insufficient")}</i>'
+
+    @staticmethod
+    def _no_payload():
+        return f'<i>{tr("qi.no_payload")}</i>'
+
     def parse_message(self, line):
         line = re.sub(r'\s+', ' ', line).strip() + ' '
         if 'ASK ' in line:
@@ -358,34 +376,35 @@ class Qi22Parser:
             payload, cs, cs_st = _split_payload_checksum(header, raw[1:], overrides)
 
             registry = ASK_PACKETS if p_type == 'ASK' else FSK_PACKETS
-            name, desc = registry.get(header, (f'UNK_0x{header:02X}', '未知 / 专有指令'))
+            name, desc = registry.get(header, (f'UNK_0x{header:02X}', tr('qi.unknown_pkt')))
+            desc = _localize_pkt_desc(desc)
             if p_type == 'ASK':
                 detail = self._decode_ask_payload(header, payload)
             else:
                 detail = self._decode_fsk_payload(header, payload)
 
             title_color = '#38BDF8' if p_type == 'ASK' else '#FB923C'
-            dir_text = '🔵 ASK (PRx ➔ PTx)' if p_type == 'ASK' else '🟠 FSK (PTx ➔ PRx)'
+            dir_text = tr('qi.dir_ask') if p_type == 'ASK' else tr('qi.dir_fsk')
             html = (
                 f"<div style='min-width: 260px; font-family: Consolas, monospace;'>"
                 f"<b style='color:{title_color}; font-size: 11pt;'>{dir_text}</b>"
                 f"<hr style='border:1px solid #334155; margin: 5px 0;'>"
-                f"<b>Header:</b> <span style='color:#FACC15;'>0x{header:02X}</span> "
+                f"<b>{tr('qi.header')}</b> <span style='color:#FACC15;'>0x{header:02X}</span> "
                 f"[{name}] {desc}<br>"
-                f"<b>Payload ({len(payload)} B):</b> "
+                f"<b>{tr('qi.payload', n=len(payload))}</b> "
                 f"<span style='color:#94A3B8'>{_hex_bytes(payload, 24)}</span><br>"
             )
             if cs is not None:
-                html += f"<b>XOR 校验:</b> 0x{cs:02X} ({cs_st})<br>"
+                html += f"<b>{tr('qi.xor')}</b> 0x{cs:02X} ({cs_st})<br>"
             html += (
                 f"<hr style='border:1px dashed #334155; margin: 5px 0;'>"
-                f"<b>📑 字段解析:</b><br>"
+                f"<b>{tr('qi.fields')}</b><br>"
                 f"<div style='color:#E2E8F0; padding-top: 5px; line-height: 1.45;'>{detail}</div>"
                 f"</div>"
             )
             return html
         except Exception as exc:
-            return f"解析异常: {exc}"
+            return tr('qi.parse_error', error=exc)
 
     # ------------------------------------------------------------------
     # ASK 载荷解析
@@ -435,7 +454,7 @@ class Qi22Parser:
 
     def _ask_ss(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         lines = []
         _Html.byte(0, 'Signal Strength', p[0], lines)
         lines.append(_Html.field(f"耦合强度: <b>{p[0]}</b> / 255 ({p[0] / 255 * 100:.1f}%)"))
@@ -444,7 +463,7 @@ class Qi22Parser:
 
     def _ask_ept(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         reason = EPT_REASONS.get(p[0], f'保留码 0x{p[0]:02X}')
         color = '#22C55E' if p[0] == 0x01 else ('#EF4444' if p[0] in (0x02, 0x03, 0x04, 0x05, 0x06, 0x0B) else '#E2E8F0')
         detail = f'结束原因: <b style="color:{color}">{reason}</b>'
@@ -455,7 +474,7 @@ class Qi22Parser:
 
     def _ask_ce(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         ce = _s8(p[0])
         color = '#22C55E' if ce < 0 else '#EF4444'
         lines = []
@@ -466,7 +485,7 @@ class Qi22Parser:
 
     def _ask_rp8(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         lines = []
         _Html.byte(0, 'Received Power (8-bit)', p[0], lines)
         lines.append(_Html.field(f"接收功率比: <b>{p[0]}</b> / 128 = {p[0] / 128 * 100:.1f}% MaxPower"))
@@ -474,7 +493,7 @@ class Qi22Parser:
 
     def _ask_chs(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         if p[0] == 0xFF:
             detail = '无电池 / 无法获取电量 (0xFF)'
         elif p[0] <= 100:
@@ -488,7 +507,7 @@ class Qi22Parser:
 
     def _ask_pch(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         return (
             f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
             f"{_Html.field(f'Hold-off 时间: <b>{p[0]} ms</b> (毫秒，规范直接取值)')}"
@@ -496,7 +515,7 @@ class Qi22Parser:
 
     def _ask_grq(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         req = GRQ_REQUESTS.get(p[0], f'请求类型 0x{p[0]:02X}')
         return (
             f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
@@ -504,11 +523,11 @@ class Qi22Parser:
         )
 
     def _ask_reneg(self, p):
-        return '<i>无载荷 — 请求进入重新协商阶段</i>' if not p else self._generic_raw(p)
+        return f'<i>{tr("qi.reneg_no_payload")}</i>' if not p else self._generic_raw(p)
 
     def _ask_msr(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         pref = (p[0] >> 6) & 0x03
         main_mode = (p[0] >> 2) & 0x03
         aux = p[0] & 0x01
@@ -529,7 +548,7 @@ class Qi22Parser:
 
     def _ask_dsr(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         name, desc = DSR_TYPES.get(p[0], (f'0x{p[0]:02X}', '保留 / 未定义'))
         color = '#22C55E' if p[0] == 0xFF else ('#FACC15' if p[0] == 0x33 else '#E2E8F0')
         lines = ['• 数据流响应 DSR (Qi 2.2.1 §8.6, Header 0x15)']
@@ -541,7 +560,7 @@ class Qi22Parser:
 
     def _ask_cloak(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         reason = (p[0] & 0x0F) if len(p) == 1 else p[0]
         reason_text = CLOAK_REASONS.get(reason, f'0x{reason:X}')
         return (
@@ -552,7 +571,7 @@ class Qi22Parser:
 
     def _ask_xce(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         ce = _s8(p[0])
         color = '#22C55E' if ce < 0 else '#EF4444'
         lines = []
@@ -564,7 +583,7 @@ class Qi22Parser:
 
     def _ask_srq(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         req = SRQ_TYPES.get(p[0], f'请求 0x{p[0]:02X}')
         lines = []
         _Html.byte(0, 'Specific Request Type', p[0], lines)
@@ -596,7 +615,7 @@ class Qi22Parser:
 
     def _ask_cal_op(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         op = {0x00: '查询能力', 0x01: '开始捕获', 0x02: '停止捕获'}.get(p[0], f'0x{p[0]:02X}')
         lines = [_Html.field(f'校准操作: <b>{op}</b>')]
         if len(p) >= 2:
@@ -605,7 +624,7 @@ class Qi22Parser:
 
     def _ask_get(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         return (
             f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
             f"{_Html.field(f'请求 PTx 发送 Header <b>0x{p[0]:02X}</b> 的 FSK 包')}"
@@ -613,7 +632,7 @@ class Qi22Parser:
 
     def _ask_eds(self, p):
         if not p:
-            return '<i>无载荷</i>'
+            return self._no_payload()
         streams = [i for i in range(min(len(p) * 8, 32)) if (p[i // 8] >> (i % 8)) & 1]
         lines = [f"• 已启用数据流位图 ({len(p)} B): {_hex_bytes(p)}"]
         if streams:
@@ -624,7 +643,7 @@ class Qi22Parser:
 
     def _ask_rp24(self, p):
         if len(p) < 3:
-            return '<i>需要 3 字节载荷</i>'
+            return f'<i>{tr("qi.need_payload_3b")}</i>'
         mode = p[0] & 0x07
         rp_val = (p[1] << 8) | p[2]
         lines = []
@@ -799,7 +818,7 @@ class Qi22Parser:
 
     def _ask_sdsr(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         name, desc = DSR_TYPES.get(p[0], (f'0x{p[0]:02X}', '数据流响应码'))
         lines = [
             f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}",
@@ -838,7 +857,7 @@ class Qi22Parser:
 
     def _ask_cal_capture(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         return (
             f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
             f"{_Html.field(f'捕获阶段: <b>{p[0]}</b>')}<br>"
@@ -891,7 +910,7 @@ class Qi22Parser:
 
     def _fsk_ack_payload(self, p):
         if not p:
-            return "<b style='color:#22C55E'>✓ ACK</b> — 确认上一条 PRx 指令"
+            return f"<b style='color:#22C55E'>✓ ACK</b> — {tr('qi.ack_prx')}"
         resp = {0x00: 'ACK', 0x01: 'NACK', 0x02: 'ND', 0x03: 'ATN'}.get(p[0], f'0x{p[0]:02X}')
         return (
             f"• <span style='color:{_Html.O}'>Byte 0:</span> 0x{p[0]:02X}<br>"
@@ -899,13 +918,13 @@ class Qi22Parser:
         )
 
     def _fsk_fast_ack(self, p):
-        return "<b style='color:#22C55E'>✓ MPP Fast ACK (0x11)</b> — 快速确认 / 调节状态" + (
+        return f"<b style='color:#22C55E'>✓ MPP Fast ACK (0x11)</b> — {tr('qi.fast_ack')}" + (
             f'<br>{self._generic_raw(p)}' if p else ''
         )
 
     def _fsk_cloak_rcs(self, p):
         if not p:
-            return '<i>无载荷</i>'
+            return self._no_payload()
         sub = _bits(p[0], 3, 0) if len(p) == 1 else p[0]
         sub_map = {0: 'Cloak Request', 3: 'Regulation Control Status (RCS)'}
         lines = [
@@ -923,7 +942,7 @@ class Qi22Parser:
 
     def _fsk_chs(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         detail = f'PTx 报告电量/状态: <b style="color:#22C55E">{p[0]} %</b>'
         return (
             f"• <span style='color:{_Html.O}'>Byte 0:</span> 0x{p[0]:02X}<br>"
@@ -932,7 +951,7 @@ class Qi22Parser:
 
     def _fsk_mss(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         mode = {0: 'BPP', 1: 'EPP', 2: 'MPP Full', 3: 'MPP Restricted'}.get(p[0] & 0x03, f'{p[0] & 0x03}')
         return (
             f"• <span style='color:{_Html.O}'>Byte 0:</span> 0x{p[0]:02X}<br>"
@@ -942,7 +961,7 @@ class Qi22Parser:
 
     def _fsk_get(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         return (
             f"• <span style='color:{_Html.O}'>Byte 0:</span> 0x{p[0]:02X}<br>"
             f"{_Html.field(f'PTx 主动请求 PRx 发送 Header <b>0x{p[0]:02X}</b>')}"
@@ -963,7 +982,7 @@ class Qi22Parser:
 
     def _fsk_3f(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         mod = p[0]
         mod_map = {0x00: 'Inverter Voltage', 0x01: 'SDSR (Data Stream Response)', 0x02: 'KEST (Estimated K)'}
         lines = [
@@ -983,7 +1002,7 @@ class Qi22Parser:
 
     def _fsk_cap(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         lines = [f"• PTx 能力标志 (Capabilities)"]
         _Html.byte(0, 'Status Flags', p[0], lines)
         pwr_lim = '<b style="color:#EF4444">降额</b>' if p[0] & 0x01 else '正常'
@@ -1042,7 +1061,7 @@ class Qi22Parser:
 
     def _fsk_xid_ecap(self, p):
         if len(p) < 1:
-            return '<i>载荷不足</i>'
+            return self._insufficient()
         sub = p[0]
         sub_map = {0x00: 'Extended PTx Identification', 0x01: 'Extended PTx Capabilities'}
         lines = [
@@ -1100,7 +1119,7 @@ class Qi22Parser:
 
     def _generic_prop(self, p):
         if not p:
-            return '<i>专有包 — 无载荷</i>'
+            return f'<i>{tr("qi.prop_no_payload")}</i>'
         hex_part = f'<span style="color:#94A3B8">{_hex_bytes(p, 16)}</span>'
         return (
             f"• 专有 / 厂商扩展包<br>"
@@ -1120,7 +1139,7 @@ class Qi22Parser:
 
     def _generic_raw(self, p):
         if not p:
-            return '<i>无 Payload (空包)</i>'
+            return f'<i>{tr("qi.empty_pkt")}</i>'
         lines = [f"• 原始载荷 ({len(p)} B)"]
         for i, b in enumerate(p[:12]):
             _Html.byte(i, 'Data', b, lines)
