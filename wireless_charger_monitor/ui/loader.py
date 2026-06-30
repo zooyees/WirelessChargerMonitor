@@ -5,8 +5,10 @@ import pyqtgraph as pg
 from PyQt5 import uic
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtWidgets import QApplication, QSizePolicy, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
+from ..apps.tektronix_scope import TektronixScopePanel
+from ..apps.waveform_scope import attach_waveform_charts
 from .tab_utils import refresh_tab_widget
 
 from . import theme as ui_theme
@@ -15,11 +17,12 @@ from .theme import (
     full_stylesheet,
     LCD_STYLES,
     apply_data_label_style,
+    apply_editable_combo_line_edit,
     apply_lcd_style,
+    apply_line_edit_palette,
     apply_log_control_panel_metrics,
+    apply_log_control_panel_theme,
     apply_log_tool_label_style,
-    FS_CAPTION,
-    FS_SUBTITLE,
 )
 
 pg.setConfigOptions(antialias=True)
@@ -57,6 +60,7 @@ class Ui_MonitorWindow:
         widget.setAutoFillBackground(True)
         pal = widget.palette()
         pal.setColor(QPalette.Window, QColor(color))
+        pal.setColor(QPalette.WindowText, QColor(ui_theme.TEXT_PRIMARY))
         widget.setPalette(pal)
 
     def reapply_theme(self, MainWindow):
@@ -70,6 +74,8 @@ class Ui_MonitorWindow:
         self.chart_lcd_content.setPalette(chart_lcd_pal)
         self._apply_panel_bg(self.chart_panel, ui_theme.PANEL_BG)
         self._apply_panel_bg(self.log_panel, ui_theme.PANEL_BG)
+        if hasattr(self, 'tektronix_panel'):
+            self._apply_panel_bg(self.tektronix_panel, ui_theme.PANEL_BG)
         self._apply_panel_bg(self.log_control_panel, ui_theme.PANEL_BG)
         self._apply_panel_bg(self.log_file_tabs, ui_theme.PANEL_BG)
         self._setup_scroll_palettes()
@@ -79,6 +85,9 @@ class Ui_MonitorWindow:
         pg.setConfigOption('foreground', ui_theme.CHART_TEXT)
         if hasattr(self, 'graph_widget'):
             self.graph_widget.setBackground(ui_theme.CHART_BG)
+        if hasattr(self, 'tektronix_scope'):
+            self.tektronix_scope.reapply_theme()
+        apply_log_control_panel_theme(self)
 
     def _reapply_chart_colors(self):
         if not hasattr(self, 'p_p'):
@@ -115,8 +124,11 @@ class Ui_MonitorWindow:
         self._apply_scaled_layout(MainWindow)
         self._apply_widget_styles()
         self._setup_scroll_palettes()
-        self._setup_charts()
+        attach_waveform_charts(self)
+        self._reapply_chart_colors()
+        self._setup_tektronix_panel()
         self._configure_tabs()
+        apply_log_control_panel_theme(self)
 
     def _bind_widgets(self, MainWindow):
         for name in _WIDGET_NAMES:
@@ -191,6 +203,12 @@ class Ui_MonitorWindow:
         for lbl in (self.lbl_live_log_name, self.lbl_live_log_dir):
             apply_log_tool_label_style(lbl)
 
+        for name in ('edit_live_log_name', 'edit_live_log_dir'):
+            edit = getattr(self, name, None)
+            if edit is not None:
+                apply_line_edit_palette(edit)
+        apply_editable_combo_line_edit(self.cb_baudrate)
+
         for lcd_name, color in LCD_STYLES.items():
             lcd = getattr(self, lcd_name, None)
             if lcd is not None:
@@ -224,112 +242,15 @@ class Ui_MonitorWindow:
         tabs.setCurrentWidget(self.log_panel)
         refresh_tab_widget(tabs, preset='main')
 
-    def _setup_charts(self):
-        layout = self.chart_container.layout()
-        if layout is None:
-            layout = QVBoxLayout(self.chart_container)
-        else:
-            while layout.count():
-                item = layout.takeAt(0)
-                w = item.widget()
-                if w is not None:
-                    w.deleteLater()
+    def _setup_tektronix_panel(self):
+        self.tektronix_panel = QFrame()
+        self.tektronix_panel.setObjectName('tektronix_panel')
+        self.tektronix_panel.setFrameShape(QFrame.NoFrame)
+        self.tektronix_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self._apply_panel_bg(self.tektronix_panel, ui_theme.PANEL_BG)
+        layout = QVBoxLayout(self.tektronix_panel)
         layout.setContentsMargins(0, 0, 0, 0)
-
-        self.graph_widget = pg.GraphicsLayoutWidget()
-        layout.addWidget(self.graph_widget)
-
-        scale = self._ui_scale()
-        self.graph_widget.ci.layout.setSpacing(12)
-        self.graph_widget.ci.layout.setContentsMargins(10, 10, 15, 10)
-
-        self.vbs = []
-        self.dual_plots = []
-        chart_fs = max(FS_CAPTION, min(FS_SUBTITLE, round(FS_CAPTION * scale)))
-        font_css = {'font-size': f'{chart_fs}pt', 'font-family': 'Microsoft YaHei', 'font-weight': 'bold'}
-        axis_pen = pg.mkPen(color=ui_theme.CHART_AXIS, width=1.2)
-        text_pen = pg.mkPen(color=ui_theme.CHART_TEXT)
-
-        def add_plot(row, label1, color1, label2=None, color2=None, link_plot=None):
-            p = self.graph_widget.addPlot(row=row, col=0)
-            p.getViewBox().setBackgroundColor(ui_theme.CHART_BG)
-            p.setDefaultPadding(0.08)
-            p.setMinimumHeight(int(120 * scale))
-            p.enableAutoRange(x=False, y=True)
-            p.getViewBox().enableAutoRange(x=False, y=True)
-
-            ax_left = p.getAxis('left')
-            ax_left.setLabel(label1, color=color1, **font_css)
-            ax_left.setPen(axis_pen)
-            ax_left.setTextPen(text_pen)
-            ax_left.setGrid(100)
-
-            ax_bottom = p.getAxis('bottom')
-            ax_bottom.setPen(axis_pen)
-            ax_bottom.setTextPen(text_pen)
-            ax_bottom.setGrid(100)
-
-            if link_plot:
-                p.setXLink(link_plot)
-            else:
-                self.p_main = p
-
-            line1 = p.plot(pen=pg.mkPen(color=color1, width=2.2))
-            line2 = None
-            if label2 and color2:
-                vb2 = pg.ViewBox()
-                vb2.enableAutoRange(x=False, y=True)
-                self.vbs.append((p, vb2))
-                p.scene().addItem(vb2)
-                p.getAxis('right').linkToView(vb2)
-                vb2.setXLink(p)
-                vb2.setZValue(10)
-                ax_right = p.getAxis('right')
-                ax_right.setLabel(label2, color=color2, **font_css)
-                ax_right.setPen(axis_pen)
-                ax_right.setTextPen(text_pen)
-                p.showAxis('right')
-                line2 = pg.PlotDataItem(pen=pg.mkPen(color=color2, width=2.0))
-                vb2.addItem(line2)
-            return p, line1, line2
-
-        self.p_p, self.line_power, _ = add_plot(0, 'POWER (W)', ui_theme.CHART_POWER)
-        self.p_in, self.line_v_in, self.line_i_in = add_plot(
-            1, 'INPUT (V)', ui_theme.CHART_VOLTAGE, 'INPUT (A)', ui_theme.CHART_CURRENT, link_plot=self.p_p,
-        )
-        self.p_out, self.line_v_out, self.line_i_out = add_plot(
-            2, 'OUTPUT (V)', ui_theme.CHART_VOLTAGE, 'OUTPUT (A)', ui_theme.CHART_CURRENT, link_plot=self.p_p,
-        )
-        self.p_bat, self.line_v_bat, self.line_i_bat = add_plot(
-            3, 'BATTERY (V)', ui_theme.CHART_VOLTAGE, 'BATTERY (A)', ui_theme.CHART_CURRENT, link_plot=self.p_p,
-        )
-
-        self.dual_plots = [
-            (self.p_in, self.vbs[0][1], 'vi', 'ii'),
-            (self.p_out, self.vbs[1][1], 'vo', 'io'),
-            (self.p_bat, self.vbs[2][1], 'vb', 'ib'),
-        ]
-
-        self.line_specs = [
-            (self.line_power, ui_theme.CHART_POWER, 2.2),
-            (self.line_v_in, ui_theme.CHART_VOLTAGE, 2.2),
-            (self.line_i_in, ui_theme.CHART_CURRENT, 2.0),
-            (self.line_v_out, ui_theme.CHART_VOLTAGE, 2.2),
-            (self.line_i_out, ui_theme.CHART_CURRENT, 2.0),
-            (self.line_v_bat, ui_theme.CHART_VOLTAGE, 2.2),
-            (self.line_i_bat, ui_theme.CHART_CURRENT, 2.0),
-        ]
-        self._reapply_chart_colors()
-
-        self.p_p.getAxis('bottom').setStyle(showValues=False)
-        self.p_in.getAxis('bottom').setStyle(showValues=False)
-        self.p_out.getAxis('bottom').setStyle(showValues=False)
-
-        def update_views():
-            for p, vb in self.vbs:
-                vb.setGeometry(p.vb.sceneBoundingRect())
-                vb.linkedViewChanged(p.vb, vb.XAxis)
-
-        update_views()
-        for p, _ in self.vbs:
-            p.vb.sigResized.connect(update_views)
+        self.tektronix_scope = TektronixScopePanel(self.tektronix_panel)
+        self.tektronix_scope.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(self.tektronix_scope)
+        self.main_tabs.addTab(self.tektronix_panel, 'Tektronix Scope')

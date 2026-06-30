@@ -23,10 +23,10 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ..i18n import get_language, tr
-from .tab_utils import refresh_tab_widget
-from . import theme as ui_theme
-from .theme import (
+from ...i18n import get_language, tr
+from ...ui.tab_utils import refresh_tab_widget
+from ...ui import theme as ui_theme
+from ...ui.theme import (
     FS_BODY,
     LOG_FILTER_SCROLL_H,
     LOG_SPLIT_TOOLBAR_H,

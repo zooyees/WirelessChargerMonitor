@@ -13,6 +13,26 @@ TAB_PRESETS = {
 }
 
 
+def _visible_tab_count(tab_widget: QTabWidget) -> int:
+    bar = tab_widget.tabBar()
+    count = tab_widget.count()
+    if not hasattr(bar, 'isTabVisible'):
+        return count
+    return sum(1 for index in range(count) if bar.isTabVisible(index))
+
+
+def reflow_tab_widget(tab_widget: QTabWidget, *, preset: str | None = None, **kwargs) -> None:
+    """Recompute tab bar geometry after visibility or label changes."""
+    refresh_tab_widget(tab_widget, preset=preset, **kwargs)
+    bar = tab_widget.tabBar()
+    bar.updateGeometry()
+    bar.adjustSize()
+    tab_widget.updateGeometry()
+    pane = tab_widget.currentWidget()
+    if pane is not None:
+        pane.updateGeometry()
+
+
 class AdaptiveTabBar(QTabBar):
     """Tab bar that sizes each tab to its label (PyQt5 requires a subclass, not monkey-patch)."""
 
@@ -26,6 +46,10 @@ class AdaptiveTabBar(QTabBar):
         self.setDrawBase(False)
 
     def tabSizeHint(self, index):
+        if index < 0 or index >= self.count():
+            return QSize(0, 0)
+        if hasattr(self, 'isTabVisible') and not self.isTabVisible(index):
+            return QSize(0, 0)
         fm = QFontMetrics(self._measure_font())
         text = self.tabText(index)
         text_w = fm.horizontalAdvance(text) if hasattr(fm, 'horizontalAdvance') else fm.width(text)
@@ -109,7 +133,8 @@ def refresh_tab_widget(tab_widget: QTabWidget, *, preset: str | None = None, **k
     scroll_threshold = options.pop('scroll_threshold', 5)
     bar = ensure_adaptive_tab_bar(tab_widget, **options)
     count = tab_widget.count()
-    bar.setUsesScrollButtons(count > scroll_threshold)
+    visible_count = _visible_tab_count(tab_widget)
+    bar.setUsesScrollButtons(visible_count > scroll_threshold)
     for index in range(count):
         text = tab_widget.tabText(index)
         bar.setTabToolTip(index, text)

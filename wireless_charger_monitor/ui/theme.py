@@ -200,7 +200,7 @@ def init_theme(name: str | None = None) -> str:
 
 
 def full_stylesheet() -> str:
-    return _build_app_stylesheet() + _monitor_widget_styles()
+    return _build_app_stylesheet() + menu_popup_stylesheet() + _monitor_widget_styles()
 
 
 def ui_font_css(size_pt: int, weight: str = FW_NORMAL, *, family: str | None = None) -> str:
@@ -225,6 +225,44 @@ QStatusBar QLabel {{
 """
 
 
+def menu_popup_stylesheet() -> str:
+    """Popup menus (Settings corner button, submenus) — not covered by hidden menu bar."""
+    return f"""
+QMenu {{
+    background: {PANEL_BG};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+    padding: 4px 0;
+    {ui_font_css(FS_BODY, FW_NORMAL)}
+}}
+QMenu::item {{
+    padding: 6px 28px 6px 20px;
+    color: {TEXT_PRIMARY};
+}}
+QMenu::item:selected {{
+    background: {ACCENT};
+    color: {ACCENT_TEXT};
+}}
+QMenu::indicator {{
+    width: 14px;
+    height: 14px;
+    margin-left: 8px;
+    border: 1px solid {BORDER_STRONG};
+    border-radius: 3px;
+    background: {INPUT_BG};
+}}
+QMenu::indicator:checked {{
+    background: {ACCENT};
+    border-color: {ACCENT_BORDER};
+}}
+QMenu::separator {{
+    height: 1px;
+    background: {BORDER};
+    margin: 4px 8px;
+}}
+"""
+
+
 def menu_bar_stylesheet() -> str:
     return f"""
 QMenuBar {{
@@ -243,25 +281,7 @@ QMenuBar::item:selected {{
     background: {MENU_ITEM_HOVER};
     color: {TEXT_PRIMARY};
 }}
-QMenu {{
-    background: {PANEL_BG};
-    color: {TEXT_PRIMARY};
-    border: 1px solid {BORDER};
-    padding: 4px 0;
-    {ui_font_css(FS_BODY, FW_NORMAL)}
-}}
-QMenu::item {{
-    padding: 6px 28px 6px 20px;
-}}
-QMenu::item:selected {{
-    background: {ACCENT};
-    color: {ACCENT_TEXT};
-}}
-QMenu::indicator {{
-    width: 16px;
-    height: 16px;
-    margin-left: 6px;
-}}
+{menu_popup_stylesheet()}
 """
 
 
@@ -410,11 +430,7 @@ def apply_log_split_toolbar_style(toolbar: QFrame):
 def apply_log_pane_style(edit: QPlainTextEdit):
     """报文文本区：显式设置前景/背景色。"""
     edit.setObjectName('log_split_pane')
-    edit.setAutoFillBackground(True)
-    pal = edit.palette()
-    pal.setColor(QPalette.Base, QColor(SURFACE_BG))
-    pal.setColor(QPalette.Text, QColor(TEXT_PRIMARY))
-    edit.setPalette(pal)
+    apply_text_edit_palette(edit)
     edit.setStyleSheet(
         f'QPlainTextEdit#log_split_pane {{ background-color: {SURFACE_BG}; color: {TEXT_PRIMARY}; '
         f"border: none; {ui_font_css(FS_BODY, FW_NORMAL, family=FONT_FAMILY_MONO)} "
@@ -443,6 +459,9 @@ QMainWindow, QWidget#centralwidget {{
     color: {TEXT_PRIMARY};
     {ui_font_css(FS_BODY, FW_NORMAL)}
 }}
+QWidget {{
+    color: {TEXT_PRIMARY};
+}}
 QLabel#main_title {{
     {ui_font_css(FS_SUBTITLE, FW_SEMIBOLD)}
     color: {TEXT_PRIMARY};
@@ -465,7 +484,7 @@ QGroupBox::title {{
     padding: 0 4px;
     color: {TEXT_PRIMARY};
 }}
-QFrame#log_panel, QFrame#chart_panel {{
+QFrame#log_panel, QFrame#chart_panel, QFrame#tektronix_panel {{
     background-color: {PANEL_BG};
     border-radius: 12px;
 }}
@@ -585,6 +604,16 @@ QPushButton#btn_start:hover {{
     background-color: {ACCENT_HOVER};
 }}
 QPlainTextEdit {{
+    background-color: {SURFACE_BG};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+    border-radius: 6px;
+    {ui_font_css(FS_BODY, FW_NORMAL, family=FONT_FAMILY_MONO)}
+    padding: 6px;
+    selection-background-color: {ACCENT_HOVER};
+    selection-color: {SELECTION_TEXT};
+}}
+QTextEdit {{
     background-color: {SURFACE_BG};
     color: {TEXT_PRIMARY};
     border: 1px solid {BORDER};
@@ -732,7 +761,7 @@ QTabWidget#log_file_tabs QPlainTextEdit {{
     {ui_font_css(FS_BODY, FW_NORMAL, family=FONT_FAMILY_MONO)}
     padding: 6px;
 }}
-QFrame#chart_panel, QFrame#log_panel {{
+QFrame#chart_panel, QFrame#log_panel, QFrame#tektronix_panel {{
     border: none;
 }}
 QLabel#log_tool_label {{
@@ -855,8 +884,76 @@ QLabel#chart_placeholder {{
     padding: 24px;
     background-color: transparent;
 }}
+QWidget#TektronixScopePanel {{
+    background-color: transparent;
+    color: {TEXT_PRIMARY};
+}}
+QLineEdit#tek_scope_model {{
+    background-color: {INPUT_BG};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+    border-radius: 4px;
+    {ui_font_css(FS_BODY, FW_SEMIBOLD)}
+    padding: 2px 6px;
+}}
+QTextEdit#tek_scope_log {{
+    background-color: {SURFACE_BG};
+    color: {TEXT_PRIMARY};
+    border: 1px solid {BORDER};
+    border-radius: 4px;
+    {ui_font_css(FS_BODY, FW_NORMAL)}
+}}
+QLabel#tek_scope_preview {{
+    background-color: {CHART_BG};
+    border: 1px solid {BORDER};
+    border-radius: 6px;
+    color: {TEXT_MUTED};
+}}
 {lcd_rules}
 """
+
+
+def apply_widget_surface_bg(widget: QWidget, color: str | None = None) -> None:
+    """Panel/surface background via palette (stylesheet alone is unreliable after tab rebuild)."""
+    bg = color or PANEL_BG
+    widget.setAutoFillBackground(True)
+    pal = widget.palette()
+    pal.setColor(QPalette.Window, QColor(bg))
+    pal.setColor(QPalette.WindowText, QColor(TEXT_PRIMARY))
+    widget.setPalette(pal)
+
+
+def apply_log_control_panel_theme(ui) -> None:
+    """Serial tool left sidebar — palettes must be refreshed after main tab bar rebuild."""
+    panel = getattr(ui, 'log_control_panel', None)
+    if panel is None:
+        return
+    apply_widget_surface_bg(panel, PANEL_BG)
+    panel.setStyleSheet(
+        f'QFrame#log_control_panel {{ background-color: {PANEL_BG}; border: none; '
+        f'border-right: 1px solid {BORDER}; }}'
+    )
+    log_panel = getattr(ui, 'log_panel', None)
+    if log_panel is not None:
+        apply_widget_surface_bg(log_panel, PANEL_BG)
+    for name in ('cb_port', 'cb_baudrate'):
+        combo = getattr(ui, name, None)
+        if combo is not None:
+            apply_combo_palette(combo)
+    for name in ('edit_live_log_name', 'edit_live_log_dir'):
+        edit = getattr(ui, name, None)
+        if edit is not None:
+            apply_line_edit_palette(edit)
+    for name in ('lbl_live_log_name', 'lbl_live_log_dir'):
+        lbl = getattr(ui, name, None)
+        if lbl is not None:
+            apply_log_tool_label_style(lbl)
+    for name in ('btn_start', 'btn_new_live_log', 'btn_browse_log_dir', 'btn_open_log'):
+        btn = getattr(ui, name, None)
+        if btn is not None:
+            btn.setStyleSheet('')
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
 
 
 def apply_log_toolbar_button_style(button: QPushButton) -> None:
@@ -868,10 +965,28 @@ def apply_log_toolbar_button_style(button: QPushButton) -> None:
 
 def apply_editable_combo_line_edit(combo: QComboBox) -> None:
     """Editable QComboBox embeds a QLineEdit that may ignore global QSS on Windows."""
+    apply_combo_palette(combo)
+
+
+def apply_combo_palette(combo: QComboBox) -> None:
+    """Ensure combo text/background contrast (QSS alone is unreliable on Windows)."""
+    combo.setAutoFillBackground(True)
+    pal = combo.palette()
+    pal.setColor(QPalette.Base, QColor(INPUT_BG))
+    pal.setColor(QPalette.Button, QColor(INPUT_BG))
+    pal.setColor(QPalette.Text, QColor(TEXT_PRIMARY))
+    pal.setColor(QPalette.WindowText, QColor(TEXT_PRIMARY))
+    pal.setColor(QPalette.Highlight, QColor(ACCENT))
+    pal.setColor(QPalette.HighlightedText, QColor(ACCENT_TEXT))
+    combo.setPalette(pal)
     line_edit = combo.lineEdit()
-    if line_edit is None:
-        return
-    line_edit.setFrame(False)
+    if line_edit is not None:
+        line_edit.setFrame(False)
+        apply_line_edit_palette(line_edit)
+
+
+def apply_line_edit_palette(line_edit: QLineEdit, *, read_only: bool = False) -> None:
+    """Ensure line edit text/background contrast (QSS alone is unreliable on Windows)."""
     pal = line_edit.palette()
     pal.setColor(QPalette.Base, QColor(INPUT_BG))
     pal.setColor(QPalette.Text, QColor(TEXT_PRIMARY))
@@ -879,6 +994,50 @@ def apply_editable_combo_line_edit(combo: QComboBox) -> None:
     pal.setColor(QPalette.HighlightedText, QColor(ACCENT_TEXT))
     line_edit.setPalette(pal)
     line_edit.setAutoFillBackground(True)
+    if read_only:
+        line_edit.setFrame(True)
+
+
+def apply_text_edit_palette(text_edit) -> None:
+    """Ensure QTextEdit / QPlainTextEdit contrast (viewport needs palette on Windows)."""
+    text_edit.setAutoFillBackground(True)
+    pal = text_edit.palette()
+    pal.setColor(QPalette.Base, QColor(SURFACE_BG))
+    pal.setColor(QPalette.Text, QColor(TEXT_PRIMARY))
+    pal.setColor(QPalette.WindowText, QColor(TEXT_PRIMARY))
+    pal.setColor(QPalette.Highlight, QColor(ACCENT))
+    pal.setColor(QPalette.HighlightedText, QColor(ACCENT_TEXT))
+    text_edit.setPalette(pal)
+    viewport = text_edit.viewport() if hasattr(text_edit, 'viewport') else None
+    if viewport is not None:
+        viewport.setAutoFillBackground(True)
+        vp = viewport.palette()
+        vp.setColor(QPalette.Base, QColor(SURFACE_BG))
+        vp.setColor(QPalette.Text, QColor(TEXT_PRIMARY))
+        viewport.setPalette(vp)
+
+
+def apply_tektronix_scope_theme(panel) -> None:
+    """Theme-aware styling for the embedded Tektronix scope panel."""
+    panel.setObjectName('TektronixScopePanel')
+    if hasattr(panel, 'lineEdit'):
+        panel.lineEdit.setObjectName('tek_scope_model')
+        apply_line_edit_palette(panel.lineEdit, read_only=True)
+    if hasattr(panel, 'textEdit'):
+        panel.textEdit.setObjectName('tek_scope_log')
+        apply_text_edit_palette(panel.textEdit)
+        panel.textEdit.setStyleSheet('')
+    if hasattr(panel, 'label'):
+        panel.label.setObjectName('tek_scope_preview')
+        panel.label.setStyleSheet('')
+    for btn_name in ('pushButton_connect', 'pushButton_save', 'pushButton_save_2'):
+        btn = getattr(panel, btn_name, None)
+        if btn is not None:
+            btn.setStyleSheet('')
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+    panel.style().unpolish(panel)
+    panel.style().polish(panel)
 
 
 def apply_log_toolbar_control_height(widget, *, primary=False, scale: float = 1.0) -> None:

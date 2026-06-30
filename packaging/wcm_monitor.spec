@@ -55,6 +55,7 @@ excludes = [
 
 datas = [
     (str(PKG / 'ui' / 'monitor_window.ui'), 'wireless_charger_monitor/ui'),
+    (str(PKG / 'apps' / 'tektronix_scope' / 'tektronix_scope.ui'), 'wireless_charger_monitor/apps/tektronix_scope'),
     (str(ROOT / 'packaging' / 'default_config.json'), '.'),
     (str(ROOT / 'packaging' / 'WiParse.ico'), 'Icon'),
 ]
@@ -71,6 +72,8 @@ hiddenimports = [
     'serial.tools.list_ports_common',
     'serial.tools.list_ports_windows',
     'pyqtgraph',
+    'pyvisa',
+    'pyvisa_py',
     'numpy.lib.format',
     # pyqtgraph.parametertree.interactive imports pydoc at startup
     'pydoc',

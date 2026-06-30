@@ -85,29 +85,30 @@ TX0:[HH:MM:SS.mmm] FSK 40 03 F
 
 ```
 WiParse/
-├── main.py                          # 启动入口（薄封装）
-├── config.json                      # 用户配置（相对路径基于项目根目录）
+├── main.py                          # 启动入口
+├── config.json                      # 用户配置
 ├── requirements.txt
-├── compile_ui.bat                   # 可选：.ui → Python 桩代码
-├── tools/                           # 开发与维护脚本
-└── wireless_charger_monitor/        # 主包
+└── wireless_charger_monitor/        # WiParse 主包
     ├── app.py                       # QApplication 与 argparse
-    ├── config.py                    # 配置加载与默认值
-    ├── paths.py                     # 项目根路径解析
-    ├── logging_setup.py             # 日志初始化
-    ├── db/                          # SQLite 持久化
-    │   ├── schema.py                # 表结构与 init_db
-    │   └── sessions.py              # 测试会话 CRUD
+    ├── config.py                    # 配置加载
+    ├── paths.py                     # 路径解析
+    ├── logging_setup.py             # 日志
+    ├── apps/                        # 同级工具模块
+    │   ├── serial_tool/             # 串口工具（报文监控 Tab）
+    │   ├── waveform_scope/          # 示波器工具（PyQtGraph 波形）
+    │   └── tektronix_scope/         # 泰克示波器（USB 截图，源自 TektronixScopeTool）
+    │       ├── tektronix_scope.ui   # Qt Designer 布局
+    │       ├── loader.py            # 加载 .ui + WiParse 主题
+    │       └── panel.py             # 嵌入主窗口 Tab 的面板
+    ├── shell/
+    │   └── main_window.py           # 应用壳：菜单、Tab、业务逻辑
+    ├── ui/                          # 共享 UI 资源
+    │   ├── monitor_window.ui        # Qt Designer 布局
+    │   ├── loader.py                # 加载 .ui 并注入图表
+    │   └── theme.py                 # 主题与样式
     ├── workers/                     # 后台线程
-    │   ├── serial_worker.py         # 串口采集 / Demo
-    │   ├── db_worker.py             # 异步写库
-    │   └── fetch_worker.py          # 历史图表 / 日志分页
-    ├── ui/                          # 界面层
-    │   ├── monitor_window.ui        # Qt Designer 布局（可编辑）
-    │   ├── loader.py                # 加载 .ui + PyQtGraph 图表
-    │   └── main_window.py           # 主窗口业务逻辑
-    ├── protocol/
-    │   └── qi_parser.py             # Qi 2.2.1 协议解析
+    ├── db/                          # SQLite 持久化
+    └── protocol/                    # Qi 协议解析
 ```
 
 运行时自动生成（已在 `.gitignore` 中忽略）：`charging_data.db`、`monitor.log`、`Unknown_Qi_Commands_Log.txt`、导出 PDF/CSV 等。
@@ -117,9 +118,10 @@ WiParse/
 | 路径 | 说明 |
 |------|------|
 | `main.py` | 启动入口，调用 `wireless_charger_monitor.app.main()` |
+| `wireless_charger_monitor/shell/main_window.py` | WiParse 主窗口（菜单、Tab、业务逻辑） |
 | `wireless_charger_monitor/ui/monitor_window.ui` | Qt Designer 界面定义 |
 | `wireless_charger_monitor/ui/loader.py` | 加载 `.ui` 并注入 PyQtGraph 图表 |
-| `wireless_charger_monitor/ui/main_window.py` | 监控主窗口控制器 |
+| `wireless_charger_monitor/apps/` | 串口 / 示波器 / 泰克示波器三个同级工具 |
 | `compile_ui.bat` | 可选：将 `.ui` 编译为 Python 桩代码 |
 | `config.json` | 运行参数（数据库、告警阈值、串口等） |
 

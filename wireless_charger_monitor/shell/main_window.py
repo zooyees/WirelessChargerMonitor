@@ -1,4 +1,4 @@
-"""Main window controller."""
+"""WiParse application shell — main window controller."""
 import bisect
 import datetime
 import os
@@ -40,11 +40,11 @@ from ..paths import project_path
 from ..serial_ports import SerialPortWatcher
 from ..protocol.qi_parser import Qi22Parser
 from ..workers import DBWorker, FetchWorker, SerialWorker
+from ..apps.serial_tool import LogTabPage
 from ..i18n import get_language, init_language, is_known_log_default_name, set_language, tr, tr_in
-from .loader import Ui_MonitorWindow
-from .log_tab_page import LogTabPage
-from .tab_utils import refresh_tab_widget
-from .theme import (
+from ..ui.loader import Ui_MonitorWindow
+from ..ui.tab_utils import reflow_tab_widget, refresh_tab_widget
+from ..ui.theme import (
     FS_BODY,
     FS_CAPTION,
     FS_SUBTITLE,
@@ -73,6 +73,7 @@ from .theme import (
     apply_lcd_style,
     apply_editable_combo_line_edit,
     apply_log_control_panel_metrics,
+    apply_log_control_panel_theme,
     apply_status_message_style,
     apply_status_session_style,
     full_stylesheet,
@@ -223,22 +224,25 @@ class MonitorWindow(QMainWindow):
     def _retranslate_ui(self):
         self.setWindowTitle(tr('app.title'))
         self._panel_menu.setTitle(tr('menu.panels'))
+        self._act_tool_serial.setText(tr('tool.serial_tool.name'))
+        self._act_tool_waveform.setText(tr('tool.waveform_scope.name'))
+        self._act_tool_tektronix.setText(tr('tool.tektronix_scope.name'))
+        self._sync_panel_menu_checks()
         self._sync_settings_btn_text()
         self._lang_menu.setTitle(tr('menu.language'))
         self._theme_menu.setTitle(tr('menu.theme'))
         self._act_theme_dark.setText(tr('menu.theme_dark'))
         self._act_theme_light.setText(tr('menu.theme_light'))
         self._sync_theme_menu_checks()
-        self._act_show_chart.setText(tr('tab.oscilloscope'))
-        self._act_show_log.setText(tr('tab.log_monitor'))
         if get_language() == 'en':
             self._act_lang_en.setChecked(True)
         else:
             self._act_lang_zh.setChecked(True)
 
         tabs = self.ui.main_tabs
-        tabs.setTabText(tabs.indexOf(self.ui.chart_panel), tr('tab.oscilloscope'))
-        tabs.setTabText(tabs.indexOf(self.ui.log_panel), tr('tab.log_monitor'))
+        tabs.setTabText(tabs.indexOf(self.ui.chart_panel), tr('tool.waveform_scope.name'))
+        tabs.setTabText(tabs.indexOf(self.ui.log_panel), tr('tool.serial_tool.name'))
+        tabs.setTabText(tabs.indexOf(self.ui.tektronix_panel), tr('tool.tektronix_scope.name'))
 
         lcd_labels = (
             ('lbl_lcd_v_in', 'lcd.v_in'),
@@ -282,6 +286,8 @@ class MonitorWindow(QMainWindow):
         self._apply_toolbar_metrics()
         for page in self._iter_log_pages():
             page.retranslate_ui()
+        if hasattr(self.ui, 'tektronix_scope'):
+            self.ui.tektronix_scope.retranslate_ui()
         self.scan_ports()
         self._retranslate_idle_status()
 
@@ -333,7 +339,8 @@ class MonitorWindow(QMainWindow):
         return cfg_name
 
     def _refresh_main_tabs(self):
-        refresh_tab_widget(self.ui.main_tabs, preset='main')
+        reflow_tab_widget(self.ui.main_tabs, preset='main')
+        apply_log_control_panel_theme(self.ui)
 
     def _refresh_log_file_tabs(self):
         refresh_tab_widget(self.ui.log_file_tabs, preset='file')
@@ -903,18 +910,31 @@ class MonitorWindow(QMainWindow):
             self.hide_tooltip()
 
     def _setup_view_menu(self):
-        menu_bar = self.menuBar()
-        menu_bar.setStyleSheet(menu_bar_stylesheet())
-        self._view_menu = QMenu(menu_bar)
+        self._view_menu = QMenu(self)
+
         self._panel_menu = self._view_menu.addMenu(tr('menu.panels'))
 
-        self._act_show_chart = self._panel_menu.addAction(tr('tab.oscilloscope'))
-        self._act_show_chart.setCheckable(True)
-        self._act_show_chart.setChecked(True)
+        self._act_tool_serial = self._panel_menu.addAction(tr('tool.serial_tool.name'))
+        self._act_tool_serial.setCheckable(True)
+        self._act_tool_serial.setChecked(True)
 
-        self._act_show_log = self._panel_menu.addAction(tr('tab.log_monitor'))
-        self._act_show_log.setCheckable(True)
-        self._act_show_log.setChecked(True)
+        self._act_tool_waveform = self._panel_menu.addAction(tr('tool.waveform_scope.name'))
+        self._act_tool_waveform.setCheckable(True)
+        self._act_tool_waveform.setChecked(True)
+
+        self._act_tool_tektronix = self._panel_menu.addAction(tr('tool.tektronix_scope.name'))
+        self._act_tool_tektronix.setCheckable(True)
+        self._act_tool_tektronix.setChecked(True)
+
+        self._panel_toggles = (
+            (self._act_tool_serial, self.ui.log_panel),
+            (self._act_tool_waveform, self.ui.chart_panel),
+            (self._act_tool_tektronix, self.ui.tektronix_panel),
+        )
+        for action, _panel in self._panel_toggles:
+            action.toggled.connect(self._on_panel_visibility_changed)
+
+        self._view_menu.addSeparator()
 
         self._lang_menu = self._view_menu.addMenu(tr('menu.language'))
         self._lang_group = QActionGroup(self)
@@ -940,14 +960,39 @@ class MonitorWindow(QMainWindow):
         self._theme_group.addAction(self._act_theme_light)
         self._theme_group.triggered.connect(self._on_theme_selected)
         self._sync_theme_menu_checks()
+        self._apply_view_menu_theme()
 
-        self._panel_toggles = (
-            (self._act_show_chart, self.ui.chart_panel),
-            (self._act_show_log, self.ui.log_panel),
-        )
-        for action, _panel in self._panel_toggles:
-            action.toggled.connect(self._on_panel_visibility_changed)
         self.ui.main_tabs.currentChanged.connect(self._on_main_tab_changed)
+
+    def _apply_view_menu_theme(self):
+        from ..ui.theme import menu_popup_stylesheet
+        self._view_menu.setStyleSheet(menu_popup_stylesheet())
+
+    def _tool_panels(self):
+        return (self.ui.log_panel, self.ui.chart_panel, self.ui.tektronix_panel)
+
+    def _sync_panel_menu_checks(self):
+        for action, panel in getattr(self, '_panel_toggles', ()):
+            action.blockSignals(True)
+            action.setChecked(self._is_tab_visible(panel))
+            action.blockSignals(False)
+
+    def _on_panel_visibility_changed(self, _checked=False):
+        if not any(action.isChecked() for action, _ in self._panel_toggles):
+            sender = self.sender()
+            if sender is not None:
+                sender.blockSignals(True)
+                sender.setChecked(True)
+                sender.blockSignals(False)
+            return
+        sender = self.sender()
+        for action, panel in self._panel_toggles:
+            visible = action.isChecked()
+            self._set_tab_visible(panel, visible)
+            if sender is action and visible:
+                self.ui.main_tabs.setCurrentWidget(panel)
+        self._ensure_visible_tab()
+        QTimer.singleShot(0, self._finalize_panel_layout)
 
     def _on_theme_selected(self, action):
         theme = 'light' if action is self._act_theme_light else 'dark'
@@ -981,6 +1026,7 @@ class MonitorWindow(QMainWindow):
         self._update_session_label()
         self._retranslate_idle_status()
         self._sync_theme_menu_checks()
+        self._apply_view_menu_theme()
 
     def _apply_crosshair_theme(self):
         if not hasattr(self.ui, 'graph_widget'):
@@ -994,7 +1040,7 @@ class MonitorWindow(QMainWindow):
         )
 
     def _setup_unified_header(self):
-        """Settings menu on the main tab bar row; native menu bar hidden."""
+        """WiParse settings (tools, language, theme) on the tab bar corner."""
         btn = QToolButton(self)
         btn.setObjectName('settings_menu_btn')
         btn.setPopupMode(QToolButton.InstantPopup)
@@ -1183,7 +1229,7 @@ class MonitorWindow(QMainWindow):
         return True
 
     def _is_chart_tab_active(self):
-        if not self._act_show_chart.isChecked():
+        if not self._is_tab_visible(self.ui.chart_panel):
             return False
         return self.ui.main_tabs.currentWidget() == self.ui.chart_panel
 
@@ -1192,7 +1238,7 @@ class MonitorWindow(QMainWindow):
         current = tabs.currentWidget()
         if current is not None and self._is_tab_visible(current):
             return
-        for panel in (self.ui.log_panel, self.ui.chart_panel):
+        for panel in self._tool_panels():
             if self._is_tab_visible(panel):
                 tabs.setCurrentWidget(panel)
                 return
@@ -1202,24 +1248,21 @@ class MonitorWindow(QMainWindow):
         if self._is_chart_tab_active() and hasattr(self.ui, 'graph_widget'):
             QTimer.singleShot(0, self.ui.graph_widget.updateGeometry)
 
-    def _on_panel_visibility_changed(self, _checked=False):
-        if not any(action.isChecked() for action, _ in self._panel_toggles):
-            sender = self.sender()
-            if sender is not None:
-                sender.blockSignals(True)
-                sender.setChecked(True)
-                sender.blockSignals(False)
-            return
-        for action, panel in self._panel_toggles:
-            self._set_tab_visible(panel, action.isChecked())
-        self._ensure_visible_tab()
-        QTimer.singleShot(0, self._finalize_panel_layout)
-
     def _finalize_panel_layout(self):
+        reflow_tab_widget(self.ui.main_tabs, preset='main')
+        apply_log_control_panel_theme(self.ui)
         if not self._is_chart_tab_active():
             self.hide_tooltip()
+        current = self.ui.main_tabs.currentWidget()
+        if current is not None:
+            current.updateGeometry()
         if self._is_chart_tab_active() and hasattr(self.ui, 'graph_widget'):
             self.ui.graph_widget.updateGeometry()
+        tek_panel = getattr(self.ui, 'tektronix_panel', None)
+        if tek_panel is not None and self.ui.main_tabs.currentWidget() is tek_panel:
+            scope = getattr(self.ui, 'tektronix_scope', None)
+            if scope is not None and hasattr(scope, 'label'):
+                scope.label.updateGeometry()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -1647,4 +1690,6 @@ class MonitorWindow(QMainWindow):
             self.db_worker.stop()
         if hasattr(self, 'fetch_worker'):
             self.fetch_worker.stop()
+        if hasattr(self.ui, 'tektronix_scope'):
+            self.ui.tektronix_scope.release_scopes()
         event.accept()

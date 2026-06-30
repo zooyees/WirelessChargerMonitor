@@ -832,3 +832,64 @@ serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle
 2026-06-29 23:29:01,975 [INFO] WiParse: Ports scanned: 6 device(s)
 2026-06-29 23:30:02,519 [INFO] WiParse: DBWorker stopped
 2026-06-29 23:30:02,552 [INFO] WiParse: FetchWorker stopped
+2026-06-30 18:52:47,769 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 18:52:48,305 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 18:58:20,942 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 18:58:46,669 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:00:39,775 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:01:15,613 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:01:15,933 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 19:04:23,387 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:04:23,726 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 19:05:25,897 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:05:26,755 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 19:36:47,143 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:36:50,893 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 19:38:29,888 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:38:30,517 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 19:40:38,236 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:40:38,551 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 19:41:01,017 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:41:01,621 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 19:43:23,906 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:43:24,206 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 19:48:59,084 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:48:59,593 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 19:51:30,857 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 19:51:31,701 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 20:03:22,024 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 20:03:23,003 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 20:03:23,129 [INFO] WiParse: DBWorker stopped
+2026-06-30 20:03:23,170 [INFO] WiParse: FetchWorker stopped
+2026-06-30 20:03:54,863 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 20:03:56,811 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 20:03:57,179 [INFO] WiParse: DBWorker stopped
+2026-06-30 20:03:57,197 [INFO] WiParse: FetchWorker stopped
+2026-06-30 20:04:35,611 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 20:04:36,121 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 20:04:36,265 [INFO] WiParse: DBWorker stopped
+2026-06-30 20:04:36,272 [INFO] WiParse: FetchWorker stopped
+2026-06-30 20:09:08,573 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 20:09:09,759 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 20:09:10,037 [INFO] WiParse: DBWorker stopped
+2026-06-30 20:09:10,113 [INFO] WiParse: FetchWorker stopped
+2026-06-30 20:09:35,411 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 20:09:36,504 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 20:09:37,682 [INFO] WiParse: DBWorker stopped
+2026-06-30 20:09:37,725 [INFO] WiParse: FetchWorker stopped
+2026-06-30 20:09:40,737 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 20:09:41,172 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 20:11:38,268 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 20:11:39,099 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 20:11:39,288 [INFO] WiParse: DBWorker stopped
+2026-06-30 20:11:39,292 [INFO] WiParse: FetchWorker stopped
+2026-06-30 20:16:44,910 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 20:16:45,362 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 20:17:18,050 [INFO] WiParse: Session created: id=42 uuid=89B3BFD5 port=COM12
+2026-06-30 20:17:18,068 [INFO] WiParse: Monitoring start requested: session=42 port=COM12 baud=2000000 demo=False
+2026-06-30 20:17:18,071 [INFO] WiParse: Serial connected: COM12 @ 2000000
+2026-06-30 20:17:18,085 [INFO] WiParse: Serial port opened; monitoring active
+2026-06-30 20:27:56,955 [INFO] WiParse: Session closed: id=42 ended_at=2026-06-30 20:27:56
+2026-06-30 20:27:56,957 [INFO] WiParse: Monitoring stopped after serial close confirmed
+2026-06-30 20:42:08,678 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
+2026-06-30 20:42:08,986 [INFO] WiParse: Ports scanned: 5 device(s)
