@@ -1,3 +1,3 @@
-"""串口分析工具 (Serial Port Analysis Tool)."""
+"""WiParse — serial packet analysis tool."""
 
 __version__ = '1.0.0'

@@ -56,7 +56,7 @@ UI_XML = '''<?xml version="1.0" encoding="UTF-8"?>
   <property name="geometry">
    <rect><x>0</x><y>0</y><width>1600</width><height>950</height></rect>
   </property>
-  <property name="windowTitle"><string>串口分析工具</string></property>
+  <property name="windowTitle"><string>WiParse</string></property>
   <property name="styleSheet"><string>STYLE_PLACEHOLDER</string></property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="root_layout">
@@ -68,7 +68,7 @@ UI_XML = '''<?xml version="1.0" encoding="UTF-8"?>
     <item>
      <widget class="QLabel" name="lbl_main_title">
       <property name="objectName"><string>main_title</string></property>
-      <property name="text"><string>串口分析工具</string></property>
+      <property name="text"><string>WiParse</string></property>
       <property name="alignment"><set>Qt::AlignCenter</set></property>
      </widget>
     </item>

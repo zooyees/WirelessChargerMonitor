@@ -6,13 +6,13 @@ _current_language = 'en'
 
 # (zh_CN, en_US)
 STRINGS: dict[str, tuple[str, str]] = {
-    'app.title': ('串口分析工具', 'Serial Port Analysis Tool'),
+    'app.title': ('WiParse', 'WiParse'),
     'status.ready': ('就绪', 'Ready'),
-    'menu.view': ('视图(&V)', '&View'),
+    'menu.settings': ('设置(&S)', '&Settings'),
     'menu.panels': ('显示面板', 'Panels'),
     'menu.language': ('语言', 'Language'),
     'tab.oscilloscope': ('示波器', 'Scope'),
-    'tab.log_monitor': ('报文监控', 'Packet Log'),
+    'tab.log_monitor': ('串口', 'Uart'),
     'lcd.v_in': ('输入电压 (V_in)', 'Vin (V)'),
     'lcd.i_in': ('输入电流 (I_in)', 'Iin (A)'),
     'lcd.v_out': ('输出电压 (V_out)', 'Vout (V)'),

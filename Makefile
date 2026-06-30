@@ -1,10 +1,10 @@
-# WirelessChargerMonitor — single-file EXE build (Windows)
+# WiParse — single-file EXE build (Windows)
 #
 # Prerequisites: Python 3.8+, pip, GNU Make (Git for Windows / MSYS2)
 #
 # Usage:
 #   make deps    # install runtime + PyInstaller into .venv
-#   make dist    # build dist/WirelessChargerMonitor.exe
+#   make dist    # build dist/WiParse.exe
 #   make clean   # remove build artifacts
 #   make size    # show output file size
 #
@@ -27,8 +27,8 @@ else
 endif
 
 SPEC := packaging/wcm_monitor.spec
-DIST_EXE := dist/WirelessChargerMonitor.exe
-APP_NAME := WirelessChargerMonitor
+DIST_EXE := dist/WiParse.exe
+APP_NAME := WiParse
 
 .PHONY: all help deps venv dist clean size run check
 
@@ -48,8 +48,7 @@ venv:
 	$(PYTHON) -c "import pathlib, venv; p=pathlib.Path('$(VENV)'); venv.create(p, with_pip=True) if not p.exists() else None"
 
 deps: venv
-	-$(PIP) install --index-url https://pypi.org/simple --trusted-host pypi.org --trusted-host files.pythonhosted.org --upgrade pip
-	$(PIP) install --index-url https://pypi.org/simple --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements-build.txt
+	-$(PY) -m pip install --isolated --index-url https://pypi.org/simple --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements-build.txt
 
 check:
 	$(PY) -c "import PyQt5, pyqtgraph, serial; from wireless_charger_monitor.app import main; print('OK')"

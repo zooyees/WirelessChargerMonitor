@@ -5,7 +5,7 @@
   <property name="geometry">
    <rect><x>0</x><y>0</y><width>1600</width><height>950</height></rect>
   </property>
-  <property name="windowTitle"><string>串口分析工具</string></property>
+  <property name="windowTitle"><string>WiParse</string></property>
   <property name="styleSheet"><string>QMainWindow, QWidget#centralwidget {
     background-color: #0B1220;
     color: #FFFFFF;
@@ -326,7 +326,7 @@ QLCDNumber#lcd_battery { background-color: #070B14; color: #64FFDA; border: 1px 
        </layout>
       </widget>
       <widget class="QFrame" name="log_panel">
-       <attribute name="title"><string>报文监控</string></attribute>
+       <attribute name="title"><string>串口</string></attribute>
        <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
        <layout class="QVBoxLayout" name="log_layout">
         <property name="leftMargin"><number>0</number></property>

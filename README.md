@@ -1,4 +1,4 @@
-# 手机无线充电监控系统 (WirelessChargerMonitor)
+# WiParse
 
 面向 Qi 2.2.1 协议的手机无线充电测试上位机，支持实时波形监控、报文解析、安全告警、数据持久化与 PDF 测试报告导出。
 
@@ -84,7 +84,7 @@ TX0:[HH:MM:SS.mmm] FSK 40 03 F
 ## 工程结构
 
 ```
-WirelessChargerMonitor/
+WiParse/
 ├── main.py                          # 启动入口（薄封装）
 ├── config.json                      # 用户配置（相对路径基于项目根目录）
 ├── requirements.txt

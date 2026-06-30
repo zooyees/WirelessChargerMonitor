@@ -27,8 +27,6 @@ excludes = [
     'pandas',
     'PIL',
     'cv2',
-    'pydoc',
-    'doctest',
     'unittest',
     'xmlrpc',
     'numpy.tests',
@@ -66,6 +64,10 @@ hiddenimports = [
     'serial.tools.list_ports_windows',
     'pyqtgraph',
     'numpy.lib.format',
+    # pyqtgraph.parametertree.interactive imports pydoc at startup
+    'pydoc',
+    'pydoc_data',
+    'doctest',
 ]
 
 a = Analysis(
@@ -91,7 +93,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='WirelessChargerMonitor',
+    name='WiParse',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

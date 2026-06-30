@@ -196,7 +196,7 @@ class MonitorWindow(QMainWindow):
 
     def _retranslate_ui(self):
         self.setWindowTitle(tr('app.title'))
-        self._view_menu.setTitle(tr('menu.view'))
+        self._view_menu.setTitle(tr('menu.settings'))
         self._panel_menu.setTitle(tr('menu.panels'))
         self._lang_menu.setTitle(tr('menu.language'))
         self._act_show_chart.setText(tr('tab.oscilloscope'))
@@ -876,7 +876,7 @@ class MonitorWindow(QMainWindow):
     def _setup_view_menu(self):
         menu_bar = self.menuBar()
         menu_bar.setStyleSheet(menu_bar_stylesheet())
-        self._view_menu = menu_bar.addMenu(tr('menu.view'))
+        self._view_menu = menu_bar.addMenu(tr('menu.settings'))
         self._panel_menu = self._view_menu.addMenu(tr('menu.panels'))
 
         self._act_show_chart = self._panel_menu.addAction(tr('tab.oscilloscope'))
