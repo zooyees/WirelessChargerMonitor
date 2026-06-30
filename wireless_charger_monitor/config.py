@@ -21,6 +21,11 @@ DEFAULT_CONFIG = {
         'language': 'en',
         'menu_bar_auto_hide': False,
         'theme': 'dark',
+        'panels': {
+            'serial_tool': True,
+            'waveform_scope': False,
+            'tektronix_scope': True,
+        },
     },
     'alerts': {
         'temp_warning_threshold': 60,

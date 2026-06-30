@@ -1,7 +1,12 @@
 {
   "ui": {
     "language": "en",
-    "theme": "dark"
+    "theme": "dark",
+    "panels": {
+      "serial_tool": true,
+      "waveform_scope": false,
+      "tektronix_scope": true
+    }
   },
   "serial": {
     "default_baudrates": ["115200", "1000000", "2000000"]

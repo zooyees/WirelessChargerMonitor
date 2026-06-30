@@ -159,6 +159,7 @@ class MonitorWindow(QMainWindow):
         self.ui.btn_open_log.clicked.connect(self.open_log_files)
         self.ui.btn_browse_log_dir.clicked.connect(self._browse_live_log_dir)
         self.ui.btn_new_live_log.clicked.connect(self._new_live_log_tab)
+        self.ui.btn_clear_live_log.clicked.connect(self._clear_live_log_display)
 
         self.ui.p_p.vb.sigRangeChanged.connect(self.on_chart_manual_interaction)
         self.ui.graph_widget.scene().sigMouseClicked.connect(self.on_chart_double_clicked)
@@ -267,6 +268,8 @@ class MonitorWindow(QMainWindow):
 
         self.ui.btn_new_live_log.setText(tr('btn.new'))
         self.ui.btn_new_live_log.setToolTip(tr('log.new_tooltip'))
+        self.ui.btn_clear_live_log.setText(tr('btn.clear'))
+        self.ui.btn_clear_live_log.setToolTip(tr('log.clear_tooltip'))
         self.ui.lbl_live_log_name.setText(tr('log.filename'))
         self.ui.edit_live_log_name.setPlaceholderText(tr('log.name_placeholder'))
         self.ui.edit_live_log_name.setToolTip(tr('log.name_tooltip'))
@@ -349,7 +352,7 @@ class MonitorWindow(QMainWindow):
         scale = getattr(self, '_ui_scale', 1.0)
         sidebar_w = int(140 * scale)
         sidebar_controls = (
-            'cb_port', 'cb_baudrate', 'btn_start', 'btn_new_live_log',
+            'cb_port', 'cb_baudrate', 'btn_start', 'btn_new_live_log', 'btn_clear_live_log',
             'edit_live_log_name', 'edit_live_log_dir', 'btn_browse_log_dir', 'btn_open_log',
         )
         for name in sidebar_controls:
@@ -913,18 +916,19 @@ class MonitorWindow(QMainWindow):
         self._view_menu = QMenu(self)
 
         self._panel_menu = self._view_menu.addMenu(tr('menu.panels'))
+        panels_cfg = config_module.CONFIG.get('ui', {}).get('panels', {})
 
         self._act_tool_serial = self._panel_menu.addAction(tr('tool.serial_tool.name'))
         self._act_tool_serial.setCheckable(True)
-        self._act_tool_serial.setChecked(True)
+        self._act_tool_serial.setChecked(bool(panels_cfg.get('serial_tool', True)))
 
         self._act_tool_waveform = self._panel_menu.addAction(tr('tool.waveform_scope.name'))
         self._act_tool_waveform.setCheckable(True)
-        self._act_tool_waveform.setChecked(True)
+        self._act_tool_waveform.setChecked(bool(panels_cfg.get('waveform_scope', False)))
 
         self._act_tool_tektronix = self._panel_menu.addAction(tr('tool.tektronix_scope.name'))
         self._act_tool_tektronix.setCheckable(True)
-        self._act_tool_tektronix.setChecked(True)
+        self._act_tool_tektronix.setChecked(bool(panels_cfg.get('tektronix_scope', True)))
 
         self._panel_toggles = (
             (self._act_tool_serial, self.ui.log_panel),
@@ -963,6 +967,13 @@ class MonitorWindow(QMainWindow):
         self._apply_view_menu_theme()
 
         self.ui.main_tabs.currentChanged.connect(self._on_main_tab_changed)
+        self._apply_panel_visibility_from_menu()
+
+    def _apply_panel_visibility_from_menu(self):
+        for action, panel in getattr(self, '_panel_toggles', ()):
+            self._set_tab_visible(panel, action.isChecked())
+        self._ensure_visible_tab()
+        QTimer.singleShot(0, self._finalize_panel_layout)
 
     def _apply_view_menu_theme(self):
         from ..ui.theme import menu_popup_stylesheet

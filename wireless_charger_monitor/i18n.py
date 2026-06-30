@@ -59,6 +59,7 @@ STRINGS: dict[str, tuple[str, str]] = {
     'btn.start': ('▶ 开始', '▶ Start'),
     'btn.stop': ('⏹ 停止', '⏹ Stop'),
     'btn.new': ('新建', 'New'),
+    'btn.clear': ('清屏', 'Clear'),
     'btn.browse_dir': ('📁 选择路径', '📁 Browse…'),
     'btn.open_log': ('📂 打开文件', '📂 Open…'),
     'btn.browse_tooltip': ('选择实时报文保存目录', 'Select the output directory for live capture files'),
@@ -74,6 +75,10 @@ STRINGS: dict[str, tuple[str, str]] = {
     'log.new_tooltip': (
         '新建一段采集：新标签页 + 自动时间戳文件名，旧实时页保留在右侧',
         'New capture session: fresh tab with timestamped filename; previous live tab stays on the right',
+    ),
+    'log.clear_tooltip': (
+        '清空实时报文窗口显示（不删除已保存文件）',
+        'Clear the live packet view only (saved file is not deleted)',
     ),
     'log.open_tooltip': ('打开本地 TXT 日志文件（可多选）', 'Open one or more capture/log files (.txt)'),
     'log.filter': ('数据筛选', 'Filter'),

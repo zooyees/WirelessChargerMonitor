@@ -42,7 +42,7 @@ _WIDGET_NAMES = (
     'lcd_v_bat', 'lcd_i_bat', 'lcd_temp', 'lcd_battery',
     'btn_start',
     'chart_container', 'log_panel', 'log_control_panel',
-    'btn_new_live_log', 'lbl_live_log_name', 'edit_live_log_name', 'lbl_live_log_dir',
+    'btn_new_live_log', 'btn_clear_live_log', 'lbl_live_log_name', 'edit_live_log_name', 'lbl_live_log_dir',
     'edit_live_log_dir', 'btn_browse_log_dir',
     'btn_open_log', 'log_file_tabs',
 )
@@ -175,7 +175,7 @@ class Ui_MonitorWindow:
         self.log_file_tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._configure_log_file_tabs()
 
-        for btn in (self.btn_start, self.btn_open_log, self.btn_browse_log_dir, self.btn_new_live_log):
+        for btn in (self.btn_start, self.btn_open_log, self.btn_browse_log_dir, self.btn_new_live_log, self.btn_clear_live_log):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         for lbl in (self.lbl_live_log_name, self.lbl_live_log_dir):
             lbl.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)

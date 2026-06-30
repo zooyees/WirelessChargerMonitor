@@ -948,7 +948,7 @@ def apply_log_control_panel_theme(ui) -> None:
         lbl = getattr(ui, name, None)
         if lbl is not None:
             apply_log_tool_label_style(lbl)
-    for name in ('btn_start', 'btn_new_live_log', 'btn_browse_log_dir', 'btn_open_log'):
+    for name in ('btn_start', 'btn_new_live_log', 'btn_browse_log_dir', 'btn_open_log', 'btn_clear_live_log'):
         btn = getattr(ui, name, None)
         if btn is not None:
             btn.setStyleSheet('')
@@ -1052,13 +1052,13 @@ def apply_log_control_panel_metrics(ui, scale: float = 1.0) -> None:
     sidebar_w = int(LOG_CONTROL_PANEL_WIDTH * scale)
     if panel is not None:
         panel.setFixedWidth(sidebar_w)
-    for name in ('btn_new_live_log', 'btn_browse_log_dir', 'btn_open_log'):
+    for name in ('btn_new_live_log', 'btn_browse_log_dir', 'btn_open_log', 'btn_clear_live_log'):
         widget = getattr(ui, name, None)
         if widget is not None:
             apply_log_toolbar_button_style(widget)
     for name in (
         'cb_port', 'cb_baudrate', 'edit_live_log_name', 'edit_live_log_dir',
-        'btn_new_live_log', 'btn_browse_log_dir', 'btn_open_log',
+        'btn_new_live_log', 'btn_clear_live_log', 'btn_browse_log_dir', 'btn_open_log',
     ):
         widget = getattr(ui, name, None)
         if widget is not None:
@@ -1067,7 +1067,7 @@ def apply_log_control_panel_metrics(ui, scale: float = 1.0) -> None:
     if btn_start is not None:
         apply_log_toolbar_control_height(btn_start, primary=True, scale=scale)
     for name in (
-        'cb_port', 'cb_baudrate', 'btn_start', 'btn_new_live_log',
+        'cb_port', 'cb_baudrate', 'btn_start', 'btn_new_live_log', 'btn_clear_live_log',
         'edit_live_log_name', 'edit_live_log_dir', 'btn_browse_log_dir', 'btn_open_log',
     ):
         widget = getattr(ui, name, None)
