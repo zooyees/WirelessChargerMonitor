@@ -484,6 +484,14 @@ class MonitorWindow(QMainWindow):
 
         self._set_status(tr('status.new_log', name=self._live_log_tab_title()), 'info')
 
+    def _clear_live_log_display(self):
+        """Clear live packet view only; file on disk and capture continue unchanged."""
+        self.log_buffer.clear()
+        page = self._live_log_page
+        if page is None or self.ui.log_file_tabs.indexOf(page) < 0:
+            page = self._ensure_live_log_tab()
+        page.clear()
+
     def _setup_live_log_settings(self):
         self.ui.edit_live_log_name.setText(self._default_live_log_name())
         self.ui.edit_live_log_dir.setText(self._default_live_log_dir())

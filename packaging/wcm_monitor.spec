@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec: single-file GUI executable (size-optimized).
-# Build: make dist   (or: packaging/build.ps1)
+# Build: build.bat  (or: make dist / packaging/build.ps1)
+# Python 3.13 recommended; default host: C:\Program Files\Python313
 
 from pathlib import Path
 

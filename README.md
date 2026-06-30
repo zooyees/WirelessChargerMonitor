@@ -4,7 +4,7 @@
 
 ## 环境要求
 
-- Python 3.8+
+- Python 3.13（本机默认：`C:\Program Files\Python313`）
 - Windows 10/11（推荐，PDF 中文渲染依赖系统字体）
 - USB 串口采集硬件
 
@@ -13,6 +13,21 @@
 ```bash
 pip install -r requirements.txt
 ```
+
+## 打包（单文件 EXE）
+
+```bat
+build.bat
+```
+
+或：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File packaging/build.ps1
+```
+
+默认使用 `C:\Program Files\Python313\python.exe` 创建 `.venv` 并调用 PyInstaller，输出 `dist\WiParse.exe`。  
+其他 Python 安装路径可设置环境变量 `PYTHON_HOME` 后再执行。
 
 ## 运行
 

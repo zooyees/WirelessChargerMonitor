@@ -1,6 +1,6 @@
 # WiParse — single-file EXE build (Windows)
 #
-# Prerequisites: Python 3.8+, pip, GNU Make (Git for Windows / MSYS2)
+# Prerequisites: Python 3.13, pip, GNU Make (Git for Windows / MSYS2)
 #
 # Usage:
 #   make deps    # install runtime + PyInstaller into .venv
@@ -8,12 +8,16 @@
 #   make clean   # remove build artifacts
 #   make size    # show output file size
 #
-# Windows (no Make):  powershell -ExecutionPolicy Bypass -File packaging/build.ps1
+# Windows (no Make):  build.bat
+#   or: powershell -ExecutionPolicy Bypass -File packaging/build.ps1
+#
+# Default Python: C:/Program Files/Python313/python.exe
+# Override: make dist PYTHON="C:/Path/To/python.exe"
 #
 # Optional: install UPX (https://github.com/upx/upx/releases) and add to PATH
 # to further compress the executable (spec enables UPX when available).
 
-PYTHON ?= python
+PYTHON ?= "C:/Program Files/Python313/python.exe"
 VENV ?= .venv
 VENV_PY := $(VENV)/Scripts/python.exe
 VENV_PIP := $(VENV)/Scripts/pip.exe
@@ -30,7 +34,7 @@ SPEC := packaging/wcm_monitor.spec
 DIST_EXE := dist/WiParse.exe
 APP_NAME := WiParse
 
-.PHONY: all help deps venv dist clean size run check
+.PHONY: all help deps venv dist clean size run check prepare-icon
 
 all: dist
 
@@ -53,11 +57,11 @@ deps: venv
 check:
 	$(PY) -c "from wireless_charger_monitor.app import main; from wireless_charger_monitor.apps.tektronix_scope import TektronixScopePanel; from wireless_charger_monitor.ui import MonitorWindow; print('OK')"
 
-dist: deps check prepare-icon
-	$(PY) -m PyInstaller $(SPEC) --noconfirm --clean
-
 prepare-icon:
 	$(PY) packaging/prepare_icon.py
+
+dist: deps check prepare-icon
+	$(PY) -m PyInstaller $(SPEC) --noconfirm --clean
 	@echo
 	@echo Built: $(DIST_EXE)
 	@$(PY) -c "import os; p=r'$(DIST_EXE)'; print('Size: %.2f MiB' % (os.path.getsize(p)/1024/1024)) if os.path.isfile(p) else print('Build failed: missing', p)"

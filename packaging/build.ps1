@@ -3,12 +3,43 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
-$VenvPy = Join-Path $Root '.venv\Scripts\python.exe'
-if (-not (Test-Path $VenvPy)) {
-    python -c "import pathlib, venv; p=pathlib.Path('.venv'); venv.create(p, with_pip=True) if not p.exists() else None"
+# Default: Python 3.13 installed for all users. Override with env PYTHON_HOME.
+$PythonHome = if ($env:PYTHON_HOME) { $env:PYTHON_HOME } else { 'C:\Program Files\Python313' }
+$SystemPython = Join-Path $PythonHome 'python.exe'
+
+function Invoke-Python {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
+    if (Test-Path $SystemPython) {
+        & $SystemPython @Args
+        return
+    }
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        & py -3.13 @Args
+        return
+    }
+    & python @Args
+}
+
+Write-Host "Using Python: $(Invoke-Python -Args @('-c', 'import sys; print(sys.executable)'))"
+
+$VenvDir = Join-Path $Root '.venv'
+$VenvPy = Join-Path $VenvDir 'Scripts\python.exe'
+$ExpectedMinor = '3.13'
+if (Test-Path $VenvPy) {
+    $VenvMinor = & $VenvPy -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+    if ($VenvMinor -ne $ExpectedMinor) {
+        Write-Host "Recreating .venv (found Python $VenvMinor, need $ExpectedMinor)"
+        Remove-Item $VenvDir -Recurse -Force
+    }
 }
 if (-not (Test-Path $VenvPy)) {
-    throw 'Failed to create .venv'
+    Invoke-Python -Args @(
+        '-c',
+        "import pathlib, venv; p=pathlib.Path('.venv'); venv.create(p, with_pip=True) if not p.exists() else None"
+    )
+}
+if (-not (Test-Path $VenvPy)) {
+    throw "Failed to create .venv with $SystemPython"
 }
 
 # Ignore user/global pip mirrors (e.g. tsinghua) that can break index-url on some setups.
@@ -26,7 +57,12 @@ $PipArgs = @(
 )
 
 & $VenvPy -m pip install @PipArgs -r requirements-build.txt
-& $VenvPy -c "import PyQt5, pyqtgraph, serial; from wireless_charger_monitor.app import main; print('OK')"
+& $VenvPy -c @"
+from wireless_charger_monitor.app import main
+from wireless_charger_monitor.apps.tektronix_scope import TektronixScopePanel
+from wireless_charger_monitor.ui import MonitorWindow
+print('OK')
+"@
 if (-not (Test-Path (Join-Path $Root 'Icon\WiParse.ico'))) {
     throw 'Missing Icon\WiParse.ico — place WiParse.ico under the Icon folder.'
 }
