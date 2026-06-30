@@ -17,7 +17,7 @@
 # Optional: install UPX (https://github.com/upx/upx/releases) and add to PATH
 # to further compress the executable (spec enables UPX when available).
 
-PYTHON ?= "C:/Program Files/Python313/python.exe"
+PYTHON ?= python
 VENV ?= .venv
 VENV_PY := $(VENV)/Scripts/python.exe
 VENV_PIP := $(VENV)/Scripts/pip.exe

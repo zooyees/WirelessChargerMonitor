@@ -893,3 +893,41 @@ serial.serialutil.SerialException: ClearCommError failed (OSError(9, 'The handle
 2026-06-30 20:27:56,957 [INFO] WiParse: Monitoring stopped after serial close confirmed
 2026-06-30 20:42:08,678 [INFO] WiParse: Database initialized: D:\MyWork\other\WiParse\WirelessChargerMonitor\charging_data.db
 2026-06-30 20:42:08,986 [INFO] WiParse: Ports scanned: 5 device(s)
+2026-06-30 23:01:47,204 [INFO] WiParse: Database initialized: D:\windlink\windlink\WirelessChargerMonitor\charging_data.db
+2026-06-30 23:01:48,017 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-06-30 23:02:16,463 [ERROR] WiParse: VISA list_resources failed
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\wireless_charger_monitor\apps\tektronix_scope\panel.py", line 82, in _on_connect
+    resources = self._rm.list_resources('USB?*INSTR')
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\highlevel.py", line 3145, in list_resources
+    return self.visalib.list_resources(self.session, query)
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\ctwrapper\highlevel.py", line 297, in list_resources
+    raise e
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\ctwrapper\highlevel.py", line 291, in list_resources
+    ) = self._find_resources(  # type: ignore
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\ctwrapper\functions.py", line 783, in _find_resources
+    ret = library.viFindRsrc(
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\ctwrapper\highlevel.py", line 227, in _return_handler
+    return self.handle_return_value(session, ret_value)  # type: ignore
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\highlevel.py", line 252, in handle_return_value
+    raise errors.VisaIOError(rv)
+pyvisa.errors.VisaIOError: VI_ERROR_INV_OBJECT (-1073807346): The given session or object reference is invalid.
+2026-06-30 23:02:17,653 [ERROR] WiParse: VISA list_resources failed
+Traceback (most recent call last):
+  File "D:\windlink\windlink\WirelessChargerMonitor\wireless_charger_monitor\apps\tektronix_scope\panel.py", line 82, in _on_connect
+    resources = self._rm.list_resources('USB?*INSTR')
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\highlevel.py", line 3145, in list_resources
+    return self.visalib.list_resources(self.session, query)
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\ctwrapper\highlevel.py", line 297, in list_resources
+    raise e
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\ctwrapper\highlevel.py", line 291, in list_resources
+    ) = self._find_resources(  # type: ignore
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\ctwrapper\functions.py", line 783, in _find_resources
+    ret = library.viFindRsrc(
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\ctwrapper\highlevel.py", line 227, in _return_handler
+    return self.handle_return_value(session, ret_value)  # type: ignore
+  File "d:\windlink\windlink\WirelessChargerMonitor\.venv\lib\site-packages\pyvisa\highlevel.py", line 252, in handle_return_value
+    raise errors.VisaIOError(rv)
+pyvisa.errors.VisaIOError: VI_ERROR_INV_OBJECT (-1073807346): The given session or object reference is invalid.
+2026-06-30 23:02:23,935 [INFO] WiParse: DBWorker stopped
+2026-06-30 23:02:23,983 [INFO] WiParse: FetchWorker stopped
