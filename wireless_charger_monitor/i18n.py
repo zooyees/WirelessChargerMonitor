@@ -162,6 +162,7 @@ STRINGS: dict[str, tuple[str, str]] = {
     'status.cannot_create_log': ('无法创建日志文件: {name}', 'Failed to create capture file: {name}'),
     'status.log_write_failed': ('实时报文文件写入失败', 'Capture file write failed'),
     'status.opened_logs': ('已打开 {count} 个日志文件', 'Opened {count} capture file(s)'),
+    'status.loading_log_lines': ('正在加载日志… 已读取 {n} 行', 'Loading log… {n} lines read'),
     'status.session': ('会话 #{id}', 'Session #{id}'),
     'status.monitoring': ('监控中 — 会话 #{id}', 'Monitoring — Session #{id}'),
     'status.session_ended': ('会话 #{id} 已结束', 'Session #{id} ended'),

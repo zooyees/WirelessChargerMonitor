@@ -16,6 +16,7 @@ DEFAULT_CONFIG = {
     },
     'ui': {
         'render_interval_ms': 100,
+        'chart_render_interval_ms': 200,
         'chart_max_points': 500,
         'default_window_size_sec': 60.0,
         'language': 'en',

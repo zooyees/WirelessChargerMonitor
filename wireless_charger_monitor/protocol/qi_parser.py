@@ -3,6 +3,7 @@
 # Reference: docs/bpp_protocol.h, docs/mpp_protocol.h
 # ==========================================
 import re
+from functools import lru_cache
 
 from ..i18n import tr_in
 from ..ui.theme_palette import active_tokens, get_theme
@@ -179,7 +180,18 @@ class Qi22Parser:
         return f'<i>{_qi_tr("qi.no_payload")}</i>'
 
     def parse_message(self, line):
-        line = re.sub(r'\s+', ' ', line).strip() + ' '
+        if not line:
+            return None
+        normalized = re.sub(r'\s+', ' ', line).strip()
+        if not normalized:
+            return None
+        return self._parse_message_cached(normalized + ' ')
+
+    def clear_parse_cache(self) -> None:
+        self._parse_message_cached.cache_clear()
+
+    @lru_cache(maxsize=4096)
+    def _parse_message_cached(self, line: str):
         if 'ASK ' in line:
             start = line.find('ASK ') + 4
             end = line.find(' F ', start)

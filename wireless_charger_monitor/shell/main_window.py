@@ -7,7 +7,7 @@ import time
 
 import pyqtgraph as pg
 import serial.tools.list_ports
-from PyQt5.QtCore import QEvent, Qt, QTimer
+from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QCursor, QIntValidator, QTextCharFormat, QTextCursor
 from PyQt5.QtWidgets import (
     QApplication,
@@ -39,7 +39,7 @@ from ..logging_setup import logger
 from ..paths import project_path
 from ..serial_ports import SerialPortWatcher
 from ..protocol.qi_parser import Qi22Parser
-from ..workers import DBWorker, FetchWorker, SerialWorker
+from ..workers import DBWorker, FetchWorker, LiveLogWriter, SerialWorker
 from ..apps.serial_tool import LogTabPage
 from ..i18n import get_language, init_language, is_known_log_default_name, set_language, tr, tr_in
 from ..ui.loader import Ui_MonitorWindow
@@ -87,7 +87,7 @@ from ..ui.theme import (
 )
 
 class MonitorWindow(QMainWindow):
-
+    _live_log_write_error = pyqtSignal(object)
 
     def __init__(self, cli_demo_mode=False):
         super().__init__()
@@ -131,6 +131,7 @@ class MonitorWindow(QMainWindow):
         self.view_data = {'x':[], 'p':[], 'vi':[], 'ii':[], 'vo':[], 'io':[], 'vb':[], 'ib':[], 't':[], 'b':[]}
         self.auto_scroll_chart = True
         self.log_buffer, self.ui_lock = [], False
+        self._last_lcd_snapshot: dict[str, float | int] = {}
         self._hover_state = None
         self._monitoring_active = False
         self._starting_monitor = False
@@ -145,12 +146,21 @@ class MonitorWindow(QMainWindow):
         self.setup_crosshair()
 
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.render_ui)
-        self.timer.start(config_module.CONFIG['ui']['render_interval_ms'])
+        self.timer.timeout.connect(self.render_log_ui)
+        self.timer.start(config_module.CONFIG['ui'].get('render_interval_ms', 100))
+
+        self._metrics_timer = QTimer(self)
+        self._metrics_timer.timeout.connect(self.render_metrics_ui)
+        self._metrics_timer.start(config_module.CONFIG['ui'].get('render_interval_ms', 100))
+
+        self._chart_timer = QTimer(self)
+        self._chart_timer.timeout.connect(self.render_chart_ui)
+        self._chart_timer.start(config_module.CONFIG['ui'].get('chart_render_interval_ms', 200))
 
         self._log_tabs_by_path = {}
         self._live_log_page = None
-        self._live_log_file = None
+        self._live_log_writer = LiveLogWriter()
+        self._live_log_write_error.connect(self._handle_live_log_write_error)
         self._live_log_file_path = None
         self._setup_log_file_tabs()
         self._setup_live_log_settings()
@@ -533,7 +543,7 @@ class MonitorWindow(QMainWindow):
             QMessageBox.warning(self, tr('dialog.create_failed'), tr('msg.cannot_create_log', path=new_path, error=e))
             return
 
-        was_writing = self._live_log_file is not None
+        was_writing = self._live_log_writer.is_open
         if was_writing:
             self._close_live_log_file()
 
@@ -576,7 +586,7 @@ class MonitorWindow(QMainWindow):
         path = self._live_log_filepath()
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            self._live_log_file = open(path, 'a', encoding='utf-8-sig', newline='\n')
+            self._live_log_writer.open(path, on_error=self._schedule_live_log_write_error)
             self._live_log_file_path = path
             if self._live_log_page is not None:
                 self._live_log_page.filepath = path
@@ -585,13 +595,16 @@ class MonitorWindow(QMainWindow):
             self._set_status(tr('status.cannot_create_log', name=os.path.basename(path)), 'warn')
             QMessageBox.warning(self, tr('dialog.save_failed'), tr('msg.cannot_create_log', path=path, error=e))
 
+    def _schedule_live_log_write_error(self, exc: Exception) -> None:
+        self._live_log_write_error.emit(exc)
+
+    def _handle_live_log_write_error(self, exc: Exception) -> None:
+        logger.warning("Failed to write live log file: %s", exc, exc_info=True)
+        self._close_live_log_file()
+        self._set_status(tr('status.log_write_failed'), 'error')
+
     def _close_live_log_file(self):
-        if self._live_log_file is not None:
-            try:
-                self._live_log_file.close()
-            except OSError:
-                pass
-            self._live_log_file = None
+        self._live_log_writer.close()
         self._live_log_file_path = None
 
     def _reopen_live_log_file_if_active(self):
@@ -599,15 +612,7 @@ class MonitorWindow(QMainWindow):
             self._open_live_log_file()
 
     def _write_live_log_line(self, msg):
-        if self._live_log_file is None:
-            return
-        try:
-            self._live_log_file.write(msg + '\n')
-            self._live_log_file.flush()
-        except OSError as e:
-            logger.warning("Failed to write live log file: %s", e, exc_info=True)
-            self._close_live_log_file()
-            self._set_status(tr('status.log_write_failed'), 'error')
+        self._live_log_writer.write_line(msg)
 
     def _ensure_live_log_tab(self):
         if self._live_log_page is not None and self.ui.log_file_tabs.indexOf(self._live_log_page) >= 0:
@@ -688,13 +693,21 @@ class MonitorWindow(QMainWindow):
                 self.ui.log_file_tabs.setCurrentWidget(existing)
                 continue
             try:
-                with open(path, 'r', encoding='utf-8-sig', errors='replace') as f:
-                    content = f.read()
+                if LogTabPage.should_stream_load(path):
+                    page = self._create_log_tab_page(filepath=norm)
+
+                    def _progress(count):
+                        self._set_status(tr('status.loading_log_lines', n=count), 'info')
+
+                    page.load_file_streaming(path, status_callback=_progress)
+                else:
+                    with open(path, 'r', encoding='utf-8-sig', errors='replace') as f:
+                        content = f.read()
+                    page = self._create_log_tab_page(filepath=norm)
+                    page.set_content(content)
             except OSError as e:
                 QMessageBox.warning(self, tr('dialog.open_failed'), tr('msg.cannot_read_file', path=path, error=e))
                 continue
-            page = self._create_log_tab_page(filepath=norm)
-            page.set_content(content)
             title = os.path.splitext(os.path.basename(path))[0] or os.path.basename(path)
             self.ui.log_file_tabs.addTab(page, title)
             self.ui.log_file_tabs.setCurrentWidget(page)
@@ -850,6 +863,18 @@ class MonitorWindow(QMainWindow):
     def append_log(self, ts, msg):
         self.log_buffer.append(msg)
         self._write_live_log_line(msg)
+        self._queue_log_db_entry(ts, msg)
+
+    def append_logs_batch(self, entries):
+        if not entries:
+            return
+        msgs = [msg for _, msg in entries]
+        self.log_buffer.extend(msgs)
+        self._live_log_writer.write_lines(msgs)
+        for ts, msg in entries:
+            self._queue_log_db_entry(ts, msg)
+
+    def _queue_log_db_entry(self, ts, msg):
         if hasattr(self, 'db_worker'):
             t = (ts - self.start_time + self.time_offset) if self.start_time > 0 else 0.0
             self.db_worker.queue.put({
@@ -1046,6 +1071,7 @@ class MonitorWindow(QMainWindow):
         self._retranslate_idle_status()
         self._sync_theme_menu_checks()
         self._apply_view_menu_theme()
+        self.qi_parser.clear_parse_cache()
 
     def _apply_crosshair_theme(self):
         if not hasattr(self.ui, 'graph_widget'):
@@ -1363,84 +1389,132 @@ class MonitorWindow(QMainWindow):
         self._alert_clear_timer.start(15000)
         self.statusBar().showMessage(tr('status.alert_bar', type=alert_type), 8000)
 
-    def render_ui(self):
+    def render_log_ui(self):
         if self.log_buffer:
             self.ui_lock = True
             self._live_log().append_lines(list(self.log_buffer))
             self.ui_lock = False
             self.log_buffer.clear()
-        if self.latest_data:
-            d = self.latest_data
-            for lcd, val in [(self.ui.lcd_v_in, d['v_in']),(self.ui.lcd_i_in, d['i_in']),(self.ui.lcd_v_out, d['v_out']),(self.ui.lcd_i_out, d['i_out']),(self.ui.lcd_power, d['p']),(self.ui.lcd_v_bat, d['v_bat']),(self.ui.lcd_i_bat, d['i_bat']),(self.ui.lcd_battery, d['b']),(self.ui.lcd_temp, d['t'])]: lcd.display(f"{val:.2f}" if isinstance(val, float) else f"{val}")
 
-            ovp = config_module.CONFIG['alerts'].get('ovp_threshold', 25.0)
-            ocp = config_module.CONFIG['alerts'].get('ocp_threshold', 3.0)
-            temp_w = config_module.CONFIG['alerts'].get('temp_warning_threshold', 60)
-            temp_r = config_module.CONFIG['alerts'].get('temp_recovery_threshold', 55)
-            max_v = max(d['v_in'], d['v_out'])
-            if max_v >= ovp:
-                if 'OVP' not in self._active_alerts:
-                    self._active_alerts.add('OVP')
-                    self.show_protection_alert(tr('protect.ovp'), max_v, ovp, "V")
-            elif max_v < ovp - 1.0: self._active_alerts.discard('OVP')
+    def _lcd_value_changed(self, key: str, val) -> bool:
+        prev = self._last_lcd_snapshot.get(key)
+        if isinstance(val, float):
+            if prev is not None and abs(float(prev) - val) < 0.005:
+                return False
+        elif prev == val:
+            return False
+        self._last_lcd_snapshot[key] = val
+        return True
 
-            max_i = max(d['i_in'], d['i_out'])
-            if max_i >= ocp:
-                if 'OCP' not in self._active_alerts:
-                    self._active_alerts.add('OCP')
-                    self.show_protection_alert(tr('protect.ocp'), max_i, ocp, "A")
-            elif max_i < ocp - 0.2: self._active_alerts.discard('OCP')
+    def _update_lcds_if_changed(self, d):
+        mapping = (
+            ('v_in', self.ui.lcd_v_in),
+            ('i_in', self.ui.lcd_i_in),
+            ('v_out', self.ui.lcd_v_out),
+            ('i_out', self.ui.lcd_i_out),
+            ('p', self.ui.lcd_power),
+            ('v_bat', self.ui.lcd_v_bat),
+            ('i_bat', self.ui.lcd_i_bat),
+            ('b', self.ui.lcd_battery),
+            ('t', self.ui.lcd_temp),
+        )
+        for key, lcd in mapping:
+            val = d[key]
+            if self._lcd_value_changed(key, val):
+                lcd.display(f"{val:.2f}" if isinstance(val, float) else f"{val}")
 
-            if d['t'] >= temp_w:
-                self.ui.lcd_temp.setStyleSheet(
-                    f'background-color: {TEMP_ALERT_BG}; color: {TEMP_ALERT_FG}; '
-                    f'border: 2px solid {TEMP_ALERT_BORDER}; border-radius: 4px;'
+    def render_metrics_ui(self):
+        if not self.latest_data:
+            return
+        d = self.latest_data
+        self._update_lcds_if_changed(d)
+
+        ovp = config_module.CONFIG['alerts'].get('ovp_threshold', 25.0)
+        ocp = config_module.CONFIG['alerts'].get('ocp_threshold', 3.0)
+        temp_w = config_module.CONFIG['alerts'].get('temp_warning_threshold', 60)
+        temp_r = config_module.CONFIG['alerts'].get('temp_recovery_threshold', 55)
+        max_v = max(d['v_in'], d['v_out'])
+        if max_v >= ovp:
+            if 'OVP' not in self._active_alerts:
+                self._active_alerts.add('OVP')
+                self.show_protection_alert(tr('protect.ovp'), max_v, ovp, "V")
+        elif max_v < ovp - 1.0:
+            self._active_alerts.discard('OVP')
+
+        max_i = max(d['i_in'], d['i_out'])
+        if max_i >= ocp:
+            if 'OCP' not in self._active_alerts:
+                self._active_alerts.add('OCP')
+                self.show_protection_alert(tr('protect.ocp'), max_i, ocp, "A")
+        elif max_i < ocp - 0.2:
+            self._active_alerts.discard('OCP')
+
+        if d['t'] >= temp_w:
+            self.ui.lcd_temp.setStyleSheet(
+                f'background-color: {TEMP_ALERT_BG}; color: {TEMP_ALERT_FG}; '
+                f'border: 2px solid {TEMP_ALERT_BORDER}; border-radius: 4px;'
+            )
+            if not getattr(self, '_temp_warned', False):
+                self.append_log(
+                    time.time(),
+                    tr('status.temp_warning_log', time=datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3], temp=d['t']),
                 )
-                if not getattr(self, '_temp_warned', False):
-                    self.append_log(
-                        time.time(),
-                        tr('status.temp_warning_log', time=datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3], temp=d['t']),
-                    )
-                    self._temp_warned = True
-                if 'OTP' not in self._active_alerts:
-                    self._active_alerts.add('OTP')
-                    self.show_protection_alert(tr('protect.otp'), d['t'], temp_w, "°C")
-            else:
-                apply_lcd_style(self.ui.lcd_temp, LCD_TEMP)
-                if d['t'] < temp_r: self._temp_warned = False; self._active_alerts.discard('OTP')
-
-            if self.worker and self.worker.isRunning():
-                stable = self._charge_state_tracker.update(self.y_vb, self.y_ib)
-                battery_pct = float(d.get('b', 0) or 0)
-                if stable == 'trickle' and battery_pct >= 100.0:
-                    if self._full_charge_start_time is None:
-                        self._full_charge_start_time = time.time()
-                    else:
-                        debounce = config_module.CONFIG['alerts'].get('full_charge_debounce_sec', 20.0)
-                        if not self._full_charge_alerted and (time.time() - self._full_charge_start_time >= debounce):
-                            self.show_full_charge_alert(debounce)
-                            self._full_charge_alerted = True
-                else:
-                    self._full_charge_start_time = None
-                    self._full_charge_alerted = False
+                self._temp_warned = True
+            if 'OTP' not in self._active_alerts:
+                self._active_alerts.add('OTP')
+                self.show_protection_alert(tr('protect.otp'), d['t'], temp_w, "°C")
+        else:
+            apply_lcd_style(self.ui.lcd_temp, LCD_TEMP)
+            if d['t'] < temp_r:
+                self._temp_warned = False
+                self._active_alerts.discard('OTP')
 
         if self.worker and self.worker.isRunning():
-            if self.auto_scroll_chart:
-                if not self.x_data: return
-                self.ui.line_power.setData(self.x_data, self.y_p)
-                self.ui.line_v_in.setData(self.x_data, self.y_vi)
-                self.ui.line_i_in.setData(self.x_data, self.y_ii)
-                self.ui.line_v_out.setData(self.x_data, self.y_vo)
-                self.ui.line_i_out.setData(self.x_data, self.y_io)
-                self.ui.line_v_bat.setData(self.x_data, self.y_vb)
-                self.ui.line_i_bat.setData(self.x_data, self.y_ib)
-                self.view_data = {'x': self.x_data, 'p': self.y_p, 'vi': self.y_vi, 'ii': self.y_ii, 'vo': self.y_vo, 'io': self.y_io, 'vb': self.y_vb, 'ib': self.y_ib, 't': self.y_t, 'b': self.y_b}
-                cur_t = self.x_data[-1]
-                win = config_module.CONFIG['ui'].get('default_window_size_sec', 60.0)
-                xlim = [cur_t-win, cur_t+win*0.05] if cur_t > win else [0, max(cur_t+1, win)]
-                self.ui.p_p.setXRange(xlim[0], xlim[1], padding=0)
-                self.last_forced_xlim = xlim
-            else: self.request_chart_fetch()
+            stable = self._charge_state_tracker.update(self.y_vb, self.y_ib)
+            battery_pct = float(d.get('b', 0) or 0)
+            if stable == 'trickle' and battery_pct >= 100.0:
+                if self._full_charge_start_time is None:
+                    self._full_charge_start_time = time.time()
+                else:
+                    debounce = config_module.CONFIG['alerts'].get('full_charge_debounce_sec', 20.0)
+                    if not self._full_charge_alerted and (time.time() - self._full_charge_start_time >= debounce):
+                        self.show_full_charge_alert(debounce)
+                        self._full_charge_alerted = True
+            else:
+                self._full_charge_start_time = None
+                self._full_charge_alerted = False
+
+    def render_chart_ui(self):
+        if not (self.worker and self.worker.isRunning()):
+            return
+        if self.auto_scroll_chart:
+            if not self.x_data:
+                return
+            self.ui.line_power.setData(self.x_data, self.y_p)
+            self.ui.line_v_in.setData(self.x_data, self.y_vi)
+            self.ui.line_i_in.setData(self.x_data, self.y_ii)
+            self.ui.line_v_out.setData(self.x_data, self.y_vo)
+            self.ui.line_i_out.setData(self.x_data, self.y_io)
+            self.ui.line_v_bat.setData(self.x_data, self.y_vb)
+            self.ui.line_i_bat.setData(self.x_data, self.y_ib)
+            self.view_data = {
+                'x': self.x_data, 'p': self.y_p, 'vi': self.y_vi, 'ii': self.y_ii,
+                'vo': self.y_vo, 'io': self.y_io, 'vb': self.y_vb, 'ib': self.y_ib,
+                't': self.y_t, 'b': self.y_b,
+            }
+            cur_t = self.x_data[-1]
+            win = config_module.CONFIG['ui'].get('default_window_size_sec', 60.0)
+            xlim = [cur_t - win, cur_t + win * 0.05] if cur_t > win else [0, max(cur_t + 1, win)]
+            self.ui.p_p.setXRange(xlim[0], xlim[1], padding=0)
+            self.last_forced_xlim = xlim
+        else:
+            self.request_chart_fetch()
+
+    def render_ui(self):
+        """Backward-compatible alias for legacy callers."""
+        self.render_log_ui()
+        self.render_metrics_ui()
+        self.render_chart_ui()
 
     def on_chart_fetched(self, data):
         if not data or len(data) < 10 or not data[0]: return
@@ -1577,7 +1651,10 @@ class MonitorWindow(QMainWindow):
         self._charge_state_tracker.reset()
         self._full_charge_start_time = None
         self._full_charge_alerted = False
-        [a.clear() for a in [self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b]]; self.view_data = {'x':[], 'p':[], 'vi':[], 'ii':[], 'vo':[], 'io':[], 'vb':[], 'ib':[], 't':[], 'b':[]}
+        self._last_lcd_snapshot.clear()
+        for arr in (self.x_data, self.y_vi, self.y_ii, self.y_vo, self.y_io, self.y_vb, self.y_ib, self.y_eff, self.y_p, self.y_t, self.y_b):
+            arr.clear()
+        self.view_data = {'x': [], 'p': [], 'vi': [], 'ii': [], 'vo': [], 'io': [], 'vb': [], 'ib': [], 't': [], 'b': []}
         serial_cfg = config_module.CONFIG.get('serial', {})
         self.worker = SerialWorker(
             port, baud, demo_mode=demo_mode,
@@ -1587,6 +1664,7 @@ class MonitorWindow(QMainWindow):
         )
         self.worker.data_ready.connect(self.process_data)
         self.worker.log_ready.connect(self.append_log)
+        self.worker.logs_batch_ready.connect(self.append_logs_batch)
         self.worker.connection_opened.connect(self._on_serial_connection_opened)
         self.worker.connection_failed.connect(self.on_serial_connection_failed)
         self.worker.connection_lost.connect(self.on_serial_connection_lost)
@@ -1703,6 +1781,7 @@ class MonitorWindow(QMainWindow):
             self.current_session_id = None
         self.stop_mon()
         self.hide_tooltip()
+        self._close_live_log_file()
         if hasattr(self, '_port_watcher'):
             self._port_watcher.stop()
         if hasattr(self, 'db_worker'):

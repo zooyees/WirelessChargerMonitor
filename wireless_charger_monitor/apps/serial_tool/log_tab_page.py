@@ -1,11 +1,13 @@
 """单个报文文件 Tab：可选分窗显示（仅 UI，不影响文件存储）。"""
 
+import os
 from collections import deque
 from functools import partial
 
 from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat, QTextCursor
 from PyQt5.QtWidgets import (
+    QApplication,
     QCheckBox,
     QFrame,
     QHBoxLayout,
@@ -44,6 +46,9 @@ from ...ui.theme import (
 )
 
 _MAX_LIVE_LINES = 10000
+_STREAM_FILE_THRESHOLD_BYTES = 2 * 1024 * 1024
+_STREAM_BATCH_LINES = 5000
+_BULK_HIGHLIGHT_LINE_THRESHOLD = 64
 _FILTER_LABEL_WIDTH = 76
 _FILTER_EDIT_WIDTH = 112
 _FILTER_GROUP_SPACING = 8
@@ -76,6 +81,8 @@ class _FilterMatchHighlighter(QSyntaxHighlighter):
             self.rehighlight()
 
     def highlightBlock(self, text):
+        if self.document().property('_highlight_suspended'):
+            return
         patterns = self._filter_patterns
         if not patterns:
             return
@@ -877,35 +884,52 @@ class LogTabPage(QWidget):
 
     def _append_to_panes(self, lines):
         if not lines or not self._panes:
-            return
+            return []
+        targets: list[tuple] = []
         if self.chk_split.isChecked():
             filters = self._split_filters()
             batches = self._distribute_lines_for_split(lines, filters)
             for pane, batch, filter_text in zip(self._panes, batches, filters):
                 if batch:
-                    self._append_pane_lines(pane, batch, filter_text)
+                    from_block = self._append_pane_lines(pane, batch, filter_text)
+                    targets.append((pane, from_block))
         else:
             if self._use_search_results_panel():
                 base_idx = len(self._master_lines) - len(lines)
                 patterns = self._committed_filter_text(0)
-                self._append_pane_lines(self._panes[0], lines, patterns)
+                from_block = self._append_pane_lines(self._panes[0], lines, patterns)
+                targets.append((self._panes[0], from_block))
                 self._append_search_results_for_lines(lines, base_idx)
             else:
                 batch = [line for line in lines if self._line_visible_in_single_pane(line)]
                 if batch:
-                    self._append_pane_lines(
+                    from_block = self._append_pane_lines(
                         self._panes[0],
                         batch,
                         self._committed_filter_text(0),
                     )
+                    targets.append((self._panes[0], from_block))
+        return targets
 
     def _append_pane_lines(self, edit, lines, filter_patterns):
         highlighter = self._pane_highlighter(edit)
         if highlighter and highlighter._filter_patterns != (filter_patterns or None):
             highlighter.set_filter_text(filter_patterns, rehighlight=False)
         edit.setProperty('_display_cache_key', None)
-        prefix = '\n' if edit.document().characterCount() > 0 else ''
+        doc = edit.document()
+        rehighlight_from = doc.blockCount() if doc.characterCount() > 0 else 0
+        prefix = '\n' if doc.characterCount() > 0 else ''
         edit.appendPlainText(prefix + '\n'.join(lines))
+        return rehighlight_from
+
+    def _rehighlight_blocks_from(self, edit, from_block: int) -> None:
+        highlighter = self._pane_highlighter(edit)
+        if highlighter is None:
+            return
+        block = edit.document().findBlockByNumber(from_block)
+        while block.isValid():
+            highlighter.rehighlightBlock(block)
+            block = block.next()
 
     def _write_pane_lines(self, edit, lines, filter_patterns):
         text = '\n'.join(lines) if lines else ''
@@ -914,10 +938,15 @@ class LogTabPage(QWidget):
         if old_key == cache_key:
             return False
         highlighter = self._pane_highlighter(edit)
+        bulk = len(lines) >= _BULK_HIGHLIGHT_LINE_THRESHOLD
+        if bulk:
+            edit.document().setProperty('_highlight_suspended', True)
         if old_key and old_key[0] == text:
-            if highlighter:
+            if highlighter and not bulk:
                 highlighter.set_filter_text(filter_patterns)
             edit.setProperty('_display_cache_key', cache_key)
+            if bulk:
+                edit.document().setProperty('_highlight_suspended', False)
             return True
         if highlighter:
             highlighter.set_filter_text(filter_patterns, rehighlight=False)
@@ -925,6 +954,10 @@ class LogTabPage(QWidget):
         edit.setPlainText(text)
         edit.blockSignals(False)
         edit.setProperty('_display_cache_key', cache_key)
+        if bulk:
+            edit.document().setProperty('_highlight_suspended', False)
+            if highlighter and filter_patterns:
+                highlighter.set_filter_text(filter_patterns)
         return True
 
     def _apply_filter_highlights(self, edit, filter_text):
@@ -1000,20 +1033,83 @@ class LogTabPage(QWidget):
             return None
         return _parse_filter_patterns(raw)
 
+    def _set_highlight_suspended(self, suspended: bool) -> None:
+        for edit in self._panes:
+            edit.document().setProperty('_highlight_suspended', suspended)
+        if hasattr(self, '_search_results_edit'):
+            self._search_results_edit.document().setProperty('_highlight_suspended', suspended)
+
+    @staticmethod
+    def should_stream_load(path: str) -> bool:
+        try:
+            return os.path.getsize(path) >= _STREAM_FILE_THRESHOLD_BYTES
+        except OSError:
+            return False
+
+    def load_file_streaming(self, path: str, status_callback=None) -> int:
+        """Load a large log file in batches to avoid a single huge setPlainText."""
+        self.clear()
+        self._set_highlight_suspended(True)
+        total = 0
+        batch: list[str] = []
+        try:
+            with open(path, 'r', encoding='utf-8-sig', errors='replace') as handle:
+                for raw in handle:
+                    batch.append(raw.rstrip('\n\r'))
+                    if len(batch) >= _STREAM_BATCH_LINES:
+                        self._master_lines.extend(batch)
+                        self._append_to_panes(batch)
+                        total += len(batch)
+                        batch = []
+                        if status_callback:
+                            status_callback(total)
+                        QApplication.processEvents()
+                if batch:
+                    self._master_lines.extend(batch)
+                    self._append_to_panes(batch)
+                    total += len(batch)
+                    if status_callback:
+                        status_callback(total)
+                    QApplication.processEvents()
+        finally:
+            self._set_highlight_suspended(False)
+            self.refresh_filter_highlights()
+        return total
+
     def append_lines(self, lines):
         if not lines:
             return
         if isinstance(lines, str):
             lines = [lines]
         self._master_lines.extend(lines)
-        self._append_to_panes(lines)
+        suspend = self.live or len(lines) >= _BULK_HIGHLIGHT_LINE_THRESHOLD
+        if suspend:
+            self._set_highlight_suspended(True)
+        try:
+            targets = self._append_to_panes(lines)
+        finally:
+            if suspend:
+                self._set_highlight_suspended(False)
+                if self.live:
+                    for edit, from_block in targets:
+                        self._rehighlight_blocks_from(edit, from_block)
+                else:
+                    self.refresh_filter_highlights()
 
     def set_content(self, text):
         lines = text.splitlines() if text else []
         self._master_lines = self._new_master_store(lines)
         self._search_result_line_map = []
         self._hide_search_results_panel()
-        self._rebuild_display()
+        bulk = len(lines) >= _BULK_HIGHLIGHT_LINE_THRESHOLD
+        if bulk:
+            self._set_highlight_suspended(True)
+        try:
+            self._rebuild_display()
+        finally:
+            if bulk:
+                self._set_highlight_suspended(False)
+                self.refresh_filter_highlights()
 
     def clear(self):
         self._master_lines.clear()

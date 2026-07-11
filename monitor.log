@@ -949,3 +949,11 @@ pyvisa.errors.VisaIOError: VI_ERROR_INV_OBJECT (-1073807346): The given session 
 2026-07-11 21:29:00,246 [INFO] WiParse: Ports scanned: 6 device(s)
 2026-07-11 21:36:55,377 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
 2026-07-11 21:36:56,043 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 21:43:11,910 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 21:43:12,421 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 22:58:51,203 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 22:58:52,070 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 23:01:41,484 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 23:01:42,221 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 23:07:29,404 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 23:07:30,203 [INFO] WiParse: Ports scanned: 6 device(s)

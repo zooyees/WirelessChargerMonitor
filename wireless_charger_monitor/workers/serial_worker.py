@@ -16,6 +16,7 @@ _UNKNOWN_LOG = 'Unknown_Qi_Commands_Log.txt'
 class SerialWorker(QThread):
     data_ready = pyqtSignal(dict)
     log_ready = pyqtSignal(float, str)
+    logs_batch_ready = pyqtSignal(list)
     connection_failed = pyqtSignal(str)
     connection_opened = pyqtSignal()
     connection_lost = pyqtSignal(str)
@@ -51,6 +52,31 @@ class SerialWorker(QThread):
         self.last_log_time = now
         return f"[{now.strftime('%H:%M:%S')}.{now.microsecond // 1000:03d}]"
 
+    def _emit_log_batch(self, batch: list[tuple[float, str]]) -> None:
+        if not batch:
+            return
+        if len(batch) == 1:
+            ts, msg = batch[0]
+            self.log_ready.emit(ts, msg)
+        else:
+            self.logs_batch_ready.emit(batch)
+
+    def _process_text_line(self, line: str, log_batch: list[tuple[float, str]]) -> None:
+        line = line.strip()
+        if not line:
+            return
+        if 'AA55' in line and 'EDED' in line:
+            self.parse_line(line)
+            return
+        payload = line
+        if line.startswith('TX0:') or line.startswith('TX1:'):
+            payload = line.split(':', 1)[1].strip()
+        elif line.startswith('TX0') or line.startswith('TX1'):
+            payload = line[3:].strip().lstrip(':').strip()
+        msg = f"{self.get_strict_timestamp()} {payload}"
+        log_batch.append((time.time(), msg))
+        self.check_and_log_unknown(msg)
+
     def _run_demo_loop(self):
         logger.warning('Demo mode active on %s — emitting simulated data only', self.port)
         while self.running:
@@ -64,40 +90,36 @@ class SerialWorker(QThread):
                 msg = f'{ts} ASK 71 22 12 34 00 00 00 00 F '
             else:
                 msg = f'{ts} FSK 40 03 F'
-            self.log_ready.emit(time.time(), msg)
-            self.check_and_log_unknown(msg)
+            self._emit_log_batch([(time.time(), msg)])
 
     def _read_loop(self):
-        buffer = ''
+        buffer = bytearray()
         while self.running:
             waiting = self.serial_conn.in_waiting
             if waiting > 0:
-                buffer += self.serial_conn.read(waiting).decode('ascii', errors='ignore')
-                while 'AA55' in buffer and 'EDED' in buffer:
-                    start = buffer.find('AA55')
-                    end = buffer.find('EDED', start)
-                    if end != -1:
-                        self.parse_line(buffer[start:end + 4])
-                        buffer = buffer[end + 4:]
-                    else:
-                        buffer = buffer[start:]
+                buffer.extend(self.serial_conn.read(waiting))
+                log_batch: list[tuple[float, str]] = []
+
+                while True:
+                    start = buffer.find(b'AA55')
+                    if start == -1:
                         break
-                while '\n' in buffer:
-                    line, buffer = buffer.split('\n', 1)
-                    line = line.strip()
-                    if not line:
-                        continue
-                    if 'AA55' in line and 'EDED' in line:
-                        self.parse_line(line)
-                        continue
-                    payload = line
-                    if line.startswith('TX0:') or line.startswith('TX1:'):
-                        payload = line.split(':', 1)[1].strip()
-                    elif line.startswith('TX0') or line.startswith('TX1'):
-                        payload = line[3:].strip().lstrip(':').strip()
-                    msg = f"{self.get_strict_timestamp()} {payload}"
-                    self.log_ready.emit(time.time(), msg)
-                    self.check_and_log_unknown(msg)
+                    end = buffer.find(b'EDED', start)
+                    if end == -1:
+                        if start > 0:
+                            del buffer[:start]
+                        break
+                    frame = buffer[start:end + 4].decode('ascii', errors='ignore')
+                    self.parse_line(frame)
+                    del buffer[:end + 4]
+
+                while b'\n' in buffer:
+                    line_bytes, rest = buffer.split(b'\n', 1)
+                    buffer = bytearray(rest)
+                    line = line_bytes.decode('ascii', errors='ignore')
+                    self._process_text_line(line, log_batch)
+
+                self._emit_log_batch(log_batch)
             else:
                 time.sleep(0.001)
 
