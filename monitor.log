@@ -931,3 +931,21 @@ Traceback (most recent call last):
 pyvisa.errors.VisaIOError: VI_ERROR_INV_OBJECT (-1073807346): The given session or object reference is invalid.
 2026-06-30 23:02:23,935 [INFO] WiParse: DBWorker stopped
 2026-06-30 23:02:23,983 [INFO] WiParse: FetchWorker stopped
+2026-07-11 18:29:54,102 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 18:29:54,805 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 18:45:05,243 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 18:45:05,764 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 18:59:01,419 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 18:59:02,622 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 20:41:39,921 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 20:41:40,474 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 21:11:10,272 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 21:11:10,925 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 21:20:41,946 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 21:20:42,482 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 21:26:22,694 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 21:26:23,302 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 21:28:59,649 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 21:29:00,246 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-11 21:36:55,377 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-11 21:36:56,043 [INFO] WiParse: Ports scanned: 6 device(s)

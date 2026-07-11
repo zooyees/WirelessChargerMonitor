@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QLineEdit,
     QPlainTextEdit,
+    QPushButton,
     QScrollArea,
     QSizePolicy,
     QSpinBox,
@@ -49,6 +50,8 @@ _FILTER_GROUP_SPACING = 8
 _LOG_FONT_MAX = 24
 _LOG_FONT_DEFAULT = FS_BODY
 _FILTER_HIGHLIGHT_COLOR = QColor(ui_theme.FILTER_HIGHLIGHT)
+_SEARCH_GOTO_HIGHLIGHT = QColor(ui_theme.ACCENT)
+_SEARCH_GOTO_HIGHLIGHT.setAlpha(72)
 
 
 def _parse_filter_patterns(raw):
@@ -102,6 +105,7 @@ class LogTabPage(QWidget):
         self._cached_filters = []
         self._same_page_columns = []
         self._pane_highlighters = {}
+        self._search_result_line_map = []
 
         self.setObjectName('log_tab_page')
 
@@ -177,7 +181,18 @@ class LogTabPage(QWidget):
         self._view_stack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._view_stack.addWidget(self.content_tabs)
         self._view_stack.addWidget(self._same_page_splitter)
-        root.addWidget(self._view_stack, 1)
+
+        self._main_splitter = QSplitter(Qt.Vertical)
+        self._main_splitter.setObjectName('log_main_splitter')
+        self._main_splitter.setChildrenCollapsible(False)
+        self._main_splitter.setHandleWidth(6)
+        self._main_splitter.addWidget(self._view_stack)
+        self._search_panel = self._build_search_results_panel()
+        self._main_splitter.addWidget(self._search_panel)
+        self._main_splitter.setStretchFactor(0, 3)
+        self._main_splitter.setStretchFactor(1, 1)
+        self._search_panel.setVisible(False)
+        root.addWidget(self._main_splitter, 1)
 
         self.chk_split.toggled.connect(self._on_split_toggled)
         self.chk_same_page.toggled.connect(self._on_same_page_toggled)
@@ -219,6 +234,17 @@ class LogTabPage(QWidget):
         for highlighter in self._pane_highlighters.values():
             highlighter._highlight_format.setForeground(QColor(ui_theme.FILTER_HIGHLIGHT))
             highlighter.rehighlight()
+        if hasattr(self, '_search_results_edit'):
+            apply_log_pane_style(self._search_results_edit)
+            apply_log_split_column_title_style(self._search_results_title)
+            if self._search_results_highlighter:
+                self._search_results_highlighter._highlight_format.setForeground(
+                    QColor(ui_theme.FILTER_HIGHLIGHT)
+                )
+                self._search_results_highlighter.rehighlight()
+        global _SEARCH_GOTO_HIGHLIGHT
+        _SEARCH_GOTO_HIGHLIGHT = QColor(ui_theme.ACCENT)
+        _SEARCH_GOTO_HIGHLIGHT.setAlpha(72)
 
     def _new_master_store(self, lines=None):
         """Live tab: bounded deque for filter/split; file tab: unbounded list."""
@@ -246,6 +272,8 @@ class LogTabPage(QWidget):
             chk.setText(tr('log.auto_parse'))
             chk.setToolTip(tr('log.auto_parse_tooltip'))
         self._retranslate_pane_titles()
+        if hasattr(self, '_search_results_title'):
+            self._update_search_results_title()
         refresh_tab_widget(self.content_tabs, preset='split')
 
     def _retranslate_pane_titles(self):
@@ -418,6 +446,166 @@ class LogTabPage(QWidget):
     def is_auto_parse_enabled_for_edit(self, edit):
         return self.is_auto_parse_enabled(self.pane_index_for_edit(edit))
 
+    def _use_search_results_panel(self):
+        """文件文档分析：单窗模式下筛选结果显示在下方独立面板。"""
+        return not self.live and not self.chk_split.isChecked()
+
+    def _build_search_results_panel(self):
+        panel = QFrame()
+        panel.setObjectName('log_search_results_panel')
+        panel.setFrameShape(QFrame.StyledPanel)
+        panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        header = QFrame()
+        header.setObjectName('log_search_results_header')
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(8, 4, 6, 4)
+        header_layout.setSpacing(6)
+
+        self._search_results_title = QLabel()
+        apply_log_split_column_title_style(self._search_results_title)
+        self._search_results_close = QPushButton(tr('log.search_results_close'))
+        self._search_results_close.setObjectName('log_search_results_close')
+        self._search_results_close.setFixedWidth(52)
+        header_layout.addWidget(self._search_results_title)
+        header_layout.addStretch(1)
+        header_layout.addWidget(self._search_results_close)
+
+        self._search_results_edit = QPlainTextEdit()
+        apply_log_pane_style(self._search_results_edit)
+        self._search_results_edit.setObjectName('log_search_results_pane')
+        self._search_results_edit.setReadOnly(True)
+        self._search_results_edit.setToolTip(tr('log.search_results_tooltip'))
+        self._search_results_highlighter = _FilterMatchHighlighter(self._search_results_edit.document())
+        self._pane_highlighters[self._search_results_edit] = self._search_results_highlighter
+        font = QFont('Consolas')
+        font.setStyleHint(QFont.Monospace)
+        font.setPointSizeF(float(_LOG_FONT_DEFAULT))
+        self._search_results_edit.setFont(font)
+        self._search_results_edit.document().setDefaultFont(font)
+
+        layout.addWidget(header)
+        layout.addWidget(self._search_results_edit, 1)
+
+        self._search_results_close.clicked.connect(self._hide_search_results_panel)
+        self._search_results_edit.viewport().installEventFilter(self)
+        self._update_search_results_title()
+        return panel
+
+    def _update_search_results_title(self, count=None):
+        if count is None:
+            count = len(self._search_result_line_map)
+        self._search_results_title.setText(tr('log.search_results_count', n=count))
+
+    def _show_search_results_panel(self):
+        self._search_panel.setVisible(True)
+        total = max(self._main_splitter.height(), 480)
+        bottom = max(120, int(total * 0.38))
+        top = max(160, total - bottom)
+        self._main_splitter.setSizes([top, bottom])
+
+    def _hide_search_results_panel(self):
+        self._search_panel.setVisible(False)
+        self._main_splitter.setSizes([1, 0])
+
+    def _format_search_result_line(self, master_idx, line):
+        return f'{master_idx + 1:6d} | {line}'
+
+    def _collect_search_results(self):
+        patterns = self._committed_filter_text(0)
+        if patterns is None:
+            return [], []
+        display_lines = []
+        line_map = []
+        for master_idx, line in enumerate(self._master_lines):
+            if self._line_matches_filter(patterns, line):
+                display_lines.append(self._format_search_result_line(master_idx, line))
+                line_map.append(master_idx)
+        return display_lines, line_map
+
+    def _write_search_results(self, display_lines, patterns):
+        text = '\n'.join(display_lines) if display_lines else ''
+        cache_key = (text, patterns)
+        edit = self._search_results_edit
+        if edit.property('_display_cache_key') == cache_key:
+            return
+        highlighter = self._search_results_highlighter
+        if highlighter:
+            highlighter.set_filter_text(patterns, rehighlight=False)
+        edit.blockSignals(True)
+        edit.setPlainText(text)
+        edit.blockSignals(False)
+        edit.setProperty('_display_cache_key', cache_key)
+        self._update_search_results_title(len(display_lines))
+
+    def _update_search_results_panel(self):
+        if not self._use_search_results_panel():
+            self._hide_search_results_panel()
+            return
+        display_lines, line_map = self._collect_search_results()
+        patterns = self._committed_filter_text(0)
+        if patterns is None:
+            self._search_result_line_map = []
+            self._hide_search_results_panel()
+            return
+        self._search_result_line_map = line_map
+        self._write_search_results(display_lines, patterns)
+        self._show_search_results_panel()
+
+    def _append_search_results_for_lines(self, lines, base_master_idx):
+        if not self._search_panel.isVisible():
+            return
+        patterns = self._committed_filter_text(0)
+        if patterns is None:
+            return
+        additions = []
+        mapping_add = []
+        for offset, line in enumerate(lines):
+            master_idx = base_master_idx + offset
+            if self._line_matches_filter(patterns, line):
+                additions.append(self._format_search_result_line(master_idx, line))
+                mapping_add.append(master_idx)
+        if not additions:
+            return
+        self._search_result_line_map.extend(mapping_add)
+        edit = self._search_results_edit
+        highlighter = self._search_results_highlighter
+        if highlighter and highlighter._filter_patterns != patterns:
+            highlighter.set_filter_text(patterns, rehighlight=False)
+        prefix = '\n' if edit.document().characterCount() > 0 else ''
+        edit.appendPlainText(prefix + '\n'.join(additions))
+        edit.setProperty('_display_cache_key', None)
+        self._update_search_results_title(len(self._search_result_line_map))
+
+    def _goto_master_line(self, master_idx):
+        edit = self.primary_editor()
+        if edit is None or master_idx < 0:
+            return
+        block = edit.document().findBlockByNumber(master_idx)
+        if not block.isValid():
+            return
+        cursor = QTextCursor(block)
+        cursor.movePosition(QTextCursor.StartOfBlock)
+        cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+        edit.setTextCursor(cursor)
+        edit.centerCursor()
+        edit.setFocus()
+        extra = QPlainTextEdit.ExtraSelection()
+        extra.cursor = cursor
+        fmt = QTextCharFormat()
+        fmt.setBackground(_SEARCH_GOTO_HIGHLIGHT)
+        extra.format = fmt
+        edit.setExtraSelections([extra])
+
+    def _goto_search_result_line(self, result_line_idx):
+        if result_line_idx < 0 or result_line_idx >= len(self._search_result_line_map):
+            return
+        self._goto_master_line(self._search_result_line_map[result_line_idx])
+
     def _make_editor(self):
         edit = QPlainTextEdit()
         apply_log_pane_style(edit)
@@ -457,6 +645,15 @@ class LogTabPage(QWidget):
         self._apply_pane_font(edit)
 
     def eventFilter(self, obj, event):
+        if (
+            hasattr(self, '_search_results_edit')
+            and obj is self._search_results_edit.viewport()
+            and event.type() == QEvent.MouseButtonDblClick
+            and event.button() == Qt.LeftButton
+        ):
+            cursor = self._search_results_edit.cursorForPosition(event.pos())
+            self._goto_search_result_line(cursor.blockNumber())
+            return True
         if event.type() == QEvent.Wheel and event.modifiers() & Qt.ControlModifier:
             for edit in self._panes:
                 if obj is edit.viewport():
@@ -490,6 +687,8 @@ class LogTabPage(QWidget):
         self._sync_master_from_panes_if_empty()
         saved = self._saved_filter_texts()
         saved_parse = self._saved_parse_states()
+        if enabled:
+            self._hide_search_results_panel()
         self.lbl_count.setEnabled(enabled)
         self.spin_count.setEnabled(enabled)
         self.chk_same_page.setEnabled(enabled)
@@ -639,6 +838,10 @@ class LogTabPage(QWidget):
     def _refresh_single_pane(self):
         if not self._panes:
             return
+        if self._use_search_results_panel():
+            self._set_pane_texts([list(self._master_lines)])
+            self._update_search_results_panel()
+            return
         filter_text = self._committed_filter_text(0)
         if filter_text is None:
             visible = self._master_lines
@@ -682,13 +885,19 @@ class LogTabPage(QWidget):
                 if batch:
                     self._append_pane_lines(pane, batch, filter_text)
         else:
-            batch = [line for line in lines if self._line_visible_in_single_pane(line)]
-            if batch:
-                self._append_pane_lines(
-                    self._panes[0],
-                    batch,
-                    self._committed_filter_text(0),
-                )
+            if self._use_search_results_panel():
+                base_idx = len(self._master_lines) - len(lines)
+                patterns = self._committed_filter_text(0)
+                self._append_pane_lines(self._panes[0], lines, patterns)
+                self._append_search_results_for_lines(lines, base_idx)
+            else:
+                batch = [line for line in lines if self._line_visible_in_single_pane(line)]
+                if batch:
+                    self._append_pane_lines(
+                        self._panes[0],
+                        batch,
+                        self._committed_filter_text(0),
+                    )
 
     def _append_pane_lines(self, edit, lines, filter_patterns):
         highlighter = self._pane_highlighter(edit)
@@ -727,6 +936,8 @@ class LogTabPage(QWidget):
     def _pane_filter_texts(self):
         if not self._panes:
             return []
+        if self._use_search_results_panel():
+            return [self._committed_filter_text(0)]
         if self.chk_split.isChecked():
             return self._split_filters()
         return [self._committed_filter_text(0)]
@@ -770,6 +981,9 @@ class LogTabPage(QWidget):
             if self.chk_split.isChecked():
                 buckets = self._distribute_lines_for_split(self._master_lines)
                 self._set_pane_texts(buckets)
+            elif self._use_search_results_panel():
+                self._set_pane_texts([list(self._master_lines)])
+                self._update_search_results_panel()
             else:
                 visible = [
                     line for line in self._master_lines
@@ -797,9 +1011,16 @@ class LogTabPage(QWidget):
     def set_content(self, text):
         lines = text.splitlines() if text else []
         self._master_lines = self._new_master_store(lines)
+        self._search_result_line_map = []
+        self._hide_search_results_panel()
         self._rebuild_display()
 
     def clear(self):
         self._master_lines.clear()
+        self._search_result_line_map = []
+        self._hide_search_results_panel()
         for edit in self._panes:
             edit.clear()
+        if hasattr(self, '_search_results_edit'):
+            self._search_results_edit.clear()
+            self._search_results_edit.setProperty('_display_cache_key', None)

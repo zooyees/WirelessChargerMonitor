@@ -10,9 +10,9 @@
     "render_interval_ms": 100,
     "chart_max_points": 500,
     "default_window_size_sec": 60.0,
-    "language": "zh",
+    "language": "en",
     "menu_bar_auto_hide": false,
-    "theme": "dark"
+    "theme": "light"
   },
   "alerts": {
     "temp_warning_threshold": 60,
@@ -44,7 +44,7 @@
     "max_reconnect_attempts": 5
   },
   "log_monitor": {
-    "default_filename": "实时报文",
+    "default_filename": "Live Packet Log",
     "save_dir": "logs",
     "file_extension": "txt"
   }

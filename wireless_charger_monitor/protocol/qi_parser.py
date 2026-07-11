@@ -1,257 +1,89 @@
 # ==========================================
-# Module: WPC Qi 2.2.1 / MPP 协议深度解析引擎
-# Reference: Qi 2.2.1 Communications Protocol + MPP Communications Protocol (WPC)
+# WPC Qi BPP/EPP + MPP 协议深度解析引擎
+# Reference: docs/bpp_protocol.h, docs/mpp_protocol.h
 # ==========================================
 import re
 
-from ..i18n import get_language, tr
+from ..i18n import tr_in
+from ..ui.theme_palette import active_tokens, get_theme
+from .protocol_defs import (
+    ASK_PACKETS,
+    BPP_DSR_TYPES,
+    BPP_FSK_PATTERNS,
+    BPP_GRQ_REQUESTS,
+    BPP_SRQ_TYPES,
+    CAL_ENTER_REASON,
+    CAL_ENTER_RESPONSE,
+    CAL_CAPTURE_OPERATIONS,
+    CAL_OP_CODES,
+    EPT_REASONS,
+    FOD_TYPE_LABELS,
+    FSK_BARE_PATTERNS,
+    FSK_DEPTH_LABELS,
+    FSK_PACKETS,
+    MATEDQ_FO_RESULT,
+    MPP_GET_PARAMS,
+    MPP_GRQ_REQUESTS,
+    MPP_SRQ_TYPES,
+    MPP_TX_ERR_INFO,
+    MSS_ERROR,
+    MSS_STATUS,
+    MSR_MAIN_MODE,
+    MSR_PREF,
+    PRMC_VENDORS,
+    PTX_POWER_LIMIT_REASON,
+    PTX_XID_APP,
+    QI22_FSK_PATTERNS,
+    REPORT_ID_TYPES,
+    PLA_FSK_RESPONSES,
+    SRQ_FREQ_SELECTOR,
+    SRQ_PCP_PROFILE,
+    SRQ_XCE_METHOD,
+    srq_type_name,
+    RP_MODE_LABELS,
+    SADC_REQUESTS,
+    SDSR_TYPES,
+    get_payload_len,
+)
 
-# ---------------------------------------------------------------------------
-# 常量与查找表
-# ---------------------------------------------------------------------------
-
-EPT_REASONS = {
-    0x00: 'EPT/nul — 未知 / 未指定',
-    0x01: 'EPT/cc — 充电完成',
-    0x02: 'EPT/if — 内部故障',
-    0x03: 'EPT/ot — 过温',
-    0x04: 'EPT/ov — 过压',
-    0x05: 'EPT/oc — 过流',
-    0x06: 'EPT/bf — 电池故障',
-    0x08: 'EPT/nr — 无响应',
-    0x0A: 'EPT/an — 协商中止',
-    0x0B: 'EPT/rst — 重启功率传输',
-    0x0C: 'EPT/rep — 重新 Ping (re-ping)',
-}
-
-GRQ_REQUESTS = {
-    0x00: 'PTx 标识 (Identification)',
-    0x01: 'PTx 能力 (Capabilities)',
-    0x02: 'PTx 扩展标识 (Extended ID)',
-    0x03: 'PTx 扩展能力 (Extended Capabilities)',
-    0x04: '保留',
-    0x05: '保留',
-    0x20: 'MPP PTx 逆变器电压 (Inverter Voltage)',
-    0x30: 'MPP 模式能力 (Mode Capabilities)',
-    0x31: 'MPP 扩展模式能力 (Extended Mode Cap)',
-}
-
-SRQ_TYPES = {
-    0x00: 'SRQ/en — 结束协商',
-    0x01: 'SRQ/gp — Guaranteed Load Power',
-    0x02: 'SRQ/rp — Reference Power',
-    0x03: 'SRQ/fsk — FSK 配置',
-    0x04: 'SRQ/rep — Re-ping delay',
-    0x05: 'SRQ/rep — Re-ping delay',
-    0x06: 'SRQ/cloakl — Cloak Ping Delay (low)',
-    0x07: 'SRQ/pch — Power Control Hold-off (MPP) / Cloakh',
-    0xA0: 'SRQ/pla — PLA 格式选择 (MPP)',
-    0xA1: 'SRQ/xceMethod — 控制误差算法 (MPP)',
-    0xA7: 'SRQ/verSel — 版本选择 (MPP)',
-    0xA8: 'SRQ/xceGain — 控制增益 (MPP)',
-    0xA9: 'SRQ/freqsel — 频率选择 (MPP)',
-    0xAA: 'SRQ/egpl — Extended Guaranteed Power (MPP)',
-    0xF0: 'SRQ/prop / SRQ/MppProp — 专有参数',
-}
-
-FSK_RESPONSE = {
-    0x00: ('NAK', '拒绝 / 不支持'),
-    0x33: ('ATN', '注意 (Attention)'),
-    0x55: ('ND', '未定义 (Not Defined)'),
-    0xFF: ('ACK', '确认 (Acknowledge)'),
-}
-
-# WPC Power Receiver Manufacturer Codes (PRMC) — 公开/抓包可验证项
-# 完整表见 WPC《Power Receiver Manufacturer Codes》独立文档
-PRMC_VENDORS = {
-    0x005A: 'Apple',
-    0x0042: 'Samsung',
-    0x010E: 'Google',
-    0x0173: 'Xiaomi',
-    0x0186: 'Huawei',
-    0x01A2: 'OPPO',
-    0x01B0: 'Vivo',
-    0x0506: 'Infineon',
-}
-PTMC_VENDORS = PRMC_VENDORS  # 兼容旧名
-
-ASK_MSG_SIZE_OVERRIDE = {}
-
-FSK_DEPTH_LABELS = {
-    0: '深度 0',
-    1: '深度 1',
-    2: '深度 2',
-    3: '深度 3',
-}
-
-# Qi 2.2.1 Communications Protocol §8.6 Table 27
-DSR_TYPES = {
-    0x00: ('DSR/nak', '拒绝上一 PTx 数据包'),
-    0x33: ('DSR/poll', '邀请 PTx 发送任意数据包'),
-    0x55: ('DSR/nd', '上一 PTx 数据包非预期'),
-    0xFF: ('DSR/ack', '上一 PTx 数据包已正确处理'),
-}
-
-FOD_TYPE_LABELS = {
-    0: 'FOD/qf — Reference Quality Factor',
-    1: 'FOD/rf — Reference Resonance Frequency',
-}
-
-MSR_PREF = {
-    0: '无偏好',
-    1: '保留功率传输合同',
-    2: '不保留功率传输合同',
-    3: '保留 (禁用)',
-}
-
-MSR_MAIN_MODE = {
-    0: 'Continuous Power Mode (CPM)',
-    1: 'Nominal Power Mode (NPM)',
-    2: 'Low Power Mode (LPM)',
-    3: 'High Power Mode (HPM)',
-}
-
-MSR_AUX = {
-    0: '未选择辅助模式',
-    1: 'Gain Measurement 辅助模式',
-}
-
-CLOAK_REASONS = {
-    0: 'Generic',
-    1: 'Forced (拒绝 Uncloak)',
-    2: 'Thermally constrained',
-    3: 'Insufficient Power',
-    4: 'Coex Mitigation',
-    5: 'End of Charge',
-    6: 'PTx initiated',
-    7: 'Foreign Object Detection',
-}
-
-RP_MODE_LABELS = {
-    0: 'RP/0 — 正常值',
-    1: 'RP/1 — 首次校准点',
-    2: 'RP/2 — 附加校准点',
-    4: 'RP/4 — 正常值 (抑制 Response)',
-}
-
-ASK_PACKETS = {
-    0x01: ('SS', '信号强度 (Signal Strength)'),
-    0x02: ('EPT', '结束功率传输 (End Power Transfer)'),
-    0x03: ('CE', '控制误差 (Control Error, 8-bit)'),
-    0x04: ('RP8', '接收功率 8-bit (Received Power)'),
-    0x05: ('CHS', '充电状态 (Charge Status)'),
-    0x06: ('PCH', '功率控制保持 (Power Control Hold-off)'),
-    0x07: ('GRQ', '通用请求 (General Request)'),
-    0x09: ('RENEG', '重新协商 (Renegotiate)'),
-    0x13: ('MSR', '模式选择请求 (Mode Select Request)'),
-    0x15: ('DSR', '数据流响应 (Data Stream Response)'),
-    0x18: ('CLOAK', 'Cloak 请求 (Power Pause)'),
-    0x19: ('XCE', '扩展控制误差 (Extended Control Error)'),
-    0x1A: ('PROP/1A', 'MPP PRx 专有包'),
-    0x1B: ('PROP/1B', 'MPP PRx 专有包'),
-    0x20: ('SRQ', '特定请求 (Specific Request)'),
-    0x22: ('FOD', '异物检测状态 (FOD Status)'),
-    0x23: ('CAL_OP', '校准操作 (Calibration Operation)'),
-    0x26: ('SADT/1e', 'SADT (even)'),
-    0x27: ('SADT/1o', 'SADT (odd)'),
-    0x28: ('GET', 'Get 请求'),
-    0x29: ('EDS', '已启用数据流 (Enabled Data Streams)'),
-    0x2A: ('PROP/2A', 'MPP PRx 专有包'),
-    0x2B: ('PROP/2B', 'MPP PRx 专有包'),
-    0x2C: ('CAL_ENTER', '进入校准'),
-    0x2D: ('CAL_EXIT', '退出校准'),
-    0x31: ('RP24', '接收功率 24-bit (Received Power)'),
-    0x36: ('SADT/2e', 'SADT (even)'),
-    0x37: ('SADT/2o', 'SADT (odd)'),
-    0x38: ('SDSR', '数据流响应 (Data Stream Response)'),
-    0x39: ('PROP/39', 'MPP PRx 专有包'),
-    0x46: ('SADT/3e', 'SADT (even)'),
-    0x47: ('SADT/3o', 'SADT (odd)'),
-    0x48: ('SADC', 'SADT 控制 (Aux Data Control)'),
-    0x49: ('PROP/49', 'MPP PRx 专有包'),
-    0x50: ('KEST-COEFF', 'K-est 系数'),
-    0x51: ('CFG', '配置 (Configuration)'),
-    0x56: ('SADT/4e', 'SADT (even)'),
-    0x57: ('SADT/4o', 'SADT (odd)'),
-    0x58: ('REPORT/PLA', 'PLA 报告 (Power Loss Accounting)'),
-    0x59: ('PROP/59', 'MPP PRx 专有包'),
-    0x66: ('SADT/5e', 'SADT (even)'),
-    0x67: ('SADT/5o', 'SADT (odd)'),
-    0x71: ('ID', '身份识别 (Identification)'),
-    0x76: ('SADT/6e', 'SADT (even)'),
-    0x77: ('SADT/6o', 'SADT (odd)'),
-    0x78: ('PLAP', 'PLA 参数 (Power Loss Accounting Params)'),
-    0x79: ('PROP/79', 'MPP PRx 专有包'),
-    0x81: ('XID', '扩展身份 (XID / MPP-XID)'),
-    0x84: ('ECAP', '扩展接收能力 (Extended Capabilities)'),
-    0x85: ('PROP/85', 'MPP PRx 专有包'),
-    0x88: ('PLA_2', 'Power Loss Accounting v2'),
-    0x90: ('PLAP_2', 'PLA 参数 v2'),
-    0x96: ('CAL_CAPTURE', '校准捕获'),
-    0xA8: ('MATEDQ-COEFF', 'Mated-Q 系数'),
-}
-
-FSK_PACKETS = {
-    0x00: ('NAK', '拒绝'),
-    0x01: ('ACK-P', '带载荷确认 (Acknowledge + Payload)'),
-    0x0A: ('EPTR', '结束功率传输请求'),
-    0x11: ('FAST-ACK', 'MPP 快速 ACK / 状态'),
-    0x14: ('CAL_CAPTURE_RSP', '校准捕获响应'),
-    0x1B: ('CAL_OP_RSP', '校准操作响应'),
-    0x1C: ('PROP/1C', 'MPP PTx 专有包'),
-    0x1D: ('PROP/1D', 'MPP PTx 专有包'),
-    0x1E: ('CLOAK/RCS', 'Cloak / 调节控制状态'),
-    0x1F: ('CHS', '充电状态 (Charge Status)'),
-    0x23: ('MSS', '模式选择状态 (Mode Select Status)'),
-    0x26: ('SADT/1e', 'SADT (even)'),
-    0x27: ('SADT/1o', 'SADT (odd)'),
-    0x2C: ('PROP/2C', 'MPP PTx 专有包'),
-    0x2D: ('PROP/2D', 'MPP PTx 专有包'),
-    0x2E: ('GET', 'Get 请求'),
-    0x2F: ('EDS', '已启用数据流'),
-    0x30: ('INV', '逆变器电压 (Inverter Voltage)'),
-    0x33: ('ATN', '注意 (Attention)'),
-    0x34: ('CAL_ENTER_RSP', '进入校准响应'),
-    0x36: ('SADT/2e', 'SADT (even)'),
-    0x37: ('SADT/2o', 'SADT (odd)'),
-    0x3E: ('PROP/3E', 'MPP PTx 专有包'),
-    0x3F: ('INV/SDSR/KEST', '逆变器电压 / SDSR / K-est'),
-    0x40: ('CAP', 'PTx 能力 (Capabilities)'),
-    0x43: ('CAL_CAP', '校准能力'),
-    0x46: ('SADT/3e', 'SADT (even)'),
-    0x47: ('SADT/3o', 'SADT (odd)'),
-    0x4E: ('PROP/4E', 'MPP PTx 专有包'),
-    0x4F: ('SADC', 'SADT 控制'),
-    0x54: ('dPCAL_PARAM', '校准参数'),
-    0x55: ('ND', '未定义'),
-    0x56: ('SADT/4e', 'SADT (even)'),
-    0x57: ('SADT/4o', 'SADT (odd)'),
-    0x5A: ('MODECAP', '功率模式能力'),
-    0x5E: ('PROP/5E', 'MPP PTx 专有包'),
-    0x5F: ('PLAP', 'PLA 参数'),
-    0x61: ('GMP', '增益测量参数'),
-    0x66: ('SADT/5e', 'SADT (even)'),
-    0x67: ('SADT/5o', 'SADT (odd)'),
-    0x76: ('SADT/6e', 'SADT (even)'),
-    0x77: ('SADT/6o', 'SADT (odd)'),
-    0x88: ('PLAP_2', 'PLA 参数 v2'),
-    0x8E: ('PROP/8E', 'MPP PTx 专有包'),
-    0x8F: ('XID/ECAP', 'PTx 扩展标识 / 扩展能力'),
-    0xA0: ('MODEXCAP', '扩展模式能力'),
-    0xFF: ('ACK', '确认 (Acknowledge)'),
-}
+ASK_MSG_SIZE_OVERRIDE: dict[int, int] = {}
 
 
-def _s8(val):
+def _qi_colors() -> dict[str, str]:
+    """解析 tooltip 配色，随浅色/深色主题切换。"""
+    t = active_tokens()
+    light = get_theme() == 'light'
+    return {
+        'field': t.TEXT_PRIMARY,
+        'hex': t.TEXT_MUTED,
+        'border': t.BORDER,
+        'title_ask': '#0369A1' if light else '#38BDF8',
+        'title_fsk': '#B45309' if light else '#FB923C',
+        'byte_ask': '#0369A1' if light else '#38BDF8',
+        'byte_fsk': '#B45309' if light else '#FB923C',
+        'code': t.FILTER_HIGHLIGHT,
+        'ok': t.STATUS_SUCCESS,
+        'err': t.STATUS_ERROR,
+        'warn': t.STATUS_WARN,
+        'neutral': t.TEXT_SECONDARY,
+        'muted': t.TEXT_MUTED,
+    }
+
+
+def _s8(val: int) -> int:
     return val - 256 if val > 127 else val
 
 
-def _s16_be(hi, lo):
+def _s16_be(hi: int, lo: int) -> int:
     val = (hi << 8) | lo
     return val - 65536 if val > 32767 else val
 
 
-def _bits(val, hi, lo):
+def _u16_be(hi: int, lo: int) -> int:
+    return (hi << 8) | lo
+
+
+def _bits(val: int, hi: int, lo: int) -> int:
     width = hi - lo + 1
     return (val >> lo) & ((1 << width) - 1)
 
@@ -265,93 +97,86 @@ def _hex_bytes(data, limit=16):
     return shown
 
 
-def _qi_message_size(header, overrides=None):
-    """按 Qi Header 编码计算 Message 字节数（不含 Header / Checksum）。"""
-    if overrides and header in overrides:
-        return overrides[header]
-    if header <= 0x1F:
-        return 1 + (header - 0) // 32
-    if header <= 0x7F:
-        return 2 + (header - 32) // 16
-    if header <= 0xDF:
-        return 8 + (header - 128) // 8
-    return 20 + (header - 224) // 4
+def _qi_tr(key: str, **kwargs) -> str:
+    """Qi parse tooltips always use English (independent of UI language)."""
+    return tr_in('en', key, **kwargs)
 
 
-def _ptmc_vendor(prmc):
-    return PRMC_VENDORS.get(prmc, tr('qi.unknown_vendor', code=prmc))
+def _ptmc_vendor(prmc: int) -> str:
+    return PRMC_VENDORS.get(prmc, _qi_tr('qi.unknown_vendor', code=prmc))
 
 
-def _localize_pkt_desc(desc: str) -> str:
-    if get_language() != 'en':
-        return desc
-    match = re.search(r'\(([A-Za-z][A-Za-z0-9 /\-_.]*)\)\s*$', desc)
-    if match:
-        return match.group(1).strip()
-    return desc
-
-
-def _split_payload_checksum(header, body, overrides=None):
-    """按规范 Message 长度划分 Payload 与 XOR 校验字节。"""
+def _split_payload_checksum(header: int, body: list[int], overrides=None):
     if not body:
         return [], None, 'N/A'
-    msg_len = _qi_message_size(header, overrides)
+    msg_len = get_payload_len(header) if overrides is None or header not in overrides else overrides[header]
     if len(body) == msg_len:
         return body, None, 'N/A'
-    if len(body) == msg_len + 1:
-        payload, cs = body[:msg_len], body[-1]
-        calc = header
-        for b in payload:
-            calc ^= b
-        ok = calc == cs
-        status = "<span style='color:#22C55E;'>✅ OK</span>" if ok else "<span style='color:#EF4444;'>❌ ERR</span>"
-        return payload, cs, status
-    if len(body) > msg_len + 1:
+    if len(body) >= msg_len + 1:
         payload, cs = body[:msg_len], body[msg_len]
         calc = header
         for b in payload:
             calc ^= b
         ok = calc == cs
-        status = "<span style='color:#22C55E;'>✅ OK</span>" if ok else "<span style='color:#EF4444;'>❌ ERR</span>"
+        c = _qi_colors()
+        status = (
+            f"<span style='color:{c['ok']};'>✅ OK</span>"
+            if ok
+            else f"<span style='color:{c['err']};'>❌ ERR</span>"
+        )
         return payload, cs, status
     return body, None, 'N/A'
 
 
 class _Html:
-    B = "#38BDF8"
-    O = "#FB923C"
-    Y = "#FACC15"
-    G = "#22C55E"
-    R = "#EF4444"
-    M = "#94A3B8"
+    @classmethod
+    def _c(cls):
+        return _qi_colors()
 
     @classmethod
     def byte(cls, idx, label, val, lines):
+        c = cls._c()
         lines.append(
-            f"• <span style='color:{cls.B}'>Byte {idx}:</span> "
+            f"• <span style='color:{c['byte_ask']}'>Byte {idx}:</span> "
+            f"0x{val:02X} ({val}) — {label}"
+        )
+
+    @classmethod
+    def fbyte(cls, idx, label, val, lines):
+        c = cls._c()
+        lines.append(
+            f"• <span style='color:{c['byte_fsk']}'>Byte {idx}:</span> "
             f"0x{val:02X} ({val}) — {label}"
         )
 
     @classmethod
     def field(cls, text, indent=1):
         pad = '&nbsp;' * (indent * 4)
-        return f"{pad}↳ {text}"
+        return f'{pad}↳ {text}'
 
     @classmethod
     def join(cls, lines):
         return '<br>'.join(lines)
 
 
+def _format_get_param(code: int) -> str:
+    entry = MPP_GET_PARAMS.get(code)
+    if not entry:
+        return f'Reserved / undefined (code {code})'
+    desc, hdr = entry
+    return f'{desc}' + (f' — <b>{hdr}</b>' if hdr else '')
+
+
 class Qi22Parser:
-    """Qi 2.2.1 / MPP ASK·FSK 报文字段解析器。"""
+    """BPP/EPP + MPP ASK·FSK 报文字段解析器（依据 bpp_protocol.h / mpp_protocol.h）。"""
 
     @staticmethod
     def _insufficient():
-        return f'<i>{tr("qi.insufficient")}</i>'
+        return f'<i>{_qi_tr("qi.insufficient")}</i>'
 
     @staticmethod
     def _no_payload():
-        return f'<i>{tr("qi.no_payload")}</i>'
+        return f'<i>{_qi_tr("qi.no_payload")}</i>'
 
     def parse_message(self, line):
         line = re.sub(r'\s+', ' ', line).strip() + ' '
@@ -362,7 +187,11 @@ class Qi22Parser:
                 return self._decode_packet(line[start:end].strip(), 'ASK')
         if 'FSK ' in line:
             start = line.find('FSK ') + 4
-            return self._decode_packet(line[start:].strip().split('(')[0], 'FSK')
+            end = line.find(' F ', start)
+            if end == -1:
+                end = line.find('(', start)
+            hex_part = line[start:end].strip() if end != -1 else line[start:].strip()
+            return self._decode_packet(hex_part, 'FSK')
         return None
 
     def _decode_packet(self, hex_str, p_type):
@@ -376,38 +205,44 @@ class Qi22Parser:
             payload, cs, cs_st = _split_payload_checksum(header, raw[1:], overrides)
 
             registry = ASK_PACKETS if p_type == 'ASK' else FSK_PACKETS
-            name, desc = registry.get(header, (f'UNK_0x{header:02X}', tr('qi.unknown_pkt')))
-            desc = _localize_pkt_desc(desc)
+            entry = registry.get(header)
+            if entry:
+                name, desc, _profile = entry
+            else:
+                name, desc = f'UNK_0x{header:02X}', _qi_tr('qi.unknown_pkt')
+            
             if p_type == 'ASK':
                 detail = self._decode_ask_payload(header, payload)
             else:
                 detail = self._decode_fsk_payload(header, payload)
 
-            title_color = '#38BDF8' if p_type == 'ASK' else '#FB923C'
-            dir_text = tr('qi.dir_ask') if p_type == 'ASK' else tr('qi.dir_fsk')
+            c = _qi_colors()
+            title_color = c['title_ask'] if p_type == 'ASK' else c['title_fsk']
+            dir_text = _qi_tr('qi.dir_ask') if p_type == 'ASK' else _qi_tr('qi.dir_fsk')
             html = (
-                f"<div style='min-width: 260px; font-family: Consolas, monospace;'>"
+                f"<div style='min-width: 260px; font-family: Consolas, monospace; "
+                f"color: {c['field']};'>"
                 f"<b style='color:{title_color}; font-size: 11pt;'>{dir_text}</b>"
-                f"<hr style='border:1px solid #334155; margin: 5px 0;'>"
-                f"<b>{tr('qi.header')}</b> <span style='color:#FACC15;'>0x{header:02X}</span> "
+                f"<hr style='border:1px solid {c['border']}; margin: 5px 0;'>"
+                f"<b>{_qi_tr('qi.header')}</b> <span style='color:{c['code']};'>0x{header:02X}</span> "
                 f"[{name}] {desc}<br>"
-                f"<b>{tr('qi.payload', n=len(payload))}</b> "
-                f"<span style='color:#94A3B8'>{_hex_bytes(payload, 24)}</span><br>"
+                f"<b>{_qi_tr('qi.payload', n=len(payload))}</b> "
+                f"<span style='color:{c['hex']}'>{_hex_bytes(payload, 24)}</span><br>"
             )
             if cs is not None:
-                html += f"<b>{tr('qi.xor')}</b> 0x{cs:02X} ({cs_st})<br>"
+                html += f"<b>{_qi_tr('qi.xor')}</b> 0x{cs:02X} ({cs_st})<br>"
             html += (
-                f"<hr style='border:1px dashed #334155; margin: 5px 0;'>"
-                f"<b>{tr('qi.fields')}</b><br>"
-                f"<div style='color:#E2E8F0; padding-top: 5px; line-height: 1.45;'>{detail}</div>"
+                f"<hr style='border:1px dashed {c['border']}; margin: 5px 0;'>"
+                f"<b>{_qi_tr('qi.fields')}</b><br>"
+                f"<div style='color:{c['field']}; padding-top: 5px; line-height: 1.45;'>{detail}</div>"
                 f"</div>"
             )
             return html
         except Exception as exc:
-            return tr('qi.parse_error', error=exc)
+            return _qi_tr('qi.parse_error', error=exc)
 
     # ------------------------------------------------------------------
-    # ASK 载荷解析
+    # ASK 载荷解析 (PRx → PTx)
     # ------------------------------------------------------------------
 
     def _decode_ask_payload(self, header, payload):
@@ -419,7 +254,7 @@ class Qi22Parser:
             0x05: self._ask_chs,
             0x06: self._ask_pch,
             0x07: self._ask_grq,
-            0x09: self._ask_reneg,
+            0x09: self._ask_nego,
             0x13: self._ask_msr,
             0x15: self._ask_dsr,
             0x18: self._ask_cloak,
@@ -427,26 +262,33 @@ class Qi22Parser:
             0x20: self._ask_srq,
             0x22: self._ask_fod,
             0x23: self._ask_cal_op,
+            0x25: self._ask_adc,
             0x28: self._ask_get,
             0x29: self._ask_eds,
-            0x31: self._ask_rp24,
+            0x2C: self._ask_cal_enter,
+            0x2D: self._ask_cal_exit,
+            0x31: self._ask_rp,
             0x51: self._ask_cfg,
+            0x54: self._ask_wpid,
+            0x55: self._ask_wpid,
             0x71: self._ask_id,
             0x81: self._ask_xid,
             0x84: self._ask_ecap,
-            0x48: self._ask_sadc,
             0x38: self._ask_sdsr,
+            0x48: self._ask_sadc,
+            0x50: self._ask_kest_coeff,
+            0x58: self._ask_report_pla,
             0x78: self._ask_plap,
-            0x88: self._ask_pla,
+            0x88: self._ask_pla2,
+            0x90: self._ask_plap2,
             0x96: self._ask_cal_capture,
-            0xA8: self._ask_matedq,
+            0xA8: self._ask_matedq_coeff,
         }
-        if header in (0x26, 0x27, 0x36, 0x37, 0x46, 0x47, 0x56, 0x57, 0x66, 0x67, 0x76, 0x77):
-            return self._ask_sadt(payload)
-        if header in (0x1A, 0x1B, 0x2A, 0x2B, 0x39, 0x49, 0x59, 0x79, 0x85):
+        if header in (0x16, 0x17, 0x26, 0x27, 0x36, 0x37, 0x46, 0x47,
+                      0x56, 0x57, 0x66, 0x67, 0x76, 0x77, 0x98, 0x99):
+            return self._ask_adt(payload)
+        if header in (0x1A, 0x1B, 0x2A, 0x2B):
             return self._generic_prop(payload)
-        if header in (0x2C, 0x2D, 0x50, 0x58, 0x90):
-            return self._generic_structured(payload, '校准 / PLA / 系数')
         decoder = decoders.get(header)
         if decoder:
             return decoder(payload)
@@ -456,693 +298,1335 @@ class Qi22Parser:
         if len(p) < 1:
             return self._insufficient()
         lines = []
-        _Html.byte(0, 'Signal Strength', p[0], lines)
-        lines.append(_Html.field(f"耦合强度: <b>{p[0]}</b> / 255 ({p[0] / 255 * 100:.1f}%)"))
-        lines.append(_Html.field(f"估算: SS = V / Vmax × 256"))
+        _Html.byte(0, 'signal_strength', p[0], lines)
+        lines.append(_Html.field(f'Signal strength: <b>{p[0]}</b> / 255 ({p[0] / 255 * 100:.1f}%)'))
+        lines.append(_Html.field('Formula: (U / U_max) × 256'))
         return _Html.join(lines)
 
     def _ask_ept(self, p):
         if len(p) < 1:
             return self._insufficient()
-        reason = EPT_REASONS.get(p[0], f'保留码 0x{p[0]:02X}')
-        color = '#22C55E' if p[0] == 0x01 else ('#EF4444' if p[0] in (0x02, 0x03, 0x04, 0x05, 0x06, 0x0B) else '#E2E8F0')
-        detail = f'结束原因: <b style="color:{color}">{reason}</b>'
+        reason = EPT_REASONS.get(p[0], f'Reserved code 0x{p[0]:02X}')
+        c = _qi_colors()
+        color = c['ok'] if p[0] == 0x01 else (c['err'] if p[0] in (0x02, 0x03, 0x04, 0x05, 0x06, 0x0B) else c['neutral'])
+        detail = f'End reason: <b style="color:{color}">{reason}</b>'
         return (
-            f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
+            f"• <span style='color:{c['byte_ask']}'>Byte 0:</span> reason_code = 0x{p[0]:02X}<br>"
             f"{_Html.field(detail)}"
         )
 
     def _ask_ce(self, p):
         if len(p) < 1:
             return self._insufficient()
+        c = _qi_colors()
         ce = _s8(p[0])
-        color = '#22C55E' if ce < 0 else '#EF4444'
+        color = c['ok'] if ce < 0 else c['err']
         lines = []
-        _Html.byte(0, 'Control Error (signed 8-bit)', p[0], lines)
-        lines.append(_Html.field(f"误差值: <b style='color:{color}'>{ce}</b> ({ce / 128 * 100:+.1f}% 参考)"))
-        lines.append(_Html.field('<i>负值 → PTx 降功率；正值 → PTx 升功率</i>'))
+        _Html.byte(0, 'control_error (int8)', p[0], lines)
+        lines.append(_Html.field(f'Control error: <b style="color:{color}">{ce}</b>'))
+        lines.append(_Html.field('<i>Positive → increase power; negative → decrease power</i>'))
         return _Html.join(lines)
 
     def _ask_rp8(self, p):
         if len(p) < 1:
             return self._insufficient()
         lines = []
-        _Html.byte(0, 'Received Power (8-bit)', p[0], lines)
-        lines.append(_Html.field(f"接收功率比: <b>{p[0]}</b> / 128 = {p[0] / 128 * 100:.1f}% MaxPower"))
+        _Html.byte(0, 'received_power', p[0], lines)
+        lines.append(_Html.field(f'Received power ratio: <b>{p[0]}</b> / 128 = {p[0] / 128 * 100:.1f}% MaxPower'))
         return _Html.join(lines)
 
     def _ask_chs(self, p):
         if len(p) < 1:
             return self._insufficient()
+        c = _qi_colors()
         if p[0] == 0xFF:
-            detail = '无电池 / 无法获取电量 (0xFF)'
+            detail = 'Status not available (0xFF)'
         elif p[0] <= 100:
-            detail = f'电池电量: <b style="color:#22C55E">{p[0]} %</b>'
+            detail = f'Battery level: <b style="color:{c["ok"]}">{p[0]} %</b>'
         else:
-            detail = f'保留值 0x{p[0]:02X}'
+            detail = f'Reserved value 0x{p[0]:02X}'
         return (
-            f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
+            f"• <span style='color:{c['byte_ask']}'>Byte 0:</span> charge_status = 0x{p[0]:02X}<br>"
             f"{_Html.field(detail)}"
         )
 
     def _ask_pch(self, p):
         if len(p) < 1:
             return self._insufficient()
+        c = _qi_colors()
+        valid = 5 <= p[0] <= 100
+        color = c['ok'] if valid else c['warn']
+        detail = f'Hold-off: <b style="color:{color}">{p[0]} ms</b> (valid range 5–100 ms)'
         return (
-            f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
-            f"{_Html.field(f'Hold-off 时间: <b>{p[0]} ms</b> (毫秒，规范直接取值)')}"
+            f"• <span style='color:{c['byte_ask']}'>Byte 0:</span> hold_off_time = 0x{p[0]:02X}<br>"
+            f"{_Html.field(detail)}"
         )
 
     def _ask_grq(self, p):
         if len(p) < 1:
             return self._insufficient()
-        req = GRQ_REQUESTS.get(p[0], f'请求类型 0x{p[0]:02X}')
+        req_bpp = BPP_GRQ_REQUESTS.get(p[0])
+        req_mpp = MPP_GRQ_REQUESTS.get(p[0])
+        if req_bpp and req_mpp:
+            req = f'{req_bpp} / {req_mpp}'
+        else:
+            req = req_bpp or req_mpp or f'Request header 0x{p[0]:02X}'
+        c = _qi_colors()
         return (
-            f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
-            f"{_Html.field(f'请求内容: <b>{req}</b>')}"
+            f"• <span style='color:{c['byte_ask']}'>Byte 0:</span> req_header = 0x{p[0]:02X}<br>"
+            f"{_Html.field(f'Request PTx response: <b>{req}</b>')}"
         )
 
-    def _ask_reneg(self, p):
-        return f'<i>{tr("qi.reneg_no_payload")}</i>' if not p else self._generic_raw(p)
+    def _ask_nego(self, p):
+        if not p:
+            return f'<i>{_qi_tr("qi.reneg_no_payload")}</i>'
+        c = _qi_colors()
+        ok = p[0] == 0x00
+        warn = '' if ok else f' — <span style="color:{c["err"]}">must be 0x00</span>'
+        return (
+            f"• <span style='color:{c['byte_ask']}'>Byte 0:</span> reserved = 0x{p[0]:02X}<br>"
+            f"{_Html.field('Must be 0x00' + warn)}"
+        )
 
     def _ask_msr(self, p):
         if len(p) < 1:
             return self._insufficient()
         pref = (p[0] >> 6) & 0x03
-        main_mode = (p[0] >> 2) & 0x03
+        main_mode = (p[0] >> 3) & 0x03
         aux = p[0] & 0x01
         lines = []
-        _Html.byte(0, 'Mode Select Request', p[0], lines)
-        lines.append(_Html.field(
-            f'Preference [Bit7-6]: <b>{MSR_PREF.get(pref, pref)}</b>'
-        ))
-        lines.append(_Html.field(
-            f'Main Mode [Bit3-2]: <b>{MSR_MAIN_MODE.get(main_mode, main_mode)}</b>'
-        ))
-        lines.append(_Html.field(f'Aux [Bit0]: <b>{MSR_AUX.get(aux, aux)}</b>'))
-        if (p[0] >> 4) & 0x03:
-            lines.append(_Html.field(f'Reserved [Bit5-4]: {(p[0] >> 4) & 0x03}'))
-        if (p[0] >> 1) & 0x01:
-            lines.append(_Html.field(f'Reserved [Bit1]: {(p[0] >> 1) & 1}'))
+        _Html.byte(0, 'mode_cfg', p[0], lines)
+        c = _qi_colors()
+        if p[0] & 0x20:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">Reserved [b5]: must be 0</span>'
+            ))
+        if p[0] & 0x06:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b2-b1]: must be 0 (current 0x{((p[0] >> 1) & 0x03):X})</span>'
+            ))
+        lines.append(_Html.field(f'Preference [b7-b6]: <b>{MSR_PREF.get(pref, pref)}</b>'))
+        lines.append(_Html.field(f'Main mode [b4-b3]: <b>{MSR_MAIN_MODE.get(main_mode, main_mode)}</b>'))
+        lines.append(_Html.field(f'Auxiliary mode [b0]: <b>{"Selected" if aux else "Not selected"}</b>'))
         return _Html.join(lines)
 
     def _ask_dsr(self, p):
         if len(p) < 1:
             return self._insufficient()
-        name, desc = DSR_TYPES.get(p[0], (f'0x{p[0]:02X}', '保留 / 未定义'))
-        color = '#22C55E' if p[0] == 0xFF else ('#FACC15' if p[0] == 0x33 else '#E2E8F0')
-        lines = ['• 数据流响应 DSR (Qi 2.2.1 §8.6, Header 0x15)']
-        _Html.byte(0, 'Type', p[0], lines)
-        lines.append(_Html.field(
-            f'类型: <b style="color:{color}">{name}</b> — {desc}'
-        ))
+        c = _qi_colors()
+        name, desc = BPP_DSR_TYPES.get(p[0], (f'0x{p[0]:02X}', 'Reserved'))
+        color = c['ok'] if p[0] == 0x00 else c['neutral']
+        lines = ['• bpp_rx_dsr_t — Data Stream Response']
+        _Html.byte(0, 'response_code', p[0], lines)
+        lines.append(_Html.field(f'Response: <b style="color:{color}">{name}</b> — {desc}'))
         return _Html.join(lines)
 
     def _ask_cloak(self, p):
         if len(p) < 1:
             return self._insufficient()
-        reason = (p[0] & 0x0F) if len(p) == 1 else p[0]
-        reason_text = CLOAK_REASONS.get(reason, f'0x{reason:X}')
+        c = _qi_colors()
+        ok = p[0] == 0x00
+        warn = '' if ok else f' — <span style="color:{c["err"]}">must be 0x00</span>'
         return (
-            f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
-            f"{_Html.field(f'Cloak Reason [低 4 bit]: <b>{reason_text}</b>')}<br>"
-            f"{_Html.field('请求进入 Cloak (Power Pause) 阶段')}"
+            f"• <span style='color:{c['byte_ask']}'>Byte 0:</span> reserved = 0x{p[0]:02X}<br>"
+            f"{_Html.field('Trigger Cloak Phase' + warn)}"
         )
 
     def _ask_xce(self, p):
         if len(p) < 1:
             return self._insufficient()
+        c = _qi_colors()
         ce = _s8(p[0])
-        color = '#22C55E' if ce < 0 else '#EF4444'
+        color = c['ok'] if ce < 0 else c['err']
         lines = []
-        _Html.byte(0, 'Control Error Value (8-bit)', p[0], lines)
-        lines.append(_Html.field(
-            f"MPP 扩展控制误差: <b style='color:{color}'>{ce}</b> (详见 MPP System 规范)"
-        ))
+        _Html.byte(0, 'extended_ce (int8)', p[0], lines)
+        lines.append(_Html.field(f'Extended control error: <b style="color:{color}">{ce}</b> (value / 100)'))
         return _Html.join(lines)
 
     def _ask_srq(self, p):
         if len(p) < 1:
             return self._insufficient()
-        req = SRQ_TYPES.get(p[0], f'请求 0x{p[0]:02X}')
-        lines = []
-        _Html.byte(0, 'Specific Request Type', p[0], lines)
-        lines.append(_Html.field(f'含义: <b>{req}</b>'))
-        if len(p) >= 2:
-            lines.append(_Html.field(f'参数: {_hex_bytes(p[1:])}'))
+        code = p[0]
+        lines = ['• Specific Request — SRQ (0x20)']
+        _Html.byte(0, 'request_code', code, lines)
+        lines.append(_Html.field(f'Type: <b>{srq_type_name(code)}</b>'))
+        if len(p) < 2:
+            return _Html.join(lines)
+        _Html.byte(1, 'parameter', p[1], lines)
+        lines.extend(self._decode_srq_parameter(code, p[1]))
         return _Html.join(lines)
+
+    def _decode_srq_parameter(self, code, param):
+        lines = []
+        if code == 0x00:
+            lines.append(_Html.field('End negotiation — no additional parameter'))
+        elif code == 0x01:
+            lines.append(_Html.field(f'Guaranteed Load Power parameter: <b>{param}</b>'))
+        elif code == 0x03:
+            lines.append(_Html.field(f'FSK configuration parameter: <b>0x{param:02X}</b>'))
+        elif code == 0x05:
+            lines.append(_Html.field(f'Re-ping delay parameter: <b>{param}</b>'))
+        elif code == 0xA1:
+            method = param & 0x03
+            if param & 0xFC:
+                lines.append(_Html.field(f'Reserved [b7-b2]: must be 0 (current 0x{(param >> 2):02X})'))
+            lines.append(_Html.field(
+                f'Control Error Calculation Method [b1-b0]: '
+                f'<b>{SRQ_XCE_METHOD.get(method, f"Reserved ({method})")}</b>'
+            ))
+        elif code == 0xA7:
+            major = (param >> 4) & 0x0F
+            minor = param & 0x0F
+            lines.append(_Html.field(f'Major Version [b7-b4]: <b>{major}</b>'))
+            lines.append(_Html.field(f'Minor Version [b3-b0]: <b>{minor}</b>'))
+            lines.append(_Html.field(f'Version: <b>{major}.{minor}</b> (MPP should be 2.2)'))
+        elif code == 0xA9:
+            g_scale = (param >> 4) & 0x0F
+            g_target = param & 0x0F
+            g_val = g_target / 20.0
+            lines.append(_Html.field(f'G_SCALE [b7-b4]: <b>{g_scale}</b>'))
+            lines.append(_Html.field(
+                f'G_TARGET [b3-b0]: <b>{g_target}</b> → g_target = <b>{g_val:.2f}</b> (×0.05)'
+            ))
+            if g_target == 0:
+                lines.append(_Html.field('<span style="color:{0}">PTx should NAK when G_TARGET=0</span>'.format(
+                    _qi_colors()['err']
+                )))
+        elif code == 0xF0:
+            if param & 0xFC:
+                lines.append(_Html.field(f'Reserved [b7-b2]: must be 0 (current 0x{(param >> 2):02X})'))
+            freq = param & 0x03
+            lines.append(_Html.field(
+                f'Frequency Selector [b1-b0]: <b>{SRQ_FREQ_SELECTOR.get(freq, freq)}</b>'
+            ))
+            if freq != 1:
+                lines.append(_Html.field('<i>Only 360 kHz (1) allowed during negotiation; PTx should ND for other values</i>'))
+        elif code == 0xF3:
+            lines.append(_Html.field(
+                f'Load Power: <b>{param * 100} mW</b> ({param * 0.1:.1f} W, ×100 mW)'
+            ))
+        elif code == 0xF5:
+            lines.append(_Html.field(
+                f'Cloak Ping Delay [low 8 bits]: <b>{param}</b> '
+                f'(forms 10-bit with SRQ/cloakh 0xF7 high 2 bits, ×100 ms)'
+            ))
+            if param == 0:
+                lines.append(_Html.field('<i>Both low/high bytes zero is invalid; recommend t_cloak ≥ 500 ms</i>'))
+        elif code == 0xF6:
+            profile = param & 0x01
+            if param & 0xFE:
+                lines.append(_Html.field(f'Reserved [b7-b1]: must be 0 (current 0x{(param >> 1):02X})'))
+            lines.append(_Html.field(
+                f'Profile [b0]: <b>{SRQ_PCP_PROFILE.get(profile, profile)}</b>'
+            ))
+        elif code == 0xF7:
+            high = param & 0x03
+            if param & 0xFC:
+                lines.append(_Html.field(f'Reserved [b7-b2]: must be 0 (current 0x{(param >> 2):02X})'))
+            lines.append(_Html.field(
+                f'Cloak Ping Delay [high 2 bits]: <b>{high}</b> '
+                f'(forms 10-bit with SRQ/cloakl 0xF5 low 8 bits, ×100 ms)'
+            ))
+        elif code == 0xF8:
+            if param & 0xF0:
+                lines.append(_Html.field(f'Reserved [b7-b4]: must be 0 (current 0x{(param >> 4):02X})'))
+            detect = param & 0x0F
+            if detect == 0:
+                lines.append(_Html.field('Cloak Detect Ping Delay: <b>Disabled</b> (value is 0)'))
+            else:
+                delay_ms = detect * 100
+                lines.append(_Html.field(
+                    f'Cloak Detect Ping Delay [b3-b0]: <b>{detect}</b> → '
+                    f'<b>{delay_ms} ms</b> (×100 ms)'
+                ))
+                if delay_ms < 500:
+                    lines.append(_Html.field('<i>Recommend t_cloakdetect ≥ 500 ms (APP PTx active alignment)</i>'))
+        elif 0xE0 <= code <= 0xEF:
+            lines.append(_Html.field(
+                f'Implementation Specific: <b>0x{param:02X}</b> ({param})'
+            ))
+            lines.append(_Html.field('<i>Proprietary parameter — not MPP spec managed</i>'))
+        else:
+            lines.append(_Html.field(f'Parameter value: <b>0x{param:02X}</b> ({param})'))
+        return lines
 
     def _ask_fod(self, p):
         if len(p) < 2:
-            return f'<i>FOD Status 需要 2 字节，当前 {len(p)} B</i>' + (
-                f'<br>{self._generic_raw(p)}' if p else ''
-            )
-        f_type = p[0] & 0x07
-        support = p[1]
+            return f'<i>FOD requires 2 bytes, got {len(p)} B</i>' + (f'<br>{self._generic_raw(p)}' if p else '')
+        f_type = p[0] & 0x01
         lines = []
-        _Html.byte(0, 'Reserved + Type', p[0], lines)
-        lines.append(_Html.field(
-            f'Type [Bit2-0]: <b>{FOD_TYPE_LABELS.get(f_type, f"保留 ({f_type})")}</b>'
-        ))
-        if p[0] & 0xF8:
-            lines.append(_Html.field(f'Reserved [Bit7-3]: 0x{p[0] >> 3:02X}'))
-        _Html.byte(1, 'FOD Support Data', support, lines)
+        _Html.byte(0, 'type_info', p[0], lines)
+        lines.append(_Html.field(f'FOD type [b0]: <b>{FOD_TYPE_LABELS.get(f_type, f_type)}</b>'))
+        _Html.byte(1, 'support_data', p[1], lines)
         if f_type == 0:
-            lines.append(_Html.field(f'Reference Q 因子: <b>{support}</b>'))
-        elif f_type == 1:
-            lines.append(_Html.field(f'Reference 谐振频率编码: <b>{support}</b>'))
+            lines.append(_Html.field(f'Reference Q: <b>{p[1]}</b>'))
+        else:
+            lines.append(_Html.field(f'Reference frequency: <b>{p[1]}</b>'))
         return _Html.join(lines)
 
     def _ask_cal_op(self, p):
         if len(p) < 1:
             return self._insufficient()
-        op = {0x00: '查询能力', 0x01: '开始捕获', 0x02: '停止捕获'}.get(p[0], f'0x{p[0]:02X}')
-        lines = [_Html.field(f'校准操作: <b>{op}</b>')]
+        op = CAL_OP_CODES.get(p[0], f'0x{p[0]:02X}')
+        lines = []
+        _Html.byte(0, 'operation', p[0], lines)
+        lines.append(_Html.field(f'Calibration operation: <b>{op}</b>'))
         if len(p) >= 2:
-            lines.append(_Html.field(f'参数: {_hex_bytes(p[1:])}'))
-        return _Html.join([f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}"] + lines)
-
-    def _ask_get(self, p):
-        if len(p) < 1:
-            return self._insufficient()
-        return (
-            f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
-            f"{_Html.field(f'请求 PTx 发送 Header <b>0x{p[0]:02X}</b> 的 FSK 包')}"
-        )
-
-    def _ask_eds(self, p):
-        if not p:
-            return self._no_payload()
-        streams = [i for i in range(min(len(p) * 8, 32)) if (p[i // 8] >> (i % 8)) & 1]
-        lines = [f"• 已启用数据流位图 ({len(p)} B): {_hex_bytes(p)}"]
-        if streams:
-            lines.append(_Html.field(f'启用 Stream ID: <b>{", ".join(map(str, streams))}</b>'))
-        else:
-            lines.append(_Html.field('无活跃数据流'))
+            _Html.byte(1, 'parameter', p[1], lines)
         return _Html.join(lines)
 
-    def _ask_rp24(self, p):
-        if len(p) < 3:
-            return f'<i>{tr("qi.need_payload_3b")}</i>'
-        mode = p[0] & 0x07
-        rp_val = (p[1] << 8) | p[2]
+    def _ask_adc(self, p):
+        if len(p) < 1:
+            return self._insufficient()
         lines = []
-        _Html.byte(0, 'Reserved + Mode', p[0], lines)
-        _Html.byte(1, 'Estimated RP MSB', p[1], lines)
-        _Html.byte(2, 'Estimated RP LSB', p[2], lines)
-        lines.append(_Html.field(
-            f'Mode [Bit2-0]: <b>{RP_MODE_LABELS.get(mode, f"0x{mode:X}")}</b>'
-        ))
-        if p[0] & 0xF8:
-            lines.append(_Html.field(f'Reserved [Bit7-3]: 0x{p[0] >> 3:02X}'))
-        lines.append(_Html.field(
-            f'Estimated Received Power: <b>{rp_val}</b> (见 FOD 规范换算)'
-        ))
+        _Html.byte(0, 'request', p[0], lines)
+        lines.append(_Html.field(f'Request action: <b>0x{p[0]:02X}</b> (e.g. 0x10=Auth, 0x28=Reset)'))
+        if len(p) >= 2:
+            _Html.byte(1, 'parameter', p[1], lines)
+        return _Html.join(lines)
+
+    def _ask_get(self, p):
+        if len(p) < 2:
+            return self._insufficient()
+        lines = ['• mpp_rx_get_t — Get Request (Table 57)']
+        _Html.byte(0, 'rsvd', p[0], lines)
+        _Html.byte(1, 'parameter', p[1], lines)
+        lines.append(_Html.field(f'Request type: {_format_get_param(p[1])}'))
+        return _Html.join(lines)
+
+    def _ask_eds(self, p):
+        if len(p) < 2:
+            return self._insufficient()
+        mask = _u16_be(p[0], p[1])
+        streams = [i for i in range(16) if mask & (1 << i)]
+        lines = []
+        _Html.byte(0, 'streams_bitmask MSB', p[0], lines)
+        _Html.byte(1, 'streams_bitmask LSB', p[1], lines)
+        lines.append(_Html.field(f'Data stream mask: <b>0x{mask:04X}</b>'))
+        if streams:
+            lines.append(_Html.field(f'Enabled streams: <b>{", ".join(map(str, streams))}</b>'))
+        else:
+            lines.append(_Html.field('No enabled data streams'))
+        return _Html.join(lines)
+
+    def _ask_cal_enter(self, p):
+        lines = [f'• mpp_rx_cal_enter_t ({len(p)} B)']
+        for i, b in enumerate(p):
+            _Html.byte(i, 'reserved_payload', b, lines)
+        return _Html.join(lines)
+
+    def _ask_cal_exit(self, p):
+        if len(p) < 2:
+            return self._insufficient()
+        clear = p[0] & 0x01
+        lines = []
+        _Html.byte(0, 'clear_flag', p[0], lines)
+        lines.append(_Html.field(f'Clear [b0]: <b>{"Clear calibration points" if clear else "Keep calibration points"}</b>'))
+        _Html.byte(1, 'reserved', p[1], lines)
+        return _Html.join(lines)
+
+    def _ask_rp(self, p):
+        if len(p) < 3:
+            return f'<i>bpp_rx_rp_t requires 3 bytes, got {len(p)} B</i>'
+        mode = p[0] & 0x07
+        rx_power = _u16_be(p[1], p[2])
+        lines = []
+        _Html.byte(0, 'mode_info', p[0], lines)
+        lines.append(_Html.field(f'Measurement mode [b2-b0]: <b>{RP_MODE_LABELS.get(mode, mode)}</b>'))
+        _Html.byte(1, 'rx_power MSB', p[1], lines)
+        _Html.byte(2, 'rx_power LSB', p[2], lines)
+        lines.append(_Html.field(f'Estimated received power: <b>{rx_power} mW</b>'))
         return _Html.join(lines)
 
     def _ask_cfg(self, p):
-        exp_len = _qi_message_size(0x51)
+        exp_len = get_payload_len(0x51)
         if len(p) < exp_len:
-            return f'<i>Configuration 需要 {exp_len} 字节，当前 {len(p)} B</i>' + (
-                f'<br>{self._generic_raw(p)}' if p else ''
-            )
+            return f'<i>bpp_rx_cfg_t requires {exp_len} bytes, got {len(p)} B</i>' + (f'<br>{self._generic_raw(p)}' if p else '')
         ref_pwr = p[0] & 0x3F
         ai = (p[2] >> 6) & 1
-        ob = (p[2] >> 3) & 1
-        count = p[2] & 0x0F
-        win_size = (p[3] >> 4) & 0x0F
-        win_offset = p[3] & 0x0F
+        ob = (p[2] >> 4) & 1
+        count = p[2] & 0x07
+        win_size = (p[3] >> 3) & 0x1F
+        win_offset = p[3] & 0x07
         neg = (p[4] >> 7) & 1
         polarity = (p[4] >> 6) & 1
         depth = (p[4] >> 4) & 0x03
         buf_size = (p[4] >> 1) & 0x07
         dup = p[4] & 0x01
-        buf_bytes = 32 * (1 << (buf_size - 1)) if buf_size >= 1 else 0
         lines = []
-        _Html.byte(0, 'Reference Power', p[0], lines)
-        lines.append(_Html.field(
-            f'Reference Power [Bit5-0]: <b>{ref_pwr}</b> '
-            f'(≈ {ref_pwr / 2:.1f} W，合约参考功率)'
-        ))
-        if p[0] & 0xC0:
-            lines.append(_Html.field(f'Power Class [Bit7-6]: 应为 00 (当前 0x{(p[0] >> 6):X})'))
-        _Html.byte(1, 'Reserved', p[1], lines)
-        _Html.byte(2, 'AI + OB + Count', p[2], lines)
-        lines.append(_Html.field(f'Authentication (AI) [Bit6]: <b>{"支持" if ai else "不支持"}</b>'))
-        lines.append(_Html.field(f'Out-of-band (OB) [Bit3]: <b>{"支持" if ob else "不支持"}</b>'))
-        lines.append(_Html.field(f'配置阶段可选包 Count [Bit3-0]: <b>{count}</b>'))
-        _Html.byte(3, 'Window Size + Offset', p[3], lines)
-        lines.append(_Html.field(f'Window Size [高半字节]: <b>{win_size}</b> (×4 ms = {win_size * 4} ms)'))
-        lines.append(_Html.field(f'Window Offset [低半字节]: <b>{win_offset}</b> (×4 ms = {win_offset * 4} ms)'))
-        _Html.byte(4, 'Neg + FSK + Buffer', p[4], lines)
-        lines.append(_Html.field(f'Extended Protocol (Neg) [Bit7]: <b>{"支持" if neg else "Baseline"}</b>'))
-        lines.append(_Html.field(f'FSK Polarity [Bit6]: <b>{"负极性" if polarity else "正极性"}</b>'))
-        lines.append(_Html.field(f'FSK Depth [Bit5-4]: <b>{FSK_DEPTH_LABELS.get(depth, depth)}</b>'))
-        lines.append(_Html.field(
-            f'Buffer Size [Bit3-1]: <b>{buf_size}</b>'
-            + (f' (≈ {buf_bytes} B 接收缓冲)' if buf_bytes else '')
-        ))
-        lines.append(_Html.field(f'Dup 双向数据流 [Bit0]: <b>{"支持" if dup else "不支持"}</b>'))
+        _Html.byte(0, 'ref_power', p[0], lines)
+        lines.append(_Html.field(f'Reference Power [b5-b0]: <b>{ref_pwr}</b> (≈ {ref_pwr * 0.5:.1f} W)'))
+        _Html.byte(1, 'rsvd1', p[1], lines)
+        _Html.byte(2, 'features', p[2], lines)
+        lines.append(_Html.field(f'AI [b6]: <b>{"Supported" if ai else "No"}</b>'))
+        lines.append(_Html.field(f'OB [b4]: <b>{"Supported" if ob else "No"}</b>'))
+        lines.append(_Html.field(f'Optional packet count [b2-b0]: <b>{count}</b>'))
+        _Html.byte(3, 'window_cfg', p[3], lines)
+        lines.append(_Html.field(f'Window Size [b7-b3]: <b>{win_size}</b>'))
+        lines.append(_Html.field(f'Window Offset [b2-b0]: <b>{win_offset}</b>'))
+        _Html.byte(4, 'fsk_cfg', p[4], lines)
+        lines.append(_Html.field(f'Neg/EPP [b7]: <b>{"EPP" if neg else "BPP"}</b>'))
+        lines.append(_Html.field(f'FSK Polarity [b6]: <b>{"Negative" if polarity else "Positive"}</b>'))
+        lines.append(_Html.field(f'FSK Depth [b5-b4]: <b>{FSK_DEPTH_LABELS.get(depth, depth)}</b>'))
+        lines.append(_Html.field(f'Buffer Size [b3-b1]: <b>{buf_size}</b>'))
+        lines.append(_Html.field(f'Dup [b0]: <b>{"Supported" if dup else "No"}</b>'))
+        return _Html.join(lines)
+
+    def _ask_wpid(self, p):
+        exp_len = get_payload_len(0x54)
+        if len(p) < exp_len:
+            return f'<i>bpp_rx_wpid_t requires {exp_len} bytes, got {len(p)} B</i>'
+        seg_len = exp_len - 2
+        crc = _u16_be(p[seg_len], p[seg_len + 1]) if len(p) >= exp_len else 0
+        lines = [f'• bpp_rx_wpid_t — WPID segment ({seg_len} B + CRC)']
+        for i in range(seg_len):
+            _Html.byte(i, f'wpid_segment[{i}]', p[i], lines)
+        if len(p) >= exp_len:
+            _Html.byte(seg_len, 'crc MSB', p[seg_len], lines)
+            _Html.byte(seg_len + 1, 'crc LSB', p[seg_len + 1], lines)
+            lines.append(_Html.field(f'CRC16 (BE): <b>0x{crc:04X}</b>'))
         return _Html.join(lines)
 
     def _ask_id(self, p):
-        exp_len = _qi_message_size(0x71)
+        exp_len = get_payload_len(0x71)
         if len(p) < exp_len:
-            return f'<i>Identification 需要 {exp_len} 字节，当前 {len(p)} B</i>' + (
-                f'<br>{self._generic_raw(p)}' if p else ''
-            )
+            return f'<i>bpp_rx_id_t requires {exp_len} bytes, got {len(p)} B</i>' + (f'<br>{self._generic_raw(p)}' if p else '')
         major = p[0] >> 4
         minor = p[0] & 0x0F
-        prmc = (p[1] << 8) | p[2]
+        mfg_code = _u16_be(p[1], p[2])
         ext = (p[3] >> 7) & 1
         basic_id = ((p[3] & 0x7F) << 24) | (p[4] << 16) | (p[5] << 8) | p[6]
-        vendor = _ptmc_vendor(prmc)
-        profile = {
-            (1, 1): 'BPP', (1, 2): 'BPP', (1, 3): 'BPP',
-            (2, 0): 'EPP/MPP', (2, 1): 'EPP/MPP', (2, 2): 'MPP',
-        }
-        prof_hint = profile.get((major, minor), '')
         lines = []
-        _Html.byte(0, 'Major + Minor Version', p[0], lines)
-        ver_text = f'{major}.{minor}' + (f' ({prof_hint})' if prof_hint else '')
-        lines.append(_Html.field(f'Qi 版本 [Bit7-4 / Bit3-0]: <b>{ver_text}</b>'))
-        _Html.byte(1, 'PRMC High', p[1], lines)
-        _Html.byte(2, 'PRMC Low', p[2], lines)
-        lines.append(_Html.field(f'制造商代码 (PRMC): <b>0x{prmc:04X}</b> ({vendor})'))
-        _Html.byte(3, 'Ext + Basic ID (MSB)', p[3], lines)
-        lines.append(_Html.field(f'Ext [Bit7]: <b>{"是 (配置阶段含 XID/MPP-XID)" if ext else "否"}</b>'))
-        for i, b in enumerate(p[4:7], start=4):
-            _Html.byte(i, 'Basic Device Identifier', b, lines)
+        _Html.byte(0, 'version', p[0], lines)
+        lines.append(_Html.field(f'Qi version: <b>{major}.{minor}</b>'))
+        _Html.byte(1, 'mfg_code MSB', p[1], lines)
+        _Html.byte(2, 'mfg_code LSB', p[2], lines)
+        lines.append(_Html.field(f'Manufacturer code: <b>0x{mfg_code:04X}</b> ({_ptmc_vendor(mfg_code)})'))
+        _Html.byte(3, 'basic_dev_id (MSB)', p[3], lines)
+        lines.append(_Html.field(f'Ext [b31]: <b>{"Has XID" if ext else "No XID"}</b>'))
+        for i in range(4, 7):
+            _Html.byte(i, 'basic_dev_id', p[i], lines)
         lines.append(_Html.field(f'Basic Device ID: <b>0x{basic_id:07X}</b>'))
         return _Html.join(lines)
 
     def _ask_xid(self, p):
-        """0x81: Baseline Extended ID (B0≠0xFE) 或 MPP-XID (B0=0xFE)。"""
         if len(p) >= 1 and p[0] == 0xFE:
             return self._ask_mpp_xid(p)
-        return self._ask_baseline_xid(p)
+        return self._ask_bpp_xid(p)
 
-    def _ask_baseline_xid(self, p):
-        exp_len = _qi_message_size(0x81)
+    def _ask_bpp_xid(self, p):
+        exp_len = get_payload_len(0x81)
         if len(p) < exp_len:
-            return (
-                f'<i>Extended Identification (XID) 需要 {exp_len} 字节，当前 {len(p)} B</i>'
-                + (f'<br>{self._generic_raw(p)}' if p else '')
-            )
+            return f'<i>bpp_rx_xid_t requires {exp_len} bytes, got {len(p)} B</i>' + (f'<br>{self._generic_raw(p)}' if p else '')
         ext_id = int.from_bytes(p[:exp_len], 'big')
-        lines = [f'• Extended Identification — XID (Qi 2.2.1 §8.8, {exp_len} B)']
+        lines = [f'• bpp_rx_xid_t — Extended Identification ({exp_len} B)']
         for i, b in enumerate(p[:exp_len]):
-            _Html.byte(i, 'Extended Device Identifier', b, lines)
-        lines.append(_Html.field(
-            f'Extended Device ID: <b>0x{ext_id:0{exp_len * 2}X}</b>'
-        ))
+            _Html.byte(i, 'ext_device_id', b, lines)
+        lines.append(_Html.field(f'Extended Device ID: <b>0x{ext_id:0{exp_len * 2}X}</b>'))
         if p[0] == 0xFE:
-            lines.append(_Html.field(
-                '<span style="color:#EF4444">B0=0xFE 违反 Baseline XID 规范，应为 MPP-XID</span>'
-            ))
+            lines.append(_Html.field(f'<span style="color:{_qi_colors()["err"]}">B0=0xFE should be MPP-XID</span>'))
         return _Html.join(lines)
 
     def _ask_mpp_xid(self, p):
-        exp_len = _qi_message_size(0x81)
+        exp_len = get_payload_len(0x81)
         if len(p) < exp_len:
-            return (
-                f'<i>MPP-XID 需要 {exp_len} 字节，当前 {len(p)} B</i>'
-                + (f'<br>{self._generic_raw(p)}' if p else '')
-            )
-        if p[0] != 0xFE:
-            return (
-                f'<i>B0 应为 MPP Selector 0xFE，当前 0x{p[0]:02X}</i>'
-                f'<br>{self._generic_raw(p)}'
-            )
-        restricted = p[1] & 0x01
+            return f'<i>mpp_rx_xid_t requires {exp_len} bytes, got {len(p)} B</i>'
+        restricted = (p[1] >> 7) & 1
+        mfg_rsvd_b1 = p[1] & 0x7F
         vrect = p[3]
         alpha0 = _s8(p[4])
         alpha1 = _s8(p[5])
-        alpha_k = p[6]
-        lines = [f'• MPP-XID (Qi 2.2.1 MPP §8.1.29, {exp_len} B)']
-        _Html.byte(0, 'XID Sub-Header (Selector)', p[0], lines)
+        alpha_k = _s8(p[6])
+        lines = [f'• mpp_rx_xid_t — MPP Extended Identification ({exp_len} B)']
+        _Html.byte(0, 'fixed_fe', p[0], lines)
         lines.append(_Html.field('MPP Selector: <b>0xFE</b>'))
-        _Html.byte(1, 'Restricted + Mfg Rsvd', p[1], lines)
+        _Html.byte(1, 'restricted_mfg', p[1], lines)
         lines.append(_Html.field(
-            f'Restricted [Bit0]: <b>{"MPP Restricted (360 kHz)" if restricted else "MPP Full"}</b>'
+            f'Restricted [b7]: <b>{"Restricted mode" if restricted else "Full capability"}</b>'
         ))
-        _Html.byte(2, 'Manufacturer Reserved', p[2], lines)
-        _Html.byte(3, 'VRECT', p[3], lines)
-        lines.append(_Html.field(f'VRECT: <b>{vrect * 20} mV</b> ({vrect * 0.02:.3f} V, ×20 mV)'))
-        _Html.byte(4, 'Alpha0 Rx', p[4], lines)
-        lines.append(_Html.field(f'Alpha0 × 100: <b>{alpha0}</b>'))
-        _Html.byte(5, 'Alpha1 Rx', p[5], lines)
-        lines.append(_Html.field(f'Alpha1 × 100: <b>{alpha1}</b>'))
-        _Html.byte(6, 'Alpha-Kth Rx', p[6], lines)
-        lines.append(_Html.field(f'Alpha-Kth × 100: <b>{alpha_k}</b> (阈值通常 = 100)'))
-        _Html.byte(7, 'Manufacturer Reserved', p[7], lines)
+        if mfg_rsvd_b1:
+            lines.append(_Html.field(f'Mfg Reserved [b6-b0]: <b>0x{mfg_rsvd_b1:02X}</b>'))
+        _Html.byte(2, 'mfg_rsvd', p[2], lines)
+        _Html.byte(3, 'v_rect', p[3], lines)
+        lines.append(_Html.field(f'VRECT: <b>{vrect * 20} mV</b> ({vrect * 0.02:.2f} V)'))
+        _Html.byte(4, 'alpha_0r', p[4], lines)
+        lines.append(_Html.field(f'Alpha_0r: <b>{alpha0 / 100:.2f}</b>'))
+        _Html.byte(5, 'alpha_1r', p[5], lines)
+        lines.append(_Html.field(f'Alpha_1r: <b>{alpha1 / 100:.2f}</b>'))
+        _Html.byte(6, 'alpha_k_thr', p[6], lines)
+        lines.append(_Html.field(f'Alpha_K threshold: <b>{alpha_k}</b> (typically = 100)'))
+        if len(p) >= 8:
+            _Html.byte(7, 'mfg_rsvd2', p[7], lines)
         return _Html.join(lines)
 
     def _ask_ecap(self, p):
-        if len(p) < 2:
-            return self._generic_raw(p)
-        lines = [f"• 扩展接收能力 ({len(p)} B)"]
-        _Html.byte(0, 'Capabilities B0', p[0], lines)
-        lines.append(_Html.field(f'EPP 支持 [Bit0]: <b>{"是" if p[0] & 0x01 else "否"}</b>'))
-        lines.append(_Html.field(f'MPP 支持 [Bit1]: <b>{"是" if p[0] & 0x02 else "否"}</b>'))
-        lines.append(_Html.field(f'Auth 支持 [Bit2]: <b>{"是" if p[0] & 0x04 else "否"}</b>'))
-        if len(p) >= 2:
-            _Html.byte(1, 'Max Power / Profile', p[1], lines)
-            lines.append(_Html.field(f'协商最大功率: <b>{p[1] * 0.5:.1f} W</b>'))
-        if len(p) > 2:
-            lines.append(_Html.field(f'附加: {_hex_bytes(p[2:])}'))
+        exp_len = get_payload_len(0x84)
+        if len(p) < exp_len:
+            return f'<i>mpp_rx_ecap_t requires {exp_len} bytes, got {len(p)} B</i>' + (f'<br>{self._generic_raw(p)}' if p else '')
+        min_pwr = p[1] & 0x0F
+        stream_cnt = (p[3] >> 5) & 0x07
+        buf_size = (p[3] >> 2) & 0x07
+        c = _qi_colors()
+        lines = [f'• mpp_rx_ecap_t ({exp_len} B)']
+        _Html.byte(0, 'rsvd', p[0], lines)
+        _Html.byte(1, 'min_charge_pwr', p[1], lines)
+        if p[1] & 0xF0:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7-b4]: must be 0 (current 0x{(p[1] >> 4):X})</span>'
+            ))
+        lines.append(_Html.field(f'Minimum charge power [b3-b0]: <b>{min_pwr}</b>'))
+        _Html.byte(3, 'data_streams_info', p[3], lines)
+        lines.append(_Html.field(f'Concurrent stream count [b7-b5]: <b>{stream_cnt}</b>'))
+        lines.append(_Html.field(f'Data stream buffer [b4-b2]: <b>{buf_size}</b>'))
+        if p[3] & 0x03:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b1-b0]: must be 0 (current 0x{p[3] & 0x03:X})</span>'
+            ))
+        if len(p) > 4:
+            lines.append(_Html.field(f'Manufacturer reserved: {_hex_bytes(p[4:])}'))
+        return _Html.join(lines)
+
+    def _ask_sdsr(self, p):
+        if len(p) < 3:
+            return f'<i>mpp_rx_sdsr_t requires 3 bytes, got {len(p)} B</i>'
+        stream = p[1] & 0x0F
+        resp_type = p[2] & 0x0F
+        c = _qi_colors()
+        lines = ['• mpp_rx_sdsr_t — Simultaneous Data Stream Response']
+        _Html.byte(0, 'selector_rsvd', p[0], lines)
+        _Html.byte(1, 'stream_number', p[1], lines)
+        if p[1] & 0xF0:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7-b4]: must be 0 (current 0x{(p[1] >> 4):X})</span>'
+            ))
+        lines.append(_Html.field(f'Stream Number [b3-b0]: <b>{stream}</b>'))
+        _Html.byte(2, 'type_cmd', p[2], lines)
+        if p[2] & 0xF0:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7-b4]: must be 0 (current 0x{(p[2] >> 4):X})</span>'
+            ))
+        lines.append(_Html.field(f'Type [b3-b0]: <b>{SDSR_TYPES.get(resp_type, resp_type)}</b>'))
         return _Html.join(lines)
 
     def _ask_sadc(self, p):
-        return self._stream_control(p, 'SADC (Aux Data Control)')
-
-    def _ask_sdsr(self, p):
-        if len(p) < 1:
-            return self._insufficient()
-        name, desc = DSR_TYPES.get(p[0], (f'0x{p[0]:02X}', '数据流响应码'))
-        lines = [
-            f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}",
-            _Html.field(f'数据流响应 (SDSR): <b>{name}</b> — {desc}'),
-        ]
-        if len(p) >= 2:
-            lines.append(_Html.field(f'Stream ID: <b>{p[1]}</b>'))
+        if len(p) < 4:
+            return f'<i>mpp_rx_sadc_t requires 4 bytes, got {len(p)} B</i>'
+        req = p[0] & 0x0F
+        stream = p[1] & 0x0F
+        param = _u16_be(p[2], p[3])
+        c = _qi_colors()
+        lines = ['• mpp_rx_sadc_t — Simultaneous Auxiliary Data Control']
+        _Html.byte(0, 'request', p[0], lines)
+        if p[0] & 0xF0:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7-b4]: must be 0 (current 0x{(p[0] >> 4):X})</span>'
+            ))
+        lines.append(_Html.field(f'Request [b3-b0]: <b>{SADC_REQUESTS.get(req, f"0x{req:X}")}</b>'))
+        _Html.byte(1, 'stream_number', p[1], lines)
+        if p[1] & 0xF0:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7-b4]: must be 0 (current 0x{(p[1] >> 4):X})</span>'
+            ))
+        lines.append(_Html.field(f'Stream Number [b3-b0]: <b>{stream}</b>'))
+        _Html.byte(2, 'parameter MSB', p[2], lines)
+        _Html.byte(3, 'parameter LSB', p[3], lines)
+        lines.append(_Html.field(f'Parameter (BE): <b>0x{param:04X}</b> ({param})'))
         return _Html.join(lines)
 
-    def _ask_sadt(self, p):
-        if len(p) < 2:
-            return self._generic_raw(p)
-        stream_id = p[0]
-        seq = p[1]
-        data = p[2:]
-        lines = [
-            f"• SADT 数据流包 ({len(p)} B)",
-            _Html.field(f'Stream ID: <b>{stream_id}</b>'),
-            _Html.field(f'序列号: <b>{seq}</b>'),
-            _Html.field(f'数据: <span style="color:#94A3B8">{_hex_bytes(data, 12)}</span>'),
-        ]
+    def _ask_kest_coeff(self, p):
+        if len(p) < 4:
+            return f'<i>mpp_rx_kest_coeff_t requires ≥4 bytes, got {len(p)} B</i>'
+        selector = p[0] & 0x01
+        alpha0 = _s8(p[1])
+        alpha1 = _s8(p[2])
+        lines = ['• mpp_rx_kest_coeff_t — K-est Coefficients']
+        _Html.byte(0, 'selector', p[0], lines)
+        if p[0] & 0xFE:
+            lines.append(_Html.field(
+                f'<span style="color:{_qi_colors()["warn"]}">'
+                f'Reserved [b7-b1]: must be 0 (current 0x{(p[0] >> 1):02X})</span>'
+            ))
+        lines.append(_Html.field(f'Selector [b0]: <b>{"128kHz HPM" if selector == 0 else selector}</b>'))
+        _Html.byte(1, 'alpha_0r', p[1], lines)
+        lines.append(_Html.field(f'Alpha_0r: <b>{alpha0 / 100:.2f}</b>'))
+        _Html.byte(2, 'alpha_1r', p[2], lines)
+        lines.append(_Html.field(f'Alpha_1r: <b>{alpha1 / 100:.2f}</b>'))
+        return _Html.join(lines)
+
+    def _ask_report_pla(self, p):
+        if len(p) < 5:
+            return f'<i>0x58 Report/PLA requires 5 bytes, got {len(p)} B</i>' + (
+                f'<br>{self._generic_raw(p)}' if p else ''
+            )
+        selector = (p[0] >> 5) & 0x07
+        if selector == 0:
+            return self._ask_report_58(p)
+        if selector == 1:
+            return self._ask_pla_58(p)
+        lines = ['• 0x58 Report/PLA — Unrecognized selector']
+        _Html.byte(0, 'B0', p[0], lines)
+        lines.append(_Html.field(f'Selector [b7-b5]: <b>{selector}</b> (reserved)'))
+        lines.append(_Html.field(f'Data: {_hex_bytes(p[1:])}'))
+        return _Html.join(lines)
+
+    def _ask_report_58(self, p):
+        """0x58:0 — Report (Figure 122/123, Table 65)."""
+        report_id = p[0] & 0x03
+        lines = ['• Report — PRx Report (0x58:0)']
+        _Html.byte(0, 'B0 selector/report_id', p[0], lines)
+        lines.append(_Html.field(f'Selector [b7-b5]: <b>0</b>'))
+        rsvd_mid = (p[0] >> 2) & 0x07
+        if rsvd_mid:
+            lines.append(_Html.field(
+                f'<span style="color:{_qi_colors()["warn"]}">'
+                f'Reserved [b4-b2]: must be 0 (current {rsvd_mid})</span>'
+            ))
+        lines.append(_Html.field(
+            f'Report ID [b1-b0]: <b>{REPORT_ID_TYPES.get(report_id, f"Reserved ({report_id})")}</b>'
+        ))
+        if report_id == 2:
+            rand_id = ((p[1] & 0x3F) << 14) | (p[2] << 6) | ((p[3] >> 2) & 0x3F)
+            _Html.byte(1, 'B1 random_id [b5-b0]', p[1], lines)
+            _Html.byte(2, 'B2 random_id', p[2], lines)
+            _Html.byte(3, 'B3 random_id [b7-b2]', p[3], lines)
+            lines.append(_Html.field(
+                f'Random Identifier [20-bit]: <b>0x{rand_id:05X}</b> ({rand_id})'
+            ))
+            if p[3] & 0x03:
+                lines.append(_Html.field(f'Reserved [B3 b1-b0]: {p[3] & 0x03}'))
+            _Html.byte(4, 'B4 mfg_reserved', p[4], lines)
+            lines.append(_Html.field(
+                '<i>Random ID must match value reported in ID packet (Random Device Identifier Policy)</i>'
+            ))
+        else:
+            lines.append(_Html.field('Report Data [B1-B4]: Template Dependent'))
+            for i in range(1, 5):
+                _Html.byte(i, 'report_data', p[i], lines)
+        lines.append(_Html.field('<i>PTx FSK response: ACK only (Table 66)</i>'))
+        return _Html.join(lines)
+
+    def _ask_pla_58(self, p):
+        """0x58:1 — Power Loss Accounting / PLA (Figure 124, Table 67)."""
+        rx_pwr = _u16_be(p[1], p[2])
+        p_rect = _u16_be(p[3], p[4])
+        lines = ['• PLA — Power Loss Accounting (0x58:1)']
+        _Html.byte(0, 'B0 selector', p[0], lines)
+        lines.append(_Html.field(f'Selector [b7-b5]: <b>1</b>'))
+        if p[0] & 0x1F:
+            lines.append(_Html.field(
+                f'<span style="color:{_qi_colors()["warn"]}">'
+                f'Reserved [b4-b0]: must be 0 (current 0x{p[0] & 0x1F:02X})</span>'
+            ))
+        _Html.byte(1, 'received_power MSB', p[1], lines)
+        _Html.byte(2, 'received_power LSB', p[2], lines)
+        lines.append(_Html.field(f'Received Power: <b>{rx_pwr} mW</b> ({rx_pwr / 1000:.3f} W)'))
+        _Html.byte(3, 'p_rect MSB', p[3], lines)
+        _Html.byte(4, 'p_rect LSB', p[4], lines)
+        lines.append(_Html.field(f'P_RECT: <b>{p_rect} mW</b> ({p_rect / 1000:.3f} W)'))
+        lines.append(_Html.field('<i>PTx FSK responses (Table 67):</i>'))
+        for key, desc in PLA_FSK_RESPONSES.items():
+            lines.append(_Html.field(f'{key}: {desc}', indent=2))
         return _Html.join(lines)
 
     def _ask_plap(self, p):
-        return self._pla_params(p, 'PLAP (Power Loss Accounting Parameters)')
+        """0x78 — Power Loss Accounting Parameters / PLAP (Figure 125)."""
+        if len(p) < 7:
+            return f'<i>mpp_rx_plap_t requires 7 bytes, got {len(p)} B</i>'
+        alpha_fm = _s16_be(p[1], p[2])
+        alpha_fm_dc = _s16_be(p[3], p[4])
+        g_coil_tx = _s16_be(p[5], p[6])
+        lines = ['• PLAP — Power Loss Accounting Parameters (0x78)']
+        _Html.byte(0, 'B0 Reserved', p[0], lines)
+        if p[0] != 0:
+            lines.append(_Html.field(
+                f'<span style="color:{_qi_colors()["warn"]}">Reserved must be 0</span>'
+            ))
+        _Html.byte(1, 'B1 Alpha_FM MSB', p[1], lines)
+        _Html.byte(2, 'B2 Alpha_FM LSB', p[2], lines)
+        lines.append(_Html.field(
+            f"α_FM [int16 BE two's complement]: <b>{alpha_fm}</b> (0x{alpha_fm & 0xFFFF:04X})"
+        ))
+        lines.append(_Html.field(
+            f'→ <b>{alpha_fm * 0.5:g} mΩ</b> (field value × 0.5)'
+        ))
+        _Html.byte(3, 'B3 Alpha_FM_DC MSB', p[3], lines)
+        _Html.byte(4, 'B4 Alpha_FM_DC LSB', p[4], lines)
+        lines.append(_Html.field(
+            f"α_FM,DC [int16 BE two's complement]: <b>{alpha_fm_dc}</b> (0x{alpha_fm_dc & 0xFFFF:04X})"
+        ))
+        lines.append(_Html.field(
+            f'→ <b>{alpha_fm_dc * 0.5:g} mW</b> (field value × 0.5)'
+        ))
+        _Html.byte(5, 'B5 g_coil_TX MSB', p[5], lines)
+        _Html.byte(6, 'B6 g_coil_TX LSB', p[6], lines)
+        lines.append(_Html.field(
+            f"g_coil,TX [int16 BE two's complement]: <b>{g_coil_tx}</b> (0x{g_coil_tx & 0xFFFF:04X})"
+        ))
+        lines.append(_Html.field(
+            f'→ <b>{g_coil_tx * 0.0001:g}</b> (field value × 0.0001)'
+        ))
+        lines.append(_Html.field(
+            "<i>All three parameters are signed two's complement for PLA formula (MPP System Specifications §6.3.2.3)</i>"
+        ))
+        return _Html.join(lines)
 
-    def _ask_pla(self, p):
-        if len(p) < 4:
-            return self._generic_raw(p)
-        lines = [f"• PLA v2 报告 ({len(p)} B)"]
-        ploss = p[0] | (p[1] << 8)
-        lines.append(_Html.field(f'Power Loss: <b>{ploss}</b> (原始单位)'))
-        if len(p) >= 4:
-            lines.append(_Html.field(f'附加字段: {_hex_bytes(p[2:])}'))
+    def _ask_pla2(self, p):
+        if len(p) < 9:
+            return f'<i>mpp_rx_pla2_t requires 9 bytes, got {len(p)} B</i>'
+        p_rx = _u16_be(p[1], p[2])
+        p_rect = _u16_be(p[3], p[4])
+        v_rect = _u16_be(p[5], p[6])
+        i_rect = _u16_be(p[7], p[8])
+        lines = ['• mpp_rx_pla2_t — Power Loss Accounting 2']
+        lines.append(_Html.field(f'P_received: <b>{p_rx} mW</b>'))
+        lines.append(_Html.field(f'P_rect: <b>{p_rect} mW</b>'))
+        lines.append(_Html.field(f'V_rect: <b>{v_rect} mV</b>'))
+        lines.append(_Html.field(f'I_rect: <b>{i_rect} mA</b>'))
+        return _Html.join(lines)
+
+    def _ask_plap2(self, p):
+        if len(p) < 10:
+            return f'<i>mpp_rx_plap2_t requires 10 bytes, got {len(p)} B</i>'
+        g_coil = _u16_be(p[1], p[2])
+        alpha_itx = _s16_be(p[3], p[4])
+        alpha_irect = _s16_be(p[5], p[6])
+        alpha_vrect = _s16_be(p[8], p[9])
+        lines = ['• mpp_rx_plap2_t — PLA Parameters 2']
+        lines.append(_Html.field(f'G_coil_t: <b>{g_coil}</b>'))
+        lines.append(_Html.field(f'Alpha_FM_ITX: <b>{alpha_itx}</b>'))
+        lines.append(_Html.field(f'Alpha_FM_IRECT: <b>{alpha_irect}</b>'))
+        lines.append(_Html.field(f'Alpha_FM_VRECT: <b>{alpha_vrect}</b>'))
         return _Html.join(lines)
 
     def _ask_cal_capture(self, p):
-        if len(p) < 1:
-            return self._insufficient()
-        return (
-            f"• <span style='color:{_Html.B}'>Byte 0:</span> 0x{p[0]:02X}<br>"
-            f"{_Html.field(f'捕获阶段: <b>{p[0]}</b>')}<br>"
-            f"{_Html.field(f'数据: {_hex_bytes(p[1:])}' if len(p) > 1 else '')}"
-        )
+        """0x96 — Calibration Capture (Figure 130, Table 72)."""
+        exp_len = get_payload_len(0x96)
+        if len(p) < exp_len:
+            return (
+                f'<i>mpp_rx_cal_capture_t requires {exp_len} bytes, got {len(p)} B</i>'
+                + (f'<br>{self._generic_raw(p)}' if p else '')
+            )
+        cal_idx = p[0] & 0x7F
+        operation = p[1] & 0x03
+        rx_pwr = _u16_be(p[2], p[3])
+        p_rect = _u16_be(p[4], p[5])
+        v_rect = _u16_be(p[6], p[7])
+        irect = ((p[8] & 0x0F) << 8) | p[9]
+        c = _qi_colors()
 
-    def _ask_matedq(self, p):
-        if len(p) < 4:
-            return self._generic_raw(p)
-        lines = [f"• Mated-Q 系数 ({len(p)} B)"]
-        for i, b in enumerate(p[:8]):
-            _Html.byte(i, f'Coeff {i}', b, lines)
+        lines = ['• CAL_CAPTURE — Calibration Capture (0x96)']
+        _Html.byte(0, 'B0 cal_point_idx', p[0], lines)
+        if p[0] & 0x80:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7]: must be 0 (current 0x{(p[0] >> 7):X})</span>'
+            ))
+        lines.append(_Html.field(f'Calibration Point Index [b6-b0]: <b>{cal_idx}</b>'))
+
+        _Html.byte(1, 'B1 operation', p[1], lines)
+        if p[1] & 0xFC:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7-b2]: must be 0 (current 0x{(p[1] >> 2):02X})</span>'
+            ))
+        op_label = CAL_CAPTURE_OPERATIONS.get(operation, f'Reserved ({operation})')
+        lines.append(_Html.field(
+            f'Operation [b1-b0]: <b>{op_label}</b>'
+        ))
+
+        def _meas(label, val, unit, scale_w=None):
+            if val == 0:
+                return f'{label}: <b>0</b> (measurement not available)'
+            text = f'{label}: <b>{val} {unit}</b>'
+            if scale_w is not None:
+                text += f' ({val * scale_w:.3f} W)'
+            return text
+
+        _Html.byte(2, 'received_power MSB', p[2], lines)
+        _Html.byte(3, 'received_power LSB', p[3], lines)
+        lines.append(_Html.field(_meas('Received Power', rx_pwr, 'mW', 0.001)))
+
+        _Html.byte(4, 'p_rect MSB', p[4], lines)
+        _Html.byte(5, 'p_rect LSB', p[5], lines)
+        lines.append(_Html.field(_meas('P_RECT', p_rect, 'mW', 0.001)))
+
+        _Html.byte(6, 'v_rect MSB', p[6], lines)
+        _Html.byte(7, 'v_rect LSB', p[7], lines)
+        if v_rect == 0:
+            lines.append(_Html.field('V_RECT: <b>0</b> (measurement not available)'))
+        else:
+            lines.append(_Html.field(
+                f'V_RECT: <b>{v_rect} mV</b> ({v_rect / 1000:.3f} V)'
+            ))
+
+        _Html.byte(8, 'B8 irect MSB nibble + rsvd', p[8], lines)
+        if p[8] & 0xF0:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [B8 b7-b4]: 0x{(p[8] >> 4):X}</span>'
+            ))
+        _Html.byte(9, 'B9 irect LSB', p[9], lines)
+        if irect == 0:
+            lines.append(_Html.field(
+                f'I_RECT [12-bit]: <b>0</b> (measurement not available)'
+            ))
+        else:
+            lines.append(_Html.field(
+                f'I_RECT [12-bit]: <b>{irect} mA</b> ({irect / 1000:.3f} A)'
+            ))
+
+        lines.append(_Html.field(
+            '<i>PTx response: CAL_CAPTURE_RSP (FSK 0x14)</i>'
+        ))
+        return _Html.join(lines)
+
+    def _ask_matedq_coeff(self, p):
+        if len(p) < 7:
+            return f'<i>mpp_rx_matedq_coeff_t requires ≥7 bytes, got {len(p)} B</i>'
+        g0 = _s16_be(p[1], p[2])
+        g1 = _s16_be(p[3], p[4])
+        d0 = _s16_be(p[5], p[6])
+        lines = ['• mpp_rx_matedq_coeff_t — Mated-Q Coefficients']
+        lines.append(_Html.field(f'g0: <b>{g0 * 0.001:.3f}</b>'))
+        lines.append(_Html.field(f'g1: <b>{g1 * 0.001:.3f}</b>'))
+        lines.append(_Html.field(f'd0: <b>{d0 * 0.001:.3f}</b>'))
+        return _Html.join(lines)
+
+    def _ask_adt(self, p):
+        if len(p) < 1:
+            return self._no_payload()
+        lines = [f'• ADT variable-length packet ({len(p)} B)']
+        lines.append(_Html.field(f'Payload: <span style="color:{_qi_colors()["hex"]}">{_hex_bytes(p, 20)}</span>'))
         return _Html.join(lines)
 
     # ------------------------------------------------------------------
-    # FSK 载荷解析
+    # FSK 载荷解析 (PTx → PRx)
     # ------------------------------------------------------------------
 
     def _decode_fsk_payload(self, header, payload):
-        if header in FSK_RESPONSE and not payload:
-            name, desc = FSK_RESPONSE[header]
-            return f"<b style='color:#22C55E'>✓ {name}</b> — {desc}"
+        if header in FSK_BARE_PATTERNS and not payload:
+            return self._fsk_bare_pattern(header)
 
         decoders = {
-            0x01: self._fsk_ack_payload,
-            0x11: self._fsk_fast_ack,
+            0x00: self._fsk_null,
+            0x01: self._fsk_err,
+            0x0A: self._fsk_eptr,
+            0x13: self._fsk_msn,
+            0x14: self._fsk_cal_capture_rsp,
+            0x15: self._fsk_dsr,
+            0x1B: self._fsk_cal_op_rsp,
             0x1E: self._fsk_cloak_rcs,
             0x1F: self._fsk_chs,
             0x23: self._fsk_mss,
+            0x25: self._fsk_adc,
             0x2E: self._fsk_get,
-            0x30: self._fsk_inv,
+            0x2F: self._fsk_eds,
+            0x30: self._fsk_ptx_id,
+            0x31: self._fsk_cap,
+            0x32: self._fsk_xcap,
+            0x34: self._fsk_cal_enter_rsp,
             0x3F: self._fsk_3f,
-            0x40: self._fsk_cap,
+            0x40: self._fsk_matedq_res,
             0x43: self._fsk_cal_cap,
             0x4F: self._fsk_sadc,
+            0x54: self._fsk_dpcal_param,
             0x5A: self._fsk_modecap,
             0x5F: self._fsk_plap,
             0x61: self._fsk_gmp,
             0x8F: self._fsk_xid_ecap,
             0xA0: self._fsk_modexcap,
         }
-        if header in (0x26, 0x27, 0x36, 0x37, 0x46, 0x47, 0x56, 0x57, 0x66, 0x67, 0x76, 0x77):
-            return self._ask_sadt(payload)
-        if header in (0x1C, 0x1D, 0x2C, 0x2D, 0x3E, 0x4E, 0x5E, 0x8E):
+        if header in (0x16, 0x17, 0x26, 0x27, 0x36, 0x37, 0x46, 0x47,
+                      0x56, 0x57, 0x66, 0x67, 0x76, 0x77, 0x98, 0x99):
+            return self._ask_adt(payload)
+        if header in (0x1C, 0x1D, 0x2C, 0x2D, 0x3E, 0x4E):
             return self._generic_prop(payload)
+        if header == 0x11:
+            c = _qi_colors()
+            return f"<b style='color:{c['ok']}'>✓ FAST-ACK (0x11)</b> — {_qi_tr('qi.fast_ack')}" + (
+                f'<br>{self._generic_raw(payload)}' if payload else ''
+            )
         decoder = decoders.get(header)
         if decoder:
             return decoder(payload)
         return self._generic_raw(payload)
 
-    def _fsk_ack_payload(self, p):
+    def _fsk_bare_pattern(self, header):
+        """裸 FSK 模式：0x55 等在 BPP 与 Qi 2.2.1 中语义不同，并列展示。"""
+        c = _qi_colors()
+        lines = []
+        if header in BPP_FSK_PATTERNS:
+            name, desc = BPP_FSK_PATTERNS[header]
+            lines.append(f"<b style='color:{c['ok']}'>✓ BPP {name}</b> — {desc}")
+        qi_entry = QI22_FSK_PATTERNS.get(header)
+        bpp_entry = BPP_FSK_PATTERNS.get(header)
+        if qi_entry and qi_entry != bpp_entry:
+            name, desc = qi_entry
+            lines.append(f"<b style='color:{c['warn']}'>✓ Qi 2.2.1 {name}</b> — {desc}")
+        elif header not in BPP_FSK_PATTERNS and qi_entry:
+            name, desc = qi_entry
+            lines.append(f"<b style='color:{c['ok']}'>✓ {name}</b> — {desc}")
+        return '<br>'.join(lines) if lines else self._generic_raw([])
+
+    def _fsk_null(self, p):
+        c = _qi_colors()
         if not p:
-            return f"<b style='color:#22C55E'>✓ ACK</b> — {tr('qi.ack_prx')}"
-        resp = {0x00: 'ACK', 0x01: 'NACK', 0x02: 'ND', 0x03: 'ATN'}.get(p[0], f'0x{p[0]:02X}')
+            return f"<b style='color:{c['muted']}'>NULL</b> — bpp_tx_null_t (no payload)"
+        ok = p[0] == 0x00
+        warn = '' if ok else f'<span style="color:{c["err"]}">must be 0x00</span>'
         return (
-            f"• <span style='color:{_Html.O}'>Byte 0:</span> 0x{p[0]:02X}<br>"
-            f"{_Html.field(f'响应类型: <b>{resp}</b>')}"
+            f"• <span style='color:{c['byte_fsk']}'>Byte 0:</span> reserved = 0x{p[0]:02X}<br>"
+            f"{_Html.field('Must be 0x00' if ok else warn)}"
         )
 
-    def _fsk_fast_ack(self, p):
-        return f"<b style='color:#22C55E'>✓ MPP Fast ACK (0x11)</b> — {tr('qi.fast_ack')}" + (
-            f'<br>{self._generic_raw(p)}' if p else ''
+    def _fsk_err(self, p):
+        if len(p) < 1:
+            return self._insufficient()
+        info = (p[0] >> 4) & 0x0F
+        err = p[0] & 0x07
+        c = _qi_colors()
+        lines = ['• mpp_tx_err_t — Error Status']
+        _Html.fbyte(0, 'error_info', p[0], lines)
+        lines.append(_Html.field(f'Info [b7-b4]: <b>{MPP_TX_ERR_INFO.get(info, info)}</b>'))
+        if (p[0] >> 3) & 1:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">Reserved [b3]: must be 0</span>'
+            ))
+        lines.append(_Html.field(f'Error Code [b2-b0]: <b>{err}</b>'))
+        return _Html.join(lines)
+
+    def _fsk_eptr(self, p):
+        if len(p) < 1:
+            return self._insufficient()
+        c = _qi_colors()
+        return (
+            f"• <span style='color:{c['byte_fsk']}'>Byte 0:</span> reason_code = 0x{p[0]:02X}<br>"
+            f"{_Html.field(f'End reason: <b>{p[0]}</b> (e.g. 0=mode switch)')}"
+        )
+
+    def _fsk_msn(self, p):
+        if len(p) < 1:
+            return self._insufficient()
+        main_mode = (p[0] >> 2) & 0x03
+        c = _qi_colors()
+        lines = ['• mpp_tx_msn_t — Mode Selection Notification']
+        _Html.fbyte(0, 'mode_status', p[0], lines)
+        if p[0] & 0xF0:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7-b4]: must be 0 (current 0x{(p[0] >> 4):X})</span>'
+            ))
+        lines.append(_Html.field(f'Main Mode [b3-b2]: <b>{MSR_MAIN_MODE.get(main_mode, main_mode)}</b>'))
+        if p[0] & 0x03:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b1-b0]: must be 0 (current 0x{p[0] & 0x03:X})</span>'
+            ))
+        return _Html.join(lines)
+
+    def _fsk_cal_capture_rsp(self, p):
+        if len(p) < 1:
+            return self._insufficient()
+        c = _qi_colors()
+        accepted = p[0] == 0x00
+        color = c['ok'] if accepted else c['err']
+        result = 'ACCEPTED' if accepted else f'0x{p[0]:02X}'
+        detail = f'Capture result: <b style="color:{color}">{result}</b>'
+        return (
+            f"• <span style='color:{c['byte_fsk']}'>Byte 0:</span> response = 0x{p[0]:02X}<br>"
+            f"{_Html.field(detail)}"
+        )
+
+    def _fsk_dsr(self, p):
+        if len(p) < 1:
+            return self._insufficient()
+        name, desc = BPP_DSR_TYPES.get(p[0], (f'0x{p[0]:02X}', 'Reserved'))
+        lines = ['• bpp_tx_dsr_t — Data Stream Response']
+        _Html.fbyte(0, 'response_code', p[0], lines)
+        lines.append(_Html.field(f'Response: <b>{name}</b> — {desc}'))
+        return _Html.join(lines)
+
+    def _fsk_cal_op_rsp(self, p):
+        if len(p) < 1:
+            return self._insufficient()
+        c = _qi_colors()
+        return (
+            f"• <span style='color:{c['byte_fsk']}'>Byte 0:</span> status = 0x{p[0]:02X}<br>"
+            f"{_Html.field(f'Operation status: <b>{p[0]}</b>')}"
         )
 
     def _fsk_cloak_rcs(self, p):
         if not p:
             return self._no_payload()
-        sub = _bits(p[0], 3, 0) if len(p) == 1 else p[0]
-        sub_map = {0: 'Cloak Request', 3: 'Regulation Control Status (RCS)'}
-        lines = [
-            f"• <span style='color:{_Html.O}'>Sub-type:</span> <b>{sub_map.get(sub, f'0x{sub:X}')}</b>",
-        ]
-        if sub == 3 and len(p) >= 2:
-            _Html.byte(1, 'RCS Flags', p[1], lines)
-            pwr = '<b style="color:#EF4444">是</b>' if p[1] & 0x01 else '否'
-            tmp = '<b style="color:#EF4444">是</b>' if p[1] & 0x02 else '否'
-            lines.append(_Html.field(f'功率限制: {pwr}'))
-            lines.append(_Html.field(f'温度限制: {tmp}'))
-        elif len(p) > 1:
-            lines.append(_Html.field(f'参数: {_hex_bytes(p[1:])}'))
+        sub = p[0]
+        sub_map = {0x00: 'Cloak Response', 0x03: 'Regulation Control Status (RCS)'}
+        sub_label = sub_map.get(sub, f'0x{sub:02X}')
+        lines = [f'• mpp_tx_cloak_t / mpp_tx_rcs_t — selector = <b>{sub_label}</b>']
+        _Html.fbyte(0, 'selector', p[0], lines)
+        if sub != 0x00 and sub != 0x03:
+            lines.append(_Html.field(f'<span style="color:{_qi_colors()["warn"]}">Expected selector 0x00 or 0x03</span>'))
+        if len(p) > 1:
+            lines.append(_Html.field(f'Additional: {_hex_bytes(p[1:])}'))
         return _Html.join(lines)
 
     def _fsk_chs(self, p):
         if len(p) < 1:
             return self._insufficient()
-        detail = f'PTx 报告电量/状态: <b style="color:#22C55E">{p[0]} %</b>'
+        c = _qi_colors()
+        detail = f'PTx charge level: <b style="color:{c["ok"]}">{p[0]} %</b>' if p[0] <= 100 else f'0x{p[0]:02X}'
         return (
-            f"• <span style='color:{_Html.O}'>Byte 0:</span> 0x{p[0]:02X}<br>"
+            f"• <span style='color:{c['byte_fsk']}'>Byte 0:</span> charge_status = 0x{p[0]:02X}<br>"
             f"{_Html.field(detail)}"
         )
 
     def _fsk_mss(self, p):
+        if len(p) < 2:
+            return f'<i>mpp_tx_mss_t requires 2 bytes, got {len(p)} B</i>'
+        status = p[0] & 0x03
+        err = p[1] & 0x0F
+        lines = ['• mpp_tx_mss_t — Mode Select Status']
+        _Html.fbyte(0, 'status_info', p[0], lines)
+        lines.append(_Html.field(f'Status [b1-b0]: <b>{MSS_STATUS.get(status, status)}</b>'))
+        _Html.fbyte(1, 'error_code', p[1], lines)
+        lines.append(_Html.field(f'Error [b3-b0]: <b>{MSS_ERROR.get(err, err)}</b>'))
+        return _Html.join(lines)
+
+    def _fsk_adc(self, p):
         if len(p) < 1:
             return self._insufficient()
-        mode = {0: 'BPP', 1: 'EPP', 2: 'MPP Full', 3: 'MPP Restricted'}.get(p[0] & 0x03, f'{p[0] & 0x03}')
-        return (
-            f"• <span style='color:{_Html.O}'>Byte 0:</span> 0x{p[0]:02X}<br>"
-            f"{_Html.field(f'选定模式: <b>{mode}</b>')}<br>"
-            f"{_Html.field(f'附加: {_hex_bytes(p[1:])}' if len(p) > 1 else '')}"
-        )
+        lines = ['• bpp_tx_adc_t — Auxiliary Data Control']
+        _Html.fbyte(0, 'request', p[0], lines)
+        if len(p) >= 2:
+            _Html.fbyte(1, 'parameter', p[1], lines)
+        return _Html.join(lines)
 
     def _fsk_get(self, p):
-        if len(p) < 1:
-            return self._insufficient()
-        return (
-            f"• <span style='color:{_Html.O}'>Byte 0:</span> 0x{p[0]:02X}<br>"
-            f"{_Html.field(f'PTx 主动请求 PRx 发送 Header <b>0x{p[0]:02X}</b>')}"
-        )
-
-    def _fsk_inv(self, p):
         if len(p) < 2:
-            return self._generic_raw(p)
-        voltage = (p[0] << 8) | p[1]
-        lines = [
-            f"• 逆变器电压 (Inverter Voltage)",
-            _Html.field(f'Byte0-1: 0x{p[0]:02X} 0x{p[1]:02X}'),
-            _Html.field(f'电压: <b>{voltage} mV</b> ({voltage / 1000:.3f} V)'),
-        ]
-        if len(p) > 2:
-            lines.append(_Html.field(f'附加: {_hex_bytes(p[2:])}'))
+            return f'<i>mpp_tx_get_t requires 2 bytes, got {len(p)} B</i>'
+        lines = ['• mpp_tx_get_t — Get Request (Table 57)']
+        _Html.fbyte(0, 'rsvd', p[0], lines)
+        _Html.fbyte(1, 'parameter', p[1], lines)
+        lines.append(_Html.field(f'Request type: {_format_get_param(p[1])}'))
+        return _Html.join(lines)
+
+    def _fsk_eds(self, p):
+        if len(p) < 2:
+            return f'<i>mpp_tx_eds_t requires 2 bytes, got {len(p)} B</i>'
+        mask = _u16_be(p[0], p[1])
+        streams = [i for i in range(16) if mask & (1 << i)]
+        lines = ['• mpp_tx_eds_t — Enabled Data Streams']
+        lines.append(_Html.field(f'Mask: <b>0x{mask:04X}</b>'))
+        if streams:
+            lines.append(_Html.field(f'Enabled streams: <b>{", ".join(map(str, streams))}</b>'))
+        return _Html.join(lines)
+
+    def _fsk_ptx_id(self, p):
+        lines = [f'• bpp_tx_id_t — Power Transmitter ID ({len(p)} B)']
+        for i, b in enumerate(p):
+            _Html.fbyte(i, f'ptx_id_payload[{i}]', b, lines)
+        return _Html.join(lines)
+
+    def _fsk_cap(self, p):
+        if len(p) < 3:
+            return f'<i>bpp_tx_cap_t requires 3 bytes, got {len(p)} B</i>'
+        pwr_class = (p[0] >> 6) & 0x03
+        guar_pwr = p[0] & 0x3F
+        pot_pwr = p[2]
+        lines = ['• bpp_tx_cap_t — Power Transmitter Capabilities']
+        _Html.fbyte(0, 'power_info', p[0], lines)
+        lines.append(_Html.field(f'Power Class [b7-b6]: <b>{pwr_class}</b>'))
+        lines.append(_Html.field(f'Guaranteed Power [b5-b0]: <b>{guar_pwr}</b> (≈ {guar_pwr * 0.5:.1f} W)'))
+        _Html.fbyte(1, 'reserved', p[1], lines)
+        _Html.fbyte(2, 'potential_power', p[2], lines)
+        lines.append(_Html.field(f'Potential Load Power: <b>{pot_pwr}</b> (≈ {pot_pwr * 0.5:.1f} W)'))
+        return _Html.join(lines)
+
+    def _fsk_xcap(self, p):
+        if len(p) < 3:
+            return f'<i>bpp_tx_xcap_t requires 3 bytes, got {len(p)} B</i>'
+        lines = ['• bpp_tx_xcap_t — Extended Capabilities']
+        _Html.fbyte(0, 'capabilities', p[0], lines)
+        lines.append(_Html.field(f'TPS [b7]: <b>{"Yes" if p[0] & 0x80 else "No"}</b>'))
+        lines.append(_Html.field(f'TDE [b6]: <b>{"Yes" if p[0] & 0x40 else "No"}</b>'))
+        lines.append(_Html.field(f'TDS [b5]: <b>{"Yes" if p[0] & 0x20 else "No"}</b>'))
+        return _Html.join(lines)
+
+    def _fsk_cal_enter_rsp(self, p):
+        if len(p) < 3:
+            return f'<i>mpp_tx_cal_enter_rsp_t requires 3 bytes, got {len(p)} B</i>'
+        resp = CAL_ENTER_RESPONSE.get(p[0], f'0x{p[0]:02X}')
+        reason = CAL_ENTER_REASON.get(p[1], p[1])
+        lines = ['• mpp_tx_cal_enter_rsp_t — Enter Calibration Response']
+        _Html.fbyte(0, 'response_code', p[0], lines)
+        lines.append(_Html.field(f'Response: <b>{resp}</b>'))
+        _Html.fbyte(1, 'reason', p[1], lines)
+        lines.append(_Html.field(f'Reject reason: <b>{reason}</b>'))
+        _Html.fbyte(2, 'parameter', p[2], lines)
         return _Html.join(lines)
 
     def _fsk_3f(self, p):
         if len(p) < 1:
             return self._insufficient()
-        mod = p[0]
-        mod_map = {0x00: 'Inverter Voltage', 0x01: 'SDSR (Data Stream Response)', 0x02: 'KEST (Estimated K)'}
-        lines = [
-            f"• <span style='color:{_Html.O}'>Modifier:</span> 0x{mod:02X} — <b>{mod_map.get(mod, '保留')}</b>",
-        ]
-        if mod == 0x00 and len(p) >= 3:
-            voltage = (p[1] << 8) | p[2]
-            lines.append(_Html.field(f'逆变器电压: <b>{voltage} mV</b> ({voltage / 1000:.3f} V)'))
-        elif mod == 0x01 and len(p) >= 2:
-            lines.append(_Html.field(f'SDSR 响应: <b>{p[1]}</b>'))
-        elif mod == 0x02 and len(p) >= 3:
-            kest = (p[1] << 8) | p[2]
-            lines.append(_Html.field(f'Estimated K: <b>{kest}</b>'))
+        sel = p[0]
+        mod_map = {0x00: 'INV (inverter voltage)', 0x01: 'SDSR (simultaneous stream response)', 0x02: 'KEST (estimated coupling coefficient)'}
+        lines = [f"• mpp_tx_inv/sdsr/kest — selector = <b>{mod_map.get(sel, f'0x{sel:02X}')}</b>"]
+        _Html.fbyte(0, 'selector', p[0], lines)
+        if sel == 0x00 and len(p) >= 3:
+            _Html.fbyte(2, 'v_inv', p[2], lines)
+            lines.append(_Html.field(f'Inverter voltage: <b>{p[2] * 2} mV</b> ({p[2] * 0.002:.2f} V, ×2 mV)'))
+        elif sel == 0x01 and len(p) >= 3:
+            stream = p[1] & 0x0F
+            resp = p[2] & 0x0F
+            lines.append(_Html.field(f'Stream: <b>{stream}</b>, Type: <b>{SDSR_TYPES.get(resp, resp)}</b>'))
+        elif sel == 0x02 and len(p) >= 3:
+            # Figure 145: Estimated K — 12-bit field = B1[b3:b0] << 8 | B2, K_est = field / 4095
+            _Html.fbyte(1, 'estimated_k MSB nibble', p[1], lines)
+            if p[1] & 0xF0:
+                lines.append(_Html.field(f'Reserved [b7-b4]: 0x{(p[1] >> 4):X}'))
+            _Html.fbyte(2, 'estimated_k LSB', p[2], lines)
+            field_val = ((p[1] & 0x0F) << 8) | p[2]
+            k_est = field_val / 4095.0
+            lines.append(_Html.field(
+                f'Estimated K field [12-bit]: <b>{field_val}</b> (0x{field_val:03X})'
+            ))
+            lines.append(_Html.field(
+                f'K_est = field value / 4095 = <b>{k_est:.4f}</b>'
+            ))
         elif len(p) > 1:
-            lines.append(_Html.field(f'数据: {_hex_bytes(p[1:])}'))
+            lines.append(_Html.field(f'Data: {_hex_bytes(p[1:])}'))
         return _Html.join(lines)
 
-    def _fsk_cap(self, p):
+    def _fsk_matedq_res(self, p):
         if len(p) < 1:
             return self._insufficient()
-        lines = [f"• PTx 能力标志 (Capabilities)"]
-        _Html.byte(0, 'Status Flags', p[0], lines)
-        pwr_lim = '<b style="color:#EF4444">降额</b>' if p[0] & 0x01 else '正常'
-        tmp_lim = '<b style="color:#EF4444">过温</b>' if p[0] & 0x02 else '正常'
-        fod = '<b style="color:#EF4444">是</b>' if p[0] & 0x04 else '<b style="color:#22C55E">正常</b>'
-        lines.append(_Html.field(f'功率限制 [Bit0]: {pwr_lim}'))
-        lines.append(_Html.field(f'温度限制 [Bit1]: {tmp_lim}'))
-        lines.append(_Html.field(f'FOD 报警 [Bit2]: {fod}'))
-        lines.append(_Html.field(f"鉴权状态 [Bit3]: {'进行中/完成' if p[0] & 0x08 else '无'}"))
-        if len(p) >= 2:
-            max_p = p[1] * 0.5
-            lines.append(_Html.field(f'保证功率 [Byte1]: <b>{max_p:.1f} W</b>'))
+        fo = p[0] & 0x07
+        lines = ['• mpp_tx_matedq_res_t — Mated-Q Results']
+        _Html.fbyte(0, 'result', p[0], lines)
+        lines.append(_Html.field(f'Foreign Object [b2-b0]: <b>{MATEDQ_FO_RESULT.get(fo, fo)}</b>'))
         return _Html.join(lines)
 
     def _fsk_cal_cap(self, p):
-        if len(p) < 2:
-            return self._generic_raw(p)
-        max_p = p[0] * 0.5
-        auth = (p[1] >> 4) & 1
-        lines = [
-            f"• 校准能力 (Calibration Capabilities)",
-            _Html.field(f'保证功率: <b>{max_p:.1f} W</b>'),
-            _Html.field(f'鉴权硬件: <b>{"具备" if auth else "不具备"}</b>'),
-        ]
-        if len(p) > 2:
-            lines.append(_Html.field(f'附加: {_hex_bytes(p[2:])}'))
+        if len(p) < 4:
+            return f'<i>mpp_tx_cal_cap_t requires 4 bytes, got {len(p)} B</i>'
+        cap = int.from_bytes(p[:4], 'big')
+        lines = ['• mpp_tx_cal_cap_t — Calibration Capabilities']
+        lines.append(_Html.field(f'Capability mask (BE): <b>0x{cap:08X}</b>'))
         return _Html.join(lines)
 
     def _fsk_sadc(self, p):
-        return self._stream_control(p, 'SADC (PTx Aux Data Control)')
+        if len(p) < 4:
+            return f'<i>mpp_tx_sadc_t requires 4 bytes, got {len(p)} B</i>'
+        req = p[0] & 0x0F
+        stream = p[1] & 0x0F
+        param = _u16_be(p[2], p[3])
+        lines = ['• mpp_tx_sadc_t — Simultaneous Auxiliary Data Control']
+        lines.append(_Html.field(f'Request: <b>{SADC_REQUESTS.get(req, req)}</b>'))
+        lines.append(_Html.field(f'Stream: <b>{stream}</b>'))
+        lines.append(_Html.field(f'Parameter: <b>0x{param:04X}</b>'))
+        return _Html.join(lines)
+
+    def _fsk_dpcal_param(self, p):
+        if len(p) < 5:
+            return f'<i>mpp_tx_dpcal_param_t requires 5 bytes, got {len(p)} B</i>'
+        invalid = p[0] & 0x01
+        alpha = _u16_be(p[1], p[2])
+        beta = _u16_be(p[3], p[4])
+        lines = ['• mpp_tx_dpcal_param_t — Calibration Parameter']
+        lines.append(_Html.field(f'Invalid [b0]: <b>{"All invalid" if invalid else "Valid"}</b>'))
+        lines.append(_Html.field(f'DPLOSS Alpha: <b>{alpha}</b>'))
+        lines.append(_Html.field(f'DPLOSS Beta: <b>{beta}</b>'))
+        return _Html.join(lines)
 
     def _fsk_modecap(self, p):
         if len(p) < 2:
-            return self._generic_raw(p)
-        lines = [f"• 功率模式能力 (Mode Capabilities)"]
-        _Html.byte(0, 'Supported Modes', p[0], lines)
-        lines.append(_Html.field(f'BPP [Bit0]: {"✓" if p[0] & 0x01 else "—"}'))
-        lines.append(_Html.field(f'EPP [Bit1]: {"✓" if p[0] & 0x02 else "—"}'))
-        lines.append(_Html.field(f'MPP [Bit2]: {"✓" if p[0] & 0x04 else "—"}'))
-        _Html.byte(1, 'Max MPP Power', p[1], lines)
-        lines.append(_Html.field(f'MPP 最大功率: <b>{p[1] * 0.5:.1f} W</b>'))
+            return f'<i>mpp_tx_modecap_t requires ≥2 bytes, got {len(p)} B</i>'
+        caps = p[1]
+        lines = ['• mpp_tx_modecap_t — Power Modes Capabilities']
+        _Html.fbyte(1, 'capabilities', p[1], lines)
+        for bit, mode in [(0, 'CPM'), (1, 'NPM'), (2, 'LPM'), (3, 'HPM')]:
+            lines.append(_Html.field(f'{mode} [Bit{bit}]: <b>{"✓" if caps & (1 << bit) else "—"}</b>'))
         return _Html.join(lines)
 
     def _fsk_plap(self, p):
-        return self._pla_params(p, 'PLAP (PTx Power Loss Accounting Params)')
+        if len(p) < 3:
+            return f'<i>mpp_tx_plap_t requires ≥3 bytes, got {len(p)} B</i>'
+        g_coil_r = _s16_be(p[1], p[2])
+        lines = ['• mpp_tx_plap_t — Power Loss Accounting Parameters']
+        lines.append(_Html.field(f'G_coil_r: <b>{g_coil_r}</b>'))
+        return _Html.join(lines)
 
     def _fsk_gmp(self, p):
-        if len(p) < 2:
-            return self._generic_raw(p)
-        lines = [f"• 增益测量参数 (Gain Measurement)"]
-        gain = (p[0] << 8) | p[1]
-        lines.append(_Html.field(f'增益值: <b>{gain}</b>'))
-        if len(p) > 2:
-            lines.append(_Html.field(f'附加: {_hex_bytes(p[2:])}'))
+        if len(p) < 6:
+            return f'<i>mpp_tx_gmp_t requires 6 bytes, got {len(p)} B</i>'
+        c_npm = _u16_be(p[0], p[1])
+        c_hpm = _u16_be(p[2], p[3])
+        c_cpm = _u16_be(p[4], p[5])
+        lines = ['• mpp_tx_gmp_t — Gain Measurement Parameters']
+        lines.append(_Html.field(f'G_NPM_C0: <b>{c_npm}</b>'))
+        lines.append(_Html.field(f'G_HPM_C0: <b>{c_hpm}</b>'))
+        lines.append(_Html.field(f'G_CPM_C0: <b>{c_cpm}</b>'))
         return _Html.join(lines)
 
     def _fsk_xid_ecap(self, p):
         if len(p) < 1:
             return self._insufficient()
-        sub = p[0]
-        sub_map = {0x00: 'Extended PTx Identification', 0x01: 'Extended PTx Capabilities'}
-        lines = [
-            f"• <span style='color:{_Html.O}'>Sub-type:</span> 0x{sub:02X} — <b>{sub_map.get(sub, '保留')}</b>",
-        ]
-        if sub == 0x00 and len(p) >= 5:
-            ptmc = (p[1] << 8) | p[2]
-            lines.append(_Html.field(
-                f'PTMC: <b>0x{ptmc:04X}</b> ({_ptmc_vendor(ptmc)})'
-            ))
-            lines.append(_Html.field(f'PTx ID: {_hex_bytes(p[3:7]) if len(p) >= 7 else _hex_bytes(p[3:])}'))
-        elif sub == 0x01 and len(p) >= 2:
-            lines.append(_Html.field(f'MPP 支持: {"是" if p[1] & 0x01 else "否"}'))
-            lines.append(_Html.field(f'Auth 支持: {"是" if p[1] & 0x02 else "否"}'))
-            if len(p) >= 3:
-                lines.append(_Html.field(f'最大功率: <b>{p[2] * 0.5:.1f} W</b>'))
-        else:
-            lines.append(_Html.field(f'数据: {_hex_bytes(p[1:])}'))
+        selector = (p[0] >> 4) & 0x0F
+        if selector == 0x00:
+            return self._fsk_ptx_xid(p)
+        if selector == 0x01:
+            return self._fsk_ptx_ecap(p)
+        lines = [f'• mpp_tx_xid/ecap — selector = <b>0x{selector:X}</b> (reserved)']
+        _Html.fbyte(0, 'B0 (selector nibble)', p[0], lines)
+        if len(p) > 1:
+            lines.append(_Html.field(f'Data: {_hex_bytes(p[1:])}'))
+        return _Html.join(lines)
+
+    def _fsk_ptx_xid(self, p):
+        """0x8F:0 — Extended PTx Identification (Figure 152, 9 B)."""
+        if len(p) < 9:
+            return f'<i>mpp_tx_xid_t requires 9 bytes, got {len(p)} B</i>' + (
+                f'<br>{self._generic_raw(p)}' if p else ''
+            )
+        app = (p[0] >> 1) & 0x01
+        uid_flag = p[0] & 0x01
+        dev_id = ((p[4] & 0x7F) << 13) | (p[5] << 5) | ((p[6] >> 3) & 0x1F)
+        mfg_rsvd = ((p[6] & 0x07) << 16) | (p[7] << 8) | p[8]
+        lines = ['• mpp_tx_xid_t — Extended PTx Identification (0x8F:0)']
+        _Html.fbyte(0, 'B0 selector/APP/UID', p[0], lines)
+        lines.append(_Html.field(f'Selector [b7-b4]: <b>0</b>'))
+        lines.append(_Html.field(f'APP [b1]: <b>{PTX_XID_APP.get(app, app)}</b>'))
+        lines.append(_Html.field(
+            f'UID [b0]: <b>{"Manufacturer-generated unique ID" if uid_flag else "Non-unique ID"}</b>'
+        ))
+        for i in (1, 2, 3):
+            _Html.fbyte(i, 'reserved', p[i], lines)
+        _Html.fbyte(4, 'B4 device_id + rsvd', p[4], lines)
+        _Html.fbyte(5, 'B5 device_id', p[5], lines)
+        _Html.fbyte(6, 'B6 device_id + mfg_rsvd', p[6], lines)
+        lines.append(_Html.field(f'Device Identifier [20-bit]: <b>0x{dev_id:05X}</b> ({dev_id})'))
+        _Html.fbyte(7, 'B7 mfg_reserved', p[7], lines)
+        _Html.fbyte(8, 'B8 mfg_reserved', p[8], lines)
+        lines.append(_Html.field(f'Mfg Reserved [19-bit]: <b>0x{mfg_rsvd:05X}</b>'))
+        return _Html.join(lines)
+
+    def _fsk_ptx_ecap(self, p):
+        """0x8F:1 — Extended PTx Capabilities ECAP (Figure 153 + Table 93, 9 B)."""
+        if len(p) < 9:
+            return f'<i>mpp_tx_ecap_t requires 9 bytes, got {len(p)} B</i>' + (
+                f'<br>{self._generic_raw(p)}' if p else ''
+            )
+        pot_pwr = p[2]
+        neg_pwr = p[4]
+        cal = (p[5] >> 4) & 0x03
+        plr = p[5] & 0x0F
+        src = (p[6] >> 6) & 0x03
+        buf_n = (p[6] >> 2) & 0x03
+        streams = p[6] & 0x03
+        buf_bytes = 16 * (1 << buf_n)
+        lines = ['• mpp_tx_ecap_t — Extended PTx Capabilities (0x8F:1)']
+        _Html.fbyte(0, 'B0 selector', p[0], lines)
+        lines.append(_Html.field(f'Selector [b7-b4]: <b>1</b>'))
+        _Html.fbyte(1, 'B1 reserved', p[1], lines)
+        _Html.fbyte(2, 'B2 potential_load_power', p[2], lines)
+        lines.append(_Html.field(
+            f'Potential Load Power: <b>{pot_pwr * 100} mW</b> ({pot_pwr * 0.1:.1f} W)'
+        ))
+        _Html.fbyte(3, 'B3 reserved', p[3], lines)
+        _Html.fbyte(4, 'B4 negotiable_load_power', p[4], lines)
+        lines.append(_Html.field(
+            f'Negotiable Load Power: <b>{neg_pwr * 100} mW</b> ({neg_pwr * 0.1:.1f} W)'
+        ))
+        _Html.fbyte(5, 'B5 CAL + power_limit_reason', p[5], lines)
+        lines.append(_Html.field(
+            f'CAL [b5-b4]: <b>{"Calibration protocol supported" if cal else "Not supported"}</b>'
+        ))
+        lines.append(_Html.field(
+            f'Power Limit Reason [b3-b0]: <b>{PTX_POWER_LIMIT_REASON.get(plr, f"Reserved ({plr})")}</b>'
+        ))
+        _Html.fbyte(6, 'B6 SRC + buffer + streams', p[6], lines)
+        lines.append(_Html.field(
+            f'SRC [b7-b6]: <b>{"Limited power source (e.g. battery)" if src else "Unlimited power source"}</b>'
+        ))
+        lines.append(_Html.field(
+            f'Buffer Size [b3-b2]: N=<b>{buf_n}</b> → <b>{buf_bytes} B</b> (16×2^N)'
+        ))
+        lines.append(_Html.field(f'Concurrent Data Streams [b1-b0]: <b>{streams}</b>'))
+        for i in (7, 8):
+            _Html.fbyte(i, 'reserved', p[i], lines)
+        lines.append(_Html.field(
+            '<i>PRx response: DSR/ACK (confirm power limit) or NEGO (start negotiation)</i>'
+        ))
         return _Html.join(lines)
 
     def _fsk_modexcap(self, p):
-        if len(p) < 2:
-            return self._generic_raw(p)
-        lines = [f"• 扩展模式能力 (Extended Mode Cap)"]
-        for i, b in enumerate(p[:6]):
-            _Html.byte(i, f'Cap Byte {i}', b, lines)
+        if len(p) < 12:
+            return f'<i>mpp_tx_modexcap_t requires 12 bytes, got {len(p)} B</i>'
+        modes = [('CPM', 0), ('LPM', 3), ('NPM', 6), ('HPM', 9)]
+        lines = ['• mpp_tx_modexcap_t — Power Modes Extended Capabilities']
+        for name, off in modes:
+            if off + 2 < len(p):
+                v0, v1, pwr = p[off], p[off + 1], p[off + 2]
+                lines.append(_Html.field(
+                    f'{name}: V_ref0=<b>{v0}</b>, V_ref1=<b>{v1}</b>, '
+                    f'Potential=<b>{pwr * 100} mW</b> ({pwr * 0.1:.1f} W)'
+                ))
         return _Html.join(lines)
 
     # ------------------------------------------------------------------
     # 通用辅助
     # ------------------------------------------------------------------
 
-    def _stream_control(self, p, title):
-        if len(p) < 1:
-            return f'<i>{title}: 载荷不足</i>'
-        lines = [f"• {title}"]
-        _Html.byte(0, 'Control', p[0], lines)
-        lines.append(_Html.field(f'Stream ID [Bit0-4]: <b>{p[0] & 0x1F}</b>'))
-        lines.append(_Html.field(f'Close Stream [Bit5]: <b>{"是" if p[0] & 0x20 else "否"}</b>'))
-        if len(p) > 1:
-            lines.append(_Html.field(f'参数: {_hex_bytes(p[1:])}'))
-        return _Html.join(lines)
-
-    def _pla_params(self, p, title):
-        if len(p) < 4:
-            return f'<i>{title}: 需要 ≥4 字节</i>' + (f'<br>{self._generic_raw(p)}' if p else '')
-        lines = [f"• {title} ({len(p)} B)"]
-        for i in range(0, min(len(p), 8), 2):
-            if i + 1 < len(p):
-                val = (p[i] << 8) | p[i + 1]
-                lines.append(_Html.field(f'Param {i // 2}: 0x{p[i]:02X}{p[i+1]:02X} = <b>{val}</b>'))
-        if len(p) > 8:
-            lines.append(_Html.field(f'… {_hex_bytes(p[8:])}'))
-        return _Html.join(lines)
-
     def _generic_prop(self, p):
         if not p:
-            return f'<i>{tr("qi.prop_no_payload")}</i>'
-        hex_part = f'<span style="color:#94A3B8">{_hex_bytes(p, 16)}</span>'
+            return f'<i>{_qi_tr("qi.prop_no_payload")}</i>'
+        hex_part = f'<span style="color:{_qi_colors()["hex"]}">{_hex_bytes(p, 16)}</span>'
         return (
-            f"• 专有 / 厂商扩展包<br>"
-            f"{_Html.field(f'长度: {len(p)} B')}<br>"
-            f"{_Html.field('HEX: ' + hex_part)}"
+            f'• Proprietary / vendor extension packet<br>'
+            f'{_Html.field(f"Length: {len(p)} B")}<br>'
+            f'{_Html.field("HEX: " + hex_part)}'
         )
-
-    def _generic_structured(self, p, label):
-        if not p:
-            return f'<i>{label} — 无载荷</i>'
-        lines = [f"• {label} ({len(p)} B)"]
-        for i, b in enumerate(p[:10]):
-            _Html.byte(i, f'Data', b, lines)
-        if len(p) > 10:
-            lines.append(_Html.field(f'… {_hex_bytes(p[10:])}'))
-        return _Html.join(lines)
 
     def _generic_raw(self, p):
         if not p:
-            return f'<i>{tr("qi.empty_pkt")}</i>'
-        lines = [f"• 原始载荷 ({len(p)} B)"]
+            return f'<i>{_qi_tr("qi.empty_pkt")}</i>'
+        lines = [f'• Raw payload ({len(p)} B)']
         for i, b in enumerate(p[:12]):
-            _Html.byte(i, 'Data', b, lines)
+            _Html.byte(i, 'data', b, lines)
         if len(p) > 12:
-            lines.append(_Html.field(f'… <span style="color:#94A3B8">{_hex_bytes(p[12:])}</span>'))
+            lines.append(_Html.field(f'… <span style="color:{_qi_colors()["hex"]}">{_hex_bytes(p[12:])}</span>'))
         return _Html.join(lines)
+
+
+# Guard against accidental renames (e.g. bulk tr( → _t( corrupting _fsk_eptr).
+_QI22_DECODER_METHODS = frozenset({
+    '_ask_ss', '_ask_ept', '_ask_ce', '_ask_rp8', '_ask_chs', '_ask_pch', '_ask_grq',
+    '_ask_nego', '_ask_msr', '_ask_dsr', '_ask_cloak', '_ask_xce', '_ask_srq', '_ask_fod',
+    '_ask_cal_op', '_ask_adc', '_ask_get', '_ask_eds', '_ask_cal_enter', '_ask_cal_exit',
+    '_ask_rp', '_ask_cfg', '_ask_wpid', '_ask_id', '_ask_xid', '_ask_ecap', '_ask_sdsr',
+    '_ask_sadc', '_ask_kest_coeff', '_ask_report_pla', '_ask_plap', '_ask_pla2', '_ask_plap2',
+    '_ask_cal_capture', '_ask_matedq_coeff', '_ask_adt', '_ask_mpp_xid', '_ask_bpp_xid',
+    '_ask_report_58', '_ask_pla_58',
+    '_fsk_bare_pattern', '_fsk_null', '_fsk_err', '_fsk_eptr', '_fsk_msn',
+    '_fsk_cal_capture_rsp', '_fsk_dsr', '_fsk_cal_op_rsp', '_fsk_cloak_rcs', '_fsk_chs',
+    '_fsk_mss', '_fsk_adc', '_fsk_get', '_fsk_eds', '_fsk_ptx_id', '_fsk_cap', '_fsk_xcap',
+    '_fsk_cal_enter_rsp', '_fsk_3f', '_fsk_matedq_res', '_fsk_cal_cap', '_fsk_sadc',
+    '_fsk_dpcal_param', '_fsk_modecap', '_fsk_plap', '_fsk_gmp', '_fsk_xid_ecap',
+    '_fsk_ptx_xid', '_fsk_ptx_ecap', '_fsk_modexcap',
+    '_generic_prop', '_generic_raw',
+})
+
+
+def _validate_qi22_decoder_bindings() -> None:
+    missing = sorted(name for name in _QI22_DECODER_METHODS if not hasattr(Qi22Parser, name))
+    if missing:
+        raise RuntimeError(f'Qi22Parser decoder binding check failed: missing {missing}')
+
+
+_validate_qi22_decoder_bindings()

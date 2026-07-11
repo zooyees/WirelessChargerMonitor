@@ -87,8 +87,10 @@ STRINGS: dict[str, tuple[str, str]] = {
     'log.split_tooltip': ('启用后将报文按条件分到多个窗口显示', 'Route packets into separate panes by filter criteria'),
     'log.panes_tooltip': ('分窗数量（启用 Split View 后有效）', 'Number of panes (when Split View is enabled)'),
     'log.filter_tooltip': (
-        '完整字符串匹配；多个关键词用 | 分隔（保留空格）；按 Enter 刷新显示',
-        'Exact substring match; separate multiple terms with | (spaces preserved); press Enter to apply',
+        '完整字符串匹配；多个关键词用 | 分隔（保留空格）；按 Enter 应用；'
+        '打开文件时结果显示在下方，双击可跳转原文',
+        'Exact substring match; separate multiple terms with | (spaces preserved); press Enter; '
+        'for opened files, results appear below — double-click to jump',
     ),
     'log.split_count': ('分窗数', 'Panes'),
     'log.same_page': ('同页显示', 'Side-by-Side'),
@@ -103,6 +105,13 @@ STRINGS: dict[str, tuple[str, str]] = {
     'log.auto_parse_tooltip': (
         '悬停报文行时显示 Qi 协议解析；关闭后不进行解析以节省 CPU',
         'Show Qi packet decode on hover; when off, no parsing runs to save CPU',
+    ),
+    'log.search_results': ('搜索结果', 'Search Results'),
+    'log.search_results_count': ('搜索结果 ({n})', 'Search Results ({n})'),
+    'log.search_results_close': ('关闭', 'Close'),
+    'log.search_results_tooltip': (
+        '双击某行可在上方原文中跳转到对应行',
+        'Double-click a row to jump to that line in the document above',
     ),
     'log.tab.close_current': ('关闭当前', 'Close Current'),
     'log.tab.close_all': ('关闭所有', 'Close All'),
