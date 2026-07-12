@@ -1,0 +1,222 @@
+[
+  {
+    "raw": "[12:25:42.514] ASK 51 3E 00 00 00 00 F",
+    "direction": "ASK",
+    "header": "0x51",
+    "name": "CFG",
+    "description": "Configuration",
+    "profile": "bpp",
+    "payload_hex": "3E00000000",
+    "checksum": null,
+    "fields": [
+      {
+        "name": "Byte 0",
+        "value": 62,
+        "unit": "",
+        "raw": "0x3E"
+      },
+      {
+        "name": "Byte 1",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 2",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 3",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 4",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      }
+    ],
+    "unknown": false,
+    "parse_error": null
+  },
+  {
+    "raw": "[12:25:42.576] ASK 51 3E 00 00 00 00 F",
+    "direction": "ASK",
+    "header": "0x51",
+    "name": "CFG",
+    "description": "Configuration",
+    "profile": "bpp",
+    "payload_hex": "3E00000000",
+    "checksum": null,
+    "fields": [
+      {
+        "name": "Byte 0",
+        "value": 62,
+        "unit": "",
+        "raw": "0x3E"
+      },
+      {
+        "name": "Byte 1",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 2",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 3",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 4",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      }
+    ],
+    "unknown": false,
+    "parse_error": null
+  },
+  {
+    "raw": "[12:25:42.638] ASK 51 3E 00 00 00 00 F",
+    "direction": "ASK",
+    "header": "0x51",
+    "name": "CFG",
+    "description": "Configuration",
+    "profile": "bpp",
+    "payload_hex": "3E00000000",
+    "checksum": null,
+    "fields": [
+      {
+        "name": "Byte 0",
+        "value": 62,
+        "unit": "",
+        "raw": "0x3E"
+      },
+      {
+        "name": "Byte 1",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 2",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 3",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 4",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      }
+    ],
+    "unknown": false,
+    "parse_error": null
+  },
+  {
+    "raw": "[12:25:42.700] ASK 51 3E 00 00 00 00 F",
+    "direction": "ASK",
+    "header": "0x51",
+    "name": "CFG",
+    "description": "Configuration",
+    "profile": "bpp",
+    "payload_hex": "3E00000000",
+    "checksum": null,
+    "fields": [
+      {
+        "name": "Byte 0",
+        "value": 62,
+        "unit": "",
+        "raw": "0x3E"
+      },
+      {
+        "name": "Byte 1",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 2",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 3",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 4",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      }
+    ],
+    "unknown": false,
+    "parse_error": null
+  },
+  {
+    "raw": "[12:25:42.762] ASK 51 3E 00 00 00 00 F",
+    "direction": "ASK",
+    "header": "0x51",
+    "name": "CFG",
+    "description": "Configuration",
+    "profile": "bpp",
+    "payload_hex": "3E00000000",
+    "checksum": null,
+    "fields": [
+      {
+        "name": "Byte 0",
+        "value": 62,
+        "unit": "",
+        "raw": "0x3E"
+      },
+      {
+        "name": "Byte 1",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 2",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 3",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      },
+      {
+        "name": "Byte 4",
+        "value": 0,
+        "unit": "",
+        "raw": "0x00"
+      }
+    ],
+    "unknown": false,
+    "parse_error": null
+  }
+]

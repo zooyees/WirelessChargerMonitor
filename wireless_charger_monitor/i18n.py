@@ -92,6 +92,11 @@ STRINGS: dict[str, tuple[str, str]] = {
         'Exact substring match; separate multiple terms with | (spaces preserved); press Enter; '
         'for opened files, results appear below — double-click to jump',
     ),
+    'log.case_sensitive': ('区分大小写', 'Case sensitive'),
+    'log.case_sensitive_tooltip': (
+        '勾选后搜索严格区分大小写；未勾选时不区分大小写',
+        'When checked, search matches letter case exactly; otherwise case-insensitive',
+    ),
     'log.split_count': ('分窗数', 'Panes'),
     'log.same_page': ('同页显示', 'Side-by-Side'),
     'log.same_page_tooltip': (

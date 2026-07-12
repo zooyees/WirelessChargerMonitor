@@ -10,7 +10,7 @@
     "render_interval_ms": 100,
     "chart_max_points": 500,
     "default_window_size_sec": 60.0,
-    "language": "en",
+    "language": "zh",
     "menu_bar_auto_hide": false,
     "theme": "light"
   },
@@ -44,8 +44,12 @@
     "max_reconnect_attempts": 5
   },
   "log_monitor": {
-    "default_filename": "Live Packet Log",
+    "default_filename": "实时报文",
     "save_dir": "logs",
-    "file_extension": "txt"
+    "file_extension": "txt",
+    "open_log_files": [
+      "d:\\windlink\\windlink\\wiparse\\logs\\首尔诺双充方案 16pm vctxovp 误触发.txt",
+      "d:\\windlink\\windlink\\wiparse\\logs\\实时报文.txt"
+    ]
   }
 }

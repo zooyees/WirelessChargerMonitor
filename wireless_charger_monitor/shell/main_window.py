@@ -197,6 +197,105 @@ class MonitorWindow(QMainWindow):
             logger.warning("Failed to restore chart view from database", exc_info=True)
 
         self._retranslate_ui()
+        self._restore_open_log_files()
+
+    def _saved_open_log_files(self):
+        raw = config_module.CONFIG.get('log_monitor', {}).get('open_log_files', [])
+        if not isinstance(raw, list):
+            return []
+        paths = []
+        seen = set()
+        for item in raw:
+            if not item or not isinstance(item, str):
+                continue
+            norm = os.path.normcase(os.path.abspath(item))
+            if norm in seen:
+                continue
+            seen.add(norm)
+            paths.append(norm)
+        return paths
+
+    def _persist_open_log_files(self, paths=None):
+        if paths is None:
+            paths = self._collect_open_log_file_paths()
+        update_config({'log_monitor': {'open_log_files': paths}})
+
+    def _collect_open_log_file_paths(self):
+        paths = []
+        tabs = self.ui.log_file_tabs
+        for index in range(tabs.count()):
+            page = tabs.widget(index)
+            if isinstance(page, LogTabPage) and not page.live and page.filepath:
+                paths.append(os.path.normcase(os.path.abspath(page.filepath)))
+        return paths
+
+    def _register_open_log_file(self, path):
+        norm = os.path.normcase(os.path.abspath(path))
+        paths = [p for p in self._saved_open_log_files() if p != norm]
+        paths.append(norm)
+        self._persist_open_log_files(paths)
+
+    def _unregister_open_log_file(self, path):
+        if not path:
+            return
+        norm = os.path.normcase(os.path.abspath(path))
+        paths = [p for p in self._saved_open_log_files() if p != norm]
+        self._persist_open_log_files(paths)
+
+    def _open_log_file(self, path, *, show_errors=True, focus=True):
+        norm = os.path.normcase(os.path.abspath(path))
+        existing = self._log_tabs_by_path.get(norm)
+        if existing is not None and self.ui.log_file_tabs.indexOf(existing) >= 0:
+            if focus:
+                self.ui.log_file_tabs.setCurrentWidget(existing)
+            return True
+        try:
+            if LogTabPage.should_stream_load(path):
+                page = self._create_log_tab_page(filepath=norm)
+
+                def _progress(count):
+                    self._set_status(tr('status.loading_log_lines', n=count), 'info')
+
+                page.load_file_streaming(path, status_callback=_progress)
+            else:
+                with open(path, 'r', encoding='utf-8-sig', errors='replace') as f:
+                    content = f.read()
+                page = self._create_log_tab_page(filepath=norm)
+                page.set_content(content)
+        except OSError as e:
+            if show_errors:
+                QMessageBox.warning(
+                    self,
+                    tr('dialog.open_failed'),
+                    tr('msg.cannot_read_file', path=path, error=e),
+                )
+            self._unregister_open_log_file(path)
+            return False
+        title = os.path.splitext(os.path.basename(path))[0] or os.path.basename(path)
+        self.ui.log_file_tabs.addTab(page, title)
+        if focus:
+            self.ui.log_file_tabs.setCurrentWidget(page)
+        self._refresh_log_file_tabs()
+        self._log_tabs_by_path[norm] = page
+        self._register_open_log_file(norm)
+        return True
+
+    def _restore_open_log_files(self):
+        paths = self._saved_open_log_files()
+        if not paths:
+            return
+        opened = 0
+        kept = []
+        for path in paths:
+            if self._open_log_file(path, show_errors=True, focus=False):
+                kept.append(os.path.normcase(os.path.abspath(path)))
+                opened += 1
+        if kept != paths:
+            self._persist_open_log_files(kept)
+        if opened:
+            first_file_idx = 1 if self.ui.log_file_tabs.count() > 1 else 0
+            self.ui.log_file_tabs.setCurrentIndex(first_file_idx)
+            self._set_status(tr('status.opened_logs', count=opened), 'info')
 
     def _setup_baudrate_combo(self):
         combo = self.ui.cb_baudrate
@@ -668,6 +767,8 @@ class MonitorWindow(QMainWindow):
             QMessageBox.warning(self, tr('dialog.notice'), tr('msg.cannot_close_live_tab'))
             return
         path = page.filepath
+        if path:
+            self._unregister_open_log_file(path)
         if path and self._log_tabs_by_path.get(path) is page:
             del self._log_tabs_by_path[path]
         if page is self._live_log_page:
@@ -687,33 +788,8 @@ class MonitorWindow(QMainWindow):
             return
         opened = 0
         for path in paths:
-            norm = os.path.normcase(os.path.abspath(path))
-            existing = self._log_tabs_by_path.get(norm)
-            if existing is not None and self.ui.log_file_tabs.indexOf(existing) >= 0:
-                self.ui.log_file_tabs.setCurrentWidget(existing)
-                continue
-            try:
-                if LogTabPage.should_stream_load(path):
-                    page = self._create_log_tab_page(filepath=norm)
-
-                    def _progress(count):
-                        self._set_status(tr('status.loading_log_lines', n=count), 'info')
-
-                    page.load_file_streaming(path, status_callback=_progress)
-                else:
-                    with open(path, 'r', encoding='utf-8-sig', errors='replace') as f:
-                        content = f.read()
-                    page = self._create_log_tab_page(filepath=norm)
-                    page.set_content(content)
-            except OSError as e:
-                QMessageBox.warning(self, tr('dialog.open_failed'), tr('msg.cannot_read_file', path=path, error=e))
-                continue
-            title = os.path.splitext(os.path.basename(path))[0] or os.path.basename(path)
-            self.ui.log_file_tabs.addTab(page, title)
-            self.ui.log_file_tabs.setCurrentWidget(page)
-            self._refresh_log_file_tabs()
-            self._log_tabs_by_path[norm] = page
-            opened += 1
+            if self._open_log_file(path):
+                opened += 1
         if opened:
             self._set_status(tr('status.opened_logs', count=opened), 'info')
 
@@ -1790,4 +1866,5 @@ class MonitorWindow(QMainWindow):
             self.fetch_worker.stop()
         if hasattr(self.ui, 'tektronix_scope'):
             self.ui.tektronix_scope.release_scopes()
+        self._persist_open_log_files()
         event.accept()

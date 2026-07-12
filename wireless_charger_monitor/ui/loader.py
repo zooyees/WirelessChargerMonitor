@@ -7,7 +7,6 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QFrame, QSizePolicy, QVBoxLayout, QWidget
 
-from ..apps.tektronix_scope import TektronixScopePanel
 from ..apps.waveform_scope import attach_waveform_charts
 from .tab_utils import refresh_tab_widget
 
@@ -243,6 +242,8 @@ class Ui_MonitorWindow:
         refresh_tab_widget(tabs, preset='main')
 
     def _setup_tektronix_panel(self):
+        from ..apps.tektronix_scope.panel import TektronixScopePanel
+
         self.tektronix_panel = QFrame()
         self.tektronix_panel.setObjectName('tektronix_panel')
         self.tektronix_panel.setFrameShape(QFrame.NoFrame)

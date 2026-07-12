@@ -1,0 +1,9 @@
+{
+  "session_id": 42,
+  "session_uuid": "89B3BFD5",
+  "started_at": "2026-06-30 20:17:18",
+  "ended_at": "2026-06-30 20:27:56",
+  "port": "COM12",
+  "baudrate": 2000000,
+  "demo_mode": false
+}

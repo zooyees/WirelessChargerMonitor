@@ -108,25 +108,36 @@ def _ptmc_vendor(prmc: int) -> str:
 
 
 def _split_payload_checksum(header: int, body: list[int], overrides=None):
+    payload, cs, ok = _split_payload_checksum_info(header, body, overrides)
+    if cs is None:
+        return payload, None, 'N/A'
+    c = _qi_colors()
+    status = (
+        f"<span style='color:{c['ok']};'>✅ OK</span>"
+        if ok
+        else f"<span style='color:{c['err']};'>❌ ERR</span>"
+    )
+    return payload, cs, status
+
+
+def _split_payload_checksum_info(header: int, body: list[int], overrides=None):
+    """Return (payload, checksum_or_None, ok_or_None)."""
     if not body:
-        return [], None, 'N/A'
+        return [], None, None
     msg_len = get_payload_len(header) if overrides is None or header not in overrides else overrides[header]
     if len(body) == msg_len:
-        return body, None, 'N/A'
+        return body, None, None
     if len(body) >= msg_len + 1:
         payload, cs = body[:msg_len], body[msg_len]
         calc = header
         for b in payload:
             calc ^= b
-        ok = calc == cs
-        c = _qi_colors()
-        status = (
-            f"<span style='color:{c['ok']};'>✅ OK</span>"
-            if ok
-            else f"<span style='color:{c['err']};'>❌ ERR</span>"
-        )
-        return payload, cs, status
-    return body, None, 'N/A'
+        return payload, cs, calc == cs
+    return body, None, None
+
+
+def _field(name: str, value, unit: str = '', raw: str | None = None) -> dict:
+    return {'name': name, 'value': value, 'unit': unit, 'raw': raw}
 
 
 class _Html:
@@ -187,8 +198,155 @@ class Qi22Parser:
             return None
         return self._parse_message_cached(normalized + ' ')
 
+    def parse_message_dict(self, line: str) -> dict | None:
+        """Structured JSON-friendly parse result (no HTML)."""
+        if not line:
+            return None
+        normalized = re.sub(r'\s+', ' ', line).strip()
+        if not normalized:
+            return None
+        try:
+            return self._parse_message_dict_impl(normalized)
+        except Exception as exc:
+            return {
+                'raw': normalized,
+                'direction': None,
+                'header': None,
+                'name': None,
+                'profile': None,
+                'payload_hex': None,
+                'checksum': None,
+                'fields': [],
+                'unknown': True,
+                'parse_error': str(exc),
+            }
+
     def clear_parse_cache(self) -> None:
         self._parse_message_cached.cache_clear()
+
+    def _extract_hex_region(self, line: str):
+        if 'ASK ' in line:
+            start = line.find('ASK ') + 4
+            end = line.find(' F ', start)
+            if end != -1:
+                return line[start:end].strip(), 'ASK'
+        if 'FSK ' in line:
+            start = line.find('FSK ') + 4
+            end = line.find(' F ', start)
+            if end == -1:
+                end = line.find('(', start)
+            hex_part = line[start:end].strip() if end != -1 else line[start:].strip()
+            return hex_part, 'FSK'
+        return None, None
+
+    def _parse_message_dict_impl(self, line: str) -> dict | None:
+        # Match HTML path: trailing space helps locate " F " terminator.
+        hex_str, p_type = self._extract_hex_region(line if line.endswith(' ') else line + ' ')
+        if not hex_str or not p_type:
+            return None
+        raw = [int(x, 16) for x in hex_str.replace('0x', '').replace(',', ' ').split() if x]
+        if not raw:
+            return None
+
+        header = raw[0]
+        overrides = ASK_MSG_SIZE_OVERRIDE if p_type == 'ASK' else None
+        payload, cs, cs_ok = _split_payload_checksum_info(header, raw[1:], overrides)
+
+        registry = ASK_PACKETS if p_type == 'ASK' else FSK_PACKETS
+        entry = registry.get(header)
+        unknown = entry is None
+        if entry:
+            name, desc, profile = entry
+        else:
+            name, desc, profile = f'UNK_0x{header:02X}', _qi_tr('qi.unknown_pkt'), None
+
+        fields = self._structured_fields(p_type, header, payload)
+        return {
+            'raw': line.strip(),
+            'direction': p_type,
+            'header': f'0x{header:02X}',
+            'name': name,
+            'description': desc,
+            'profile': profile,
+            'payload_hex': ''.join(f'{b:02X}' for b in payload),
+            'checksum': (
+                None if cs is None else {'value': f'0x{cs:02X}', 'ok': bool(cs_ok)}
+            ),
+            'fields': fields,
+            'unknown': unknown,
+            'parse_error': None,
+        }
+
+    def _structured_fields(self, p_type: str, header: int, payload: list[int]) -> list[dict]:
+        if p_type == 'ASK':
+            mapped = self._ask_fields(header, payload)
+            if mapped is not None:
+                return mapped
+        else:
+            mapped = self._fsk_fields(header, payload)
+            if mapped is not None:
+                return mapped
+        return [
+            _field(f'Byte {i}', b, '', f'0x{b:02X}')
+            for i, b in enumerate(payload)
+        ]
+
+    def _ask_fields(self, header: int, p: list[int]) -> list[dict] | None:
+        if header == 0x01 and len(p) >= 1:
+            return [
+                _field('signal_strength', p[0], '', f'0x{p[0]:02X}'),
+                _field('signal_strength_pct', round(p[0] / 255 * 100, 2), '%'),
+            ]
+        if header == 0x02 and len(p) >= 1:
+            reason = EPT_REASONS.get(p[0], f'Reserved code 0x{p[0]:02X}')
+            return [
+                _field('reason_code', p[0], '', f'0x{p[0]:02X}'),
+                _field('reason', reason),
+            ]
+        if header == 0x03 and len(p) >= 1:
+            return [_field('Control Error', _s8(p[0]), '', f'0x{p[0]:02X}')]
+        if header == 0x04 and len(p) >= 1:
+            return [
+                _field('received_power', p[0], '', f'0x{p[0]:02X}'),
+                _field('received_power_pct', round(p[0] / 128 * 100, 2), '% MaxPower'),
+            ]
+        if header == 0x05 and len(p) >= 1:
+            return [_field('charge_status', p[0] if p[0] <= 100 else None, '%' if p[0] <= 100 else '', f'0x{p[0]:02X}')]
+        if header == 0x06 and len(p) >= 1:
+            return [_field('hold_off_time', p[0], 'ms', f'0x{p[0]:02X}')]
+        if header == 0x31 and len(p) >= 2:
+            mode = (p[0] >> 0) & 0x07 if p else 0
+            # Prefer existing RP decode values when possible
+            val = _u16_be(p[0], p[1]) if len(p) >= 2 else None
+            fields = [_field('rp_raw', val, '', f'0x{val:04X}' if val is not None else None)]
+            if len(p) >= 1:
+                fields.insert(0, _field('mode', RP_MODE_LABELS.get(p[0] & 0x07, p[0] & 0x07), '', f'0x{p[0]:02X}'))
+            return fields
+        if header == 0x71 and len(p) >= 3:
+            major = p[0]
+            minor = p[1]
+            prmc = _u16_be(p[2], p[3]) if len(p) >= 4 else None
+            fields = [
+                _field('qi_major', major, '', f'0x{major:02X}'),
+                _field('qi_minor', minor, '', f'0x{minor:02X}'),
+            ]
+            if prmc is not None:
+                fields.append(_field('prmc', prmc, '', f'0x{prmc:04X}'))
+                fields.append(_field('vendor', _ptmc_vendor(prmc)))
+            return fields
+        return None
+
+    def _fsk_fields(self, header: int, p: list[int]) -> list[dict] | None:
+        if header in FSK_BARE_PATTERNS:
+            entry = FSK_BARE_PATTERNS[header]
+            label = entry[0] if isinstance(entry, tuple) else entry
+            fields = [_field('pattern', label, '', f'0x{header:02X}')]
+            if isinstance(entry, tuple) and len(entry) > 1:
+                fields.append(_field('description', entry[1]))
+            if p:
+                fields.extend(_field(f'Byte {i}', b, '', f'0x{b:02X}') for i, b in enumerate(p))
+            return fields
+        return None
 
     @lru_cache(maxsize=4096)
     def _parse_message_cached(self, line: str):

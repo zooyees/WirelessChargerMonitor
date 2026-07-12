@@ -148,15 +148,11 @@ class TektronixScopePanel(QWidget):
     def _capture_scope(self, handle):
         save_dir = self._save_dir()
         try:
-            handle.write('SAVe:IMAGe:FILEFormat PNG')
-            handle.write('SAVe:IMAGe:INKSaver ON')
-            handle.write('HARDCopy STARt')
-            img_data = handle.read_raw()
+            from .client import hardcopy_png_to_file
 
             stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             file_path = os.path.join(save_dir, f'{stamp}.png')
-            with open(file_path, 'wb') as img_file:
-                img_file.write(img_data)
+            hardcopy_png_to_file(handle, file_path)
 
             img = QImage()
             img.load(file_path)

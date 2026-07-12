@@ -58,6 +58,7 @@ DEFAULT_CONFIG = {
         'default_filename': 'Live Packet Log',
         'save_dir': 'log',
         'file_extension': 'txt',
+        'open_log_files': [],
     },
     'apps': {
         'tektronix_scope': {

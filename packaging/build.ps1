@@ -24,12 +24,20 @@ Write-Host "Using Python: $(Invoke-Python -Args @('-c', 'import sys; print(sys.e
 
 $VenvDir = Join-Path $Root '.venv'
 $VenvPy = Join-Path $VenvDir 'Scripts\python.exe'
-$ExpectedMinor = '3.13'
+$ExpectedMinor = if (Test-Path $SystemPython) {
+    & $SystemPython -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+} else {
+    '3.10'
+}
 if (Test-Path $VenvPy) {
     $VenvMinor = & $VenvPy -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
     if ($VenvMinor -ne $ExpectedMinor) {
         Write-Host "Recreating .venv (found Python $VenvMinor, need $ExpectedMinor)"
-        Remove-Item $VenvDir -Recurse -Force
+        try {
+            Remove-Item $VenvDir -Recurse -Force -ErrorAction Stop
+        } catch {
+            Write-Warning "Could not remove .venv ($($_.Exception.Message)); reusing existing environment."
+        }
     }
 }
 if (-not (Test-Path $VenvPy)) {
@@ -59,6 +67,7 @@ $PipArgs = @(
 & $VenvPy -m pip install @PipArgs -r requirements-build.txt
 & $VenvPy -c @"
 from wireless_charger_monitor.app import main
+from wireless_charger_monitor.cli.main import main as cli_main
 from wireless_charger_monitor.apps.tektronix_scope import TektronixScopePanel
 from wireless_charger_monitor.ui import MonitorWindow
 print('OK')
@@ -67,6 +76,8 @@ if (-not (Test-Path (Join-Path $Root 'Icon\WiParse.ico'))) {
     throw 'Missing Icon\WiParse.ico — place WiParse.ico under the Icon folder.'
 }
 & $VenvPy packaging/prepare_icon.py
+
+Write-Host 'Building GUI: WiParse.exe ...'
 & $VenvPy -m PyInstaller packaging/wcm_monitor.spec --noconfirm --clean
 
 $Exe = Join-Path $Root 'dist\WiParse.exe'
@@ -76,3 +87,19 @@ if (-not (Test-Path $Exe)) {
 $SizeMiB = (Get-Item $Exe).Length / 1MB
 Write-Host "Built: $Exe"
 Write-Host ("Size: {0:N2} MiB" -f $SizeMiB)
+
+Write-Host 'Building CLI: wiparse.exe ...'
+& $VenvPy -m PyInstaller packaging/wiparse_cli.spec --noconfirm --clean
+
+$CliExe = Join-Path $Root 'dist\wiparse.exe'
+if (-not (Test-Path $CliExe)) {
+    throw "Build failed: missing $CliExe"
+}
+$CliSizeMiB = (Get-Item $CliExe).Length / 1MB
+Write-Host "Built: $CliExe"
+Write-Host ("Size: {0:N2} MiB" -f $CliSizeMiB)
+
+Write-Host ''
+Write-Host 'Distribute both from dist\:'
+Write-Host '  WiParse.exe  — GUI'
+Write-Host '  wiparse.exe  — CLI (AI / scripts)'
