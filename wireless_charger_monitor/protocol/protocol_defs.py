@@ -185,10 +185,16 @@ SDSR_TYPES = {
     3: 'ERR_CRC',
 }
 
+# ASK 0x48 / FSK 0x4F — Table 63 Simultaneous Auxiliary Data Control Request
 SADC_REQUESTS = {
-    0: 'OPEN',
-    1: 'CLOSE',
-    3: 'CRC',
+    0: 'Reset all incoming and outgoing data transports (all streams)',
+    1: 'Reset incoming and outgoing data transport for stream (stream header)',
+    2: 'Close and abort data transport (stream header)',
+    3: 'Close and complete data transport (stream header)',
+    4: 'Open data transport (stream header)',
+    5: 'Reserved',
+    6: 'Reserved',
+    7: 'Reserved',
 }
 
 MATEDQ_FO_RESULT = {

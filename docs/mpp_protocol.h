@@ -103,13 +103,15 @@ typedef struct {
     uint8_t type_cmd;
 } mpp_rx_sdsr_t;
 
-/* Header: 0x48 - Simultaneous Auxiliary Data Control (SADC) 并发辅助流控制 [Size: 4 Bytes] */
+/* Header: 0x48 - Simultaneous Auxiliary Data Control (SADC) PRx并发辅助流控制 [Size: 4 Bytes]
+ * Figure 121 / Table 63. Response: PTx may continue streams; PRx opens/closes transports.
+ */
 typedef struct {
-    /** [b7-b4]: Rsvd, [b3-b0]: Request (例如 0=OPEN, 1=CLOSE, 3=CRC)。 */
+    /** [b7-b3]: Rsvd(=0), [b2-b0]: Request (Table 63: 0=reset all … 4=open, 5–7 reserved). */
     uint8_t request;
-    /** [b7-b4]: Rsvd, [b3-b0]: Stream Number (流通道号)。 */
+    /** [b7-b5]: Rsvd(=0), [b4-b0]: Stream Number (Table 30). */
     uint8_t stream_number;
-    /** 16位附加参数 (例如数据长度或CRC值，大端模式)。 */
+    /** 16-bit Parameter (Table 64), big-endian. */
     uint16_t parameter;
 } mpp_rx_sadc_t;
 
@@ -282,9 +284,11 @@ typedef struct {
     uint8_t selector;
 } mpp_tx_rcs_t;
 
-/* Header: 0x1F - Charge Status (CHS) PTx充电状态 [Size: 1 Byte] */
+/* Header: 0x1F - Charge Status (CHS) PTx充电状态 [Size: 1 Byte]
+ * Figure 137 / Table 80 — battery-equipped PTx reports charge level to PRx.
+ */
 typedef struct {
-    /** PTx自身的电池百分比 (0-100)。 */
+    /** Charge Status Value: 0–100 = %; 0xFE = temporarily unavailable; 0xFF = no battery; else reserved. */
     uint8_t charge_status;
 } mpp_tx_chs_t;
 
@@ -364,13 +368,15 @@ typedef struct {
     uint32_t capabilities;
 } mpp_tx_cal_cap_t;
 
-/* Header: 0x4F - Simultaneous Auxiliary Data Control (SADC) PTx并发流控制 [Size: 4 Bytes] */
+/* Header: 0x4F - Simultaneous Auxiliary Data Control (SADC) PTx并发流控制 [Size: 4 Bytes]
+ * Figure 147 / Table 63. Power Receiver shall respond with SDSR (0x38).
+ */
 typedef struct {
-    /** [b7-b4]: Rsvd, [b3-b0]: Request (例如 0=OPEN, 1=CLOSE)。 */
+    /** [b7-b3]: Rsvd(=0), [b2-b0]: Request (Table 63). */
     uint8_t request;
-    /** [b7-b4]: Rsvd, [b3-b0]: Stream Number (流通道号)。 */
+    /** [b7-b4]: Rsvd(=0), [b3-b0]: Stream Number (Table 30). */
     uint8_t stream_number;
-    /** 参数 (如CRC等，大端模式)。 */
+    /** 16-bit Parameter (Table 64), big-endian. */
     uint16_t parameter;
 } mpp_tx_sadc_t;
 

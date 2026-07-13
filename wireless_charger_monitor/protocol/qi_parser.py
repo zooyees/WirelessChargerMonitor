@@ -334,9 +334,43 @@ class Qi22Parser:
                 fields.append(_field('prmc', prmc, '', f'0x{prmc:04X}'))
                 fields.append(_field('vendor', _ptmc_vendor(prmc)))
             return fields
+        if header == 0x48 and len(p) >= 4:
+            req = p[0] & 0x07
+            stream = p[1] & 0x1F
+            param = _u16_be(p[2], p[3])
+            return [
+                _field('request', req, '', f'0x{req:X}'),
+                _field('request_desc', SADC_REQUESTS.get(req, f'Reserved ({req})')),
+                _field('stream_number', stream, '', f'0x{stream:02X}'),
+                _field('parameter', param, '', f'0x{param:04X}'),
+            ]
         return None
 
     def _fsk_fields(self, header: int, p: list[int]) -> list[dict] | None:
+        if header == 0x1F and len(p) >= 1:
+            v = p[0]
+            if v <= 100:
+                desc = f'{v} %'
+            elif v == 0xFE:
+                desc = 'Battery level temporarily not available'
+            elif v == 0xFF:
+                desc = 'Device does not have a battery'
+            else:
+                desc = f'Reserved (0x{v:02X})'
+            return [
+                _field('charge_status', v, '%' if v <= 100 else '', f'0x{v:02X}'),
+                _field('charge_status_desc', desc),
+            ]
+        if header == 0x4F and len(p) >= 4:
+            req = p[0] & 0x07
+            stream = p[1] & 0x0F
+            param = _u16_be(p[2], p[3])
+            return [
+                _field('request', req, '', f'0x{req:X}'),
+                _field('request_desc', SADC_REQUESTS.get(req, f'Reserved ({req})')),
+                _field('stream_number', stream, '', f'0x{stream:02X}'),
+                _field('parameter', param, '', f'0x{param:04X}'),
+            ]
         if header in FSK_BARE_PATTERNS:
             entry = FSK_BARE_PATTERNS[header]
             label = entry[0] if isinstance(entry, tuple) else entry
@@ -984,30 +1018,36 @@ class Qi22Parser:
         return _Html.join(lines)
 
     def _ask_sadc(self, p):
+        """ASK 0x48 SADC — Figure 121 / Table 63 (PRx → PTx)."""
         if len(p) < 4:
             return f'<i>mpp_rx_sadc_t requires 4 bytes, got {len(p)} B</i>'
-        req = p[0] & 0x0F
-        stream = p[1] & 0x0F
+        req = p[0] & 0x07
+        stream = p[1] & 0x1F
         param = _u16_be(p[2], p[3])
         c = _qi_colors()
-        lines = ['• mpp_rx_sadc_t — Simultaneous Auxiliary Data Control']
+        lines = ['• mpp_rx_sadc_t — Simultaneous Auxiliary Data Control (ASK 0x48)']
         _Html.byte(0, 'request', p[0], lines)
-        if p[0] & 0xF0:
+        if p[0] & 0xF8:
             lines.append(_Html.field(
                 f'<span style="color:{c["warn"]}">'
-                f'Reserved [b7-b4]: must be 0 (current 0x{(p[0] >> 4):X})</span>'
+                f'Reserved [b7-b3]: must be 0 (current 0x{(p[0] >> 3):02X})</span>'
             ))
-        lines.append(_Html.field(f'Request [b3-b0]: <b>{SADC_REQUESTS.get(req, f"0x{req:X}")}</b>'))
+        req_desc = SADC_REQUESTS.get(req, f'Reserved / undefined ({req})')
+        lines.append(_Html.field(f'Request [b2-b0]: <b>{req}</b> — {req_desc}'))
+        if req >= 5:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">Request {req} is reserved (Table 63)</span>'
+            ))
         _Html.byte(1, 'stream_number', p[1], lines)
-        if p[1] & 0xF0:
+        if p[1] & 0xE0:
             lines.append(_Html.field(
                 f'<span style="color:{c["warn"]}">'
-                f'Reserved [b7-b4]: must be 0 (current 0x{(p[1] >> 4):X})</span>'
+                f'Reserved [b7-b5]: must be 0 (current 0x{(p[1] >> 5):X})</span>'
             ))
-        lines.append(_Html.field(f'Stream Number [b3-b0]: <b>{stream}</b>'))
+        lines.append(_Html.field(f'Stream Number [b4-b0]: <b>{stream}</b> (Table 30)'))
         _Html.byte(2, 'parameter MSB', p[2], lines)
         _Html.byte(3, 'parameter LSB', p[3], lines)
-        lines.append(_Html.field(f'Parameter (BE): <b>0x{param:04X}</b> ({param})'))
+        lines.append(_Html.field(f'Parameter (BE, Table 64): <b>0x{param:04X}</b> ({param})'))
         return _Html.join(lines)
 
     def _ask_kest_coeff(self, p):
@@ -1447,13 +1487,29 @@ class Qi22Parser:
         return _Html.join(lines)
 
     def _fsk_chs(self, p):
+        """FSK 0x1F CHS — Figure 137 / Table 80 (PTx → PRx)."""
         if len(p) < 1:
             return self._insufficient()
         c = _qi_colors()
-        detail = f'PTx charge level: <b style="color:{c["ok"]}">{p[0]} %</b>' if p[0] <= 100 else f'0x{p[0]:02X}'
+        v = p[0]
+        if v <= 100:
+            detail = f'Battery charge level: <b style="color:{c["ok"]}">{v} %</b>'
+        elif v == 0xFE:
+            detail = (
+                f'<span style="color:{c["warn"]}">Battery level temporarily not available '
+                f'(0xFE)</span>'
+            )
+        elif v == 0xFF:
+            detail = f'Device does not have a battery <b>(0xFF)</b>'
+        else:
+            detail = (
+                f'<span style="color:{c["warn"]}">Reserved value 0x{v:02X} '
+                f'(PTx shall not use)</span>'
+            )
         return (
-            f"• <span style='color:{c['byte_fsk']}'>Byte 0:</span> charge_status = 0x{p[0]:02X}<br>"
-            f"{_Html.field(detail)}"
+            f"• <span style='color:{c['byte_fsk']}'>Byte 0:</span> "
+            f'Charge Status Value = 0x{v:02X}<br>'
+            f'{_Html.field(detail)}'
         )
 
     def _fsk_mss(self, p):
@@ -1591,15 +1647,37 @@ class Qi22Parser:
         return _Html.join(lines)
 
     def _fsk_sadc(self, p):
+        """FSK 0x4F SADC — Figure 147 / Table 63 (PTx → PRx); PRx shall reply SDSR 0x38."""
         if len(p) < 4:
             return f'<i>mpp_tx_sadc_t requires 4 bytes, got {len(p)} B</i>'
-        req = p[0] & 0x0F
+        req = p[0] & 0x07
         stream = p[1] & 0x0F
         param = _u16_be(p[2], p[3])
-        lines = ['• mpp_tx_sadc_t — Simultaneous Auxiliary Data Control']
-        lines.append(_Html.field(f'Request: <b>{SADC_REQUESTS.get(req, req)}</b>'))
-        lines.append(_Html.field(f'Stream: <b>{stream}</b>'))
-        lines.append(_Html.field(f'Parameter: <b>0x{param:04X}</b>'))
+        c = _qi_colors()
+        lines = ['• mpp_tx_sadc_t — Simultaneous Auxiliary Data Control (FSK 0x4F)']
+        _Html.fbyte(0, 'request', p[0], lines)
+        if p[0] & 0xF8:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7-b3]: must be 0 (current 0x{(p[0] >> 3):02X})</span>'
+            ))
+        req_desc = SADC_REQUESTS.get(req, f'Reserved / undefined ({req})')
+        lines.append(_Html.field(f'Request [b2-b0]: <b>{req}</b> — {req_desc}'))
+        if req >= 5:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">Request {req} is reserved (Table 63)</span>'
+            ))
+        _Html.fbyte(1, 'stream_number', p[1], lines)
+        if p[1] & 0xF0:
+            lines.append(_Html.field(
+                f'<span style="color:{c["warn"]}">'
+                f'Reserved [b7-b4]: must be 0 (current 0x{(p[1] >> 4):X})</span>'
+            ))
+        lines.append(_Html.field(f'Stream Number [b3-b0]: <b>{stream}</b> (Table 30)'))
+        _Html.fbyte(2, 'parameter MSB', p[2], lines)
+        _Html.fbyte(3, 'parameter LSB', p[3], lines)
+        lines.append(_Html.field(f'Parameter (BE, Table 64): <b>0x{param:04X}</b> ({param})'))
+        lines.append(_Html.field('<i>PRx shall respond with SDSR (0x38)</i>'))
         return _Html.join(lines)
 
     def _fsk_dpcal_param(self, p):

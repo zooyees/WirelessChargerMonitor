@@ -126,9 +126,11 @@ def build_parser() -> argparse.ArgumentParser:
     sc_shot.add_argument('--resource', default=None)
     sc_shot.add_argument('--out', default=None)
 
-    sc_wave = scope_sub.add_parser('wave', help='Numeric scope waveform (not yet implemented)', parents=[common])
+    sc_wave = scope_sub.add_parser('wave', help='Read numeric waveform via CURVe?', parents=[common])
     sc_wave.add_argument('--index', type=int, default=0)
+    sc_wave.add_argument('--resource', default=None)
     sc_wave.add_argument('--channel', default='CH1')
+    sc_wave.add_argument('--points', type=int, default=None)
 
     # session
     sess_p = sub.add_parser('session', help='Test session DB queries', parents=[common])
@@ -405,12 +407,30 @@ def cmd_scope_wave(ns, opts):
 
     client = TektronixScopeClient()
     try:
-        client.read_waveform(channel=ns.channel, index=ns.index)
+        if ns.resource:
+            client.connect(resource=ns.resource, index=0)
+            idx = 0
+        else:
+            client.connect(index=ns.index)
+            idx = ns.index
+        wave = client.read_waveform(channel=ns.channel, index=idx, points=getattr(ns, 'points', None))
     except Exception as exc:
         raise _scope_err(exc) from exc
     finally:
         client.close()
-    return 0
+    # Compact payload for CLI/AI (full arrays can be huge)
+    payload = {
+        'channel': wave['channel'],
+        'points': wave['points'],
+        'x_unit': wave['x_unit'],
+        'y_unit': wave['y_unit'],
+        'preamble': wave['preamble'],
+        'resource': wave['resource'],
+        'idn': wave['idn'],
+        'x': wave['x'],
+        'y': wave['y'],
+    }
+    return emit_ok('scope.wave', payload, opts)
 
 
 def cmd_session_list(ns, opts):

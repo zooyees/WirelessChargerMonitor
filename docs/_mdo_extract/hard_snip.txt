@@ -1,0 +1,10 @@
+﻿.\.venv\Scripts\python.exe : Traceback (most recent call last):
+At C:\Users\roy zhao\AppData\Local\Temp\ps-script-83d46af3-a10f-4789-99e8-5d7c0f8c571e.ps1:95 char:36
++ cd "D:\windlink\windlink\WiParse"; .\.venv\Scripts\python.exe -c "
++                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "<string>", line 9, in <module>
+idx 85903
+UnicodeEncodeError: 'gbk' codec can't encode character '\ufb01' in position 153: illegal multibyte sequence

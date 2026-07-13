@@ -1,0 +1,36 @@
+CREATE File System Commands at order idx 13
+  reject-re 'File System?'
+  reject-re 'File System:COPy'
+  reject-re 'File System:CWD'
+  reject-re 'File System:DELEte'
+  reject-re 'File System:DIR?'
+  reject-re 'File System:FORMat'
+  reject-re 'File System:FREESpace?'
+  reject-re 'File System:LDIR?'
+  reject-re 'File System:MKDir'
+  reject-re 'File System:MOUNT:AVAILable?'
+  reject-re 'File System:MOUNT:DRIve'
+  after table accepted=0 total=0
+  reject-re 'File System:MOUNT:LIST?'
+  reject-re 'File System:READFile'
+  reject-re 'File System:REName'
+  reject-re 'File System:RMDir'
+  reject-re 'File System:UNMOUNT:DRIve'
+  reject-re 'File System:WRITEFile'
+  after table accepted=0 total=0
+CREATE Hard Copy Commands at order idx 14
+  reject-re 'Hard Copy'
+  reject-re 'Hard Copy:ACTIVeprinter'
+  reject-re 'Hard Copy:INKSaver'
+  reject-re 'Hard Copy:LAYout'
+  reject-re 'Hard Copy:PREVIEW'
+  reject-re 'Hard Copy:PRINT'
+  reject-re 'Hard Copy:PRINTer:DELete'
+  reject-re 'Hard Copy:PRINT'
+  reject-re 'Hard Copy:PRINT'
+  after table accepted=0 total=0
+ORDER has File? True
+ORDER has Hard? True
+keys with File/Hard: ['File System Commands', 'Hard Copy Commands']
+merged['File System Commands'] n=0
+merged['Hard Copy Commands'] n=0

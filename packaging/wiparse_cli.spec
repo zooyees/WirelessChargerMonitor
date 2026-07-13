@@ -102,7 +102,8 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='wiparse',
+    # Must differ from WiParse.exe — Windows paths are case-insensitive.
+    name='WiParseCLI',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

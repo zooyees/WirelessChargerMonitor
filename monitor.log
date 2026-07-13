@@ -973,3 +973,31 @@ pyvisa.errors.VisaIOError: VI_ERROR_INV_OBJECT (-1073807346): The given session 
 2026-07-12 08:54:49,866 [INFO] WiParse: Ports scanned: 6 device(s)
 2026-07-12 12:29:42,679 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
 2026-07-12 12:29:43,467 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-12 21:58:03,992 [INFO] WiParse: DBWorker stopped
+2026-07-12 21:58:04,039 [INFO] WiParse: FetchWorker stopped
+2026-07-13 23:09:41,729 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-13 23:09:43,209 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-13 23:10:52,226 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-13 23:10:52,546 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-13 23:58:34,760 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-13 23:58:35,627 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:03:57,054 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:03:58,300 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:15:41,717 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:15:42,580 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:22:36,703 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:22:37,509 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:24:28,229 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:24:29,157 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:26:14,720 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:26:15,368 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:31:06,566 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:31:07,175 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:34:56,410 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:34:57,229 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:37:20,730 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:37:21,486 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:38:51,224 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:38:52,061 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 00:42:03,873 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
+2026-07-14 00:42:04,389 [INFO] WiParse: Ports scanned: 6 device(s)

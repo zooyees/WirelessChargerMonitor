@@ -88,10 +88,10 @@ $SizeMiB = (Get-Item $Exe).Length / 1MB
 Write-Host "Built: $Exe"
 Write-Host ("Size: {0:N2} MiB" -f $SizeMiB)
 
-Write-Host 'Building CLI: wiparse.exe ...'
+Write-Host 'Building CLI: WiParseCLI.exe ...'
 & $VenvPy -m PyInstaller packaging/wiparse_cli.spec --noconfirm --clean
 
-$CliExe = Join-Path $Root 'dist\wiparse.exe'
+$CliExe = Join-Path $Root 'dist\WiParseCLI.exe'
 if (-not (Test-Path $CliExe)) {
     throw "Build failed: missing $CliExe"
 }
@@ -99,7 +99,13 @@ $CliSizeMiB = (Get-Item $CliExe).Length / 1MB
 Write-Host "Built: $CliExe"
 Write-Host ("Size: {0:N2} MiB" -f $CliSizeMiB)
 
+# Only remove a leftover named exactly "wiparse.exe" (not WiParse.exe).
+# Windows is case-insensitive, so Test-Path 'wiparse.exe' would also match WiParse.exe.
+Get-ChildItem (Join-Path $Root 'dist') -Filter '*.exe' -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -ceq 'wiparse.exe' } |
+    Remove-Item -Force
+
 Write-Host ''
 Write-Host 'Distribute both from dist\:'
-Write-Host '  WiParse.exe  — GUI'
-Write-Host '  wiparse.exe  — CLI (AI / scripts)'
+Write-Host '  WiParse.exe     — GUI'
+Write-Host '  WiParseCLI.exe  — CLI (AI / scripts)'

@@ -1,0 +1,36 @@
+Acquisition Commands
+Act on Event
+AFG Commands
+Alias Commands
+ARB Commands
+Bus Commands
+Calibration and Diagnostic Commands
+Con figuration Commands
+Cur sor Commands
+Cursor Commands
+Display Commands
+DVM Commands
+EmailCommands
+Ethernet Commands
+File System Commands
+Hard Copy Commands
+Horizontal Commands
+Mark Commands
+Math Commands
+Measurement Commands
+Miscellaneous Commands
+Power Commands
+RF Commands
+Save and Recall Commands
+Search Commands
+Sta tus and Error Commands
+Trigger Commands
+Vertical Commands
+Vid eo Picture Commands
+Exa mple Command Sequence for Transferring W aveform Data from Oscilloscope to Computer
+Example Command Sequence for Transfer ring Waveform Data from Computer to Oscilloscope
+Example Command Sequence for Transferri ng Waveform Data from Computer to Oscilloscope
+Digital Collection: 4 Byte Data
+Digital Collection: 8 Byte Data
+Waveform Transfer Commands
+Zoom Commands

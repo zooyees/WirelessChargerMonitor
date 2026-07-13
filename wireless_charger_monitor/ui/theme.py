@@ -1020,12 +1020,20 @@ def apply_text_edit_palette(text_edit) -> None:
 def apply_tektronix_scope_theme(panel) -> None:
     """Theme-aware styling for the embedded Tektronix scope panel."""
     panel.setObjectName('TektronixScopePanel')
-    if hasattr(panel, 'lineEdit'):
-        panel.lineEdit.setObjectName('tek_scope_model')
-        apply_line_edit_palette(panel.lineEdit, read_only=True)
+    # Legacy .ui widgets (optional)
+    if hasattr(panel, 'lineEdit') and hasattr(panel.lineEdit, 'setObjectName'):
+        try:
+            panel.lineEdit.setObjectName('tek_scope_model')
+            if hasattr(panel.lineEdit, 'setReadOnly'):
+                apply_line_edit_palette(panel.lineEdit, read_only=True)
+        except Exception:
+            pass
     if hasattr(panel, 'textEdit'):
         panel.textEdit.setObjectName('tek_scope_log')
-        apply_text_edit_palette(panel.textEdit)
+        try:
+            apply_text_edit_palette(panel.textEdit)
+        except Exception:
+            pass
         panel.textEdit.setStyleSheet('')
     if hasattr(panel, 'label'):
         panel.label.setObjectName('tek_scope_preview')
@@ -1036,6 +1044,87 @@ def apply_tektronix_scope_theme(panel) -> None:
             btn.setStyleSheet('')
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+    # Front-panel action buttons — high-contrast labels on dark chrome
+    panel.setStyleSheet(
+        panel.styleSheet()
+        + """
+        QPushButton[tekRole="menu"] {
+            text-align: left;
+            padding: 4px 8px;
+            border: 1px solid #64748B;
+            border-radius: 3px;
+            background: #1E293B;
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+        QPushButton[tekRole="menu"]:hover { background: #334155; color: #FFFFFF; }
+        QPushButton[tekRole="menu"]:checked {
+            background: #0284C7;
+            color: #FFFFFF;
+        }
+        QPushButton[tekRole="action"] {
+            padding: 4px 10px;
+            border: 1px solid #94A3B8;
+            border-radius: 4px;
+            background: #334155;
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+        QPushButton[tekRole="action"]:hover { background: #475569; color: #FFFFFF; }
+        QPushButton[tekRole="action"]:checked {
+            background: #B91C1C;
+            border-color: #F87171;
+            color: #FFFFFF;
+        }
+        QPushButton[tekRole="accent"] {
+            padding: 4px 10px;
+            border: 1px solid #7DD3FC;
+            border-radius: 4px;
+            background: #0369A1;
+            color: #FFFFFF;
+            font-weight: 700;
+        }
+        QPushButton[tekRole="accent"]:hover { background: #0284C7; color: #FFFFFF; }
+        QPushButton[tekRole="accent"]:checked {
+            background: #B91C1C;
+            border-color: #FCA5A5;
+            color: #FFFFFF;
+        }
+        QGroupBox {
+            border: 1px solid #64748B;
+            border-radius: 4px;
+            margin-top: 8px;
+            padding-top: 8px;
+            color: #FFFFFF;
+            font-weight: 700;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 8px;
+            padding: 0 4px;
+            color: #FFFFFF;
+        }
+        QComboBox {
+            color: #FFFFFF;
+            background: #1E293B;
+            border: 1px solid #64748B;
+            border-radius: 4px;
+            padding: 2px 8px;
+        }
+        QComboBox QAbstractItemView {
+            color: #FFFFFF;
+            background: #1E293B;
+            selection-background-color: #0284C7;
+        }
+        QToolButton {
+            color: #F8FAFC;
+            font-weight: 600;
+        }
+        QLabel {
+            color: #F1F5F9;
+        }
+        """
+    )
     panel.style().unpolish(panel)
     panel.style().polish(panel)
 

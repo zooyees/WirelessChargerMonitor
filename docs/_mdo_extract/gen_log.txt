@@ -1,0 +1,32 @@
+﻿wrote D:\windlink\windlink\WiParse\docs\MDO3014_SCPI命令手册.md
+groups 30 commands 1157
+  - 采集 (Acquisition): 14
+  - 事件动作 (Act on Event): 2
+  - 任意函数发生器 (AFG): 16
+  - 别名 (Alias): 5
+  - 任意波形 (ARB): 9
+  - 总线解码 (Bus): 86
+  - 校准与诊断 (Calibration/Diagnostic): 29
+  - 配置 (Configuration): 41
+  - 光标 (Cursor): 37
+  - 显示 (Display): 26
+  - 数字万用表 (DVM): 12
+  - 邮件 (Email): 6
+  - 以太网 (Ethernet): 12
+  - 文件系统 (File System): 17
+  - 硬拷贝/截屏 (Hard Copy): 9
+  - 水平时基 (Horizontal): 12
+  - 标记 (Mark): 15
+  - 数学运算 (Math): 15
+  - 自动测量 (Measurement): 42
+  - 杂项与 IEEE488.2 (Miscellaneous): 52
+  - 电源分析 (Power): 140
+  - 射频分析 (RF): 73
+  - 保存与调用 (Save/Recall): 20
+  - 搜索 (Search): 129
+  - 状态与错误 (Status/Error): 17
+  - 触发 (Trigger): 192
+  - 垂直通道 (Vertical): 65
+  - 视频画面 (Video Picture): 15
+  - 波形传输 (Waveform Transfer): 42
+  - 缩放 (Zoom): 7
