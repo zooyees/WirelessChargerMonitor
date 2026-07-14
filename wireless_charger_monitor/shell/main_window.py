@@ -23,6 +23,7 @@ from PyQt5.QtWidgets import (
     QTextEdit,
     QToolButton,
     QToolTip,
+    QWidget,
 )
 
 from ..charge_state import ChargeStateTracker
@@ -1271,6 +1272,13 @@ class MonitorWindow(QMainWindow):
 
     def _on_menu_bar_context_menu(self, pos):
         sender = self.sender()
+        if sender is self.ui.main_tabs:
+            # Only the tab bar — not the page content (plots, panels, …)
+            bar = self.ui.main_tabs.tabBar()
+            if not bar.geometry().contains(pos):
+                return
+            self._show_header_context_menu(sender.mapToGlobal(pos))
+            return
         if sender is not None:
             self._show_header_context_menu(sender.mapToGlobal(pos))
         else:
@@ -1403,10 +1411,37 @@ class MonitorWindow(QMainWindow):
         if event.type() == QEvent.WindowDeactivate:
             self.hide_tooltip()
 
+    def _is_tab_page_descendant(self, obj) -> bool:
+        """True when obj lives inside the current tab page (not the tab bar)."""
+        if not isinstance(obj, QWidget):
+            return False
+        tabs = self.ui.main_tabs
+        bar = tabs.tabBar()
+        if obj is tabs or obj is bar or bar.isAncestorOf(obj):
+            return False
+        page = tabs.currentWidget()
+        if page is None:
+            return False
+        return obj is page or page.isAncestorOf(obj)
+
     def eventFilter(self, obj, event):
-        if self._is_header_context_menu_event(event) and self.isActiveWindow() and self._pointer_in_header_reveal_zone():
-            self._show_header_context_menu(event.globalPos())
-            return True
+        if self._is_header_context_menu_event(event) and self.isActiveWindow():
+            header_widgets = set(self._main_header_widgets())
+            tab_bar = self.ui.main_tabs.tabBar()
+            if obj in header_widgets or obj is tab_bar:
+                self._show_header_context_menu(event.globalPos())
+                return True
+            # Never steal context menus from tab page content (e.g. pyqtgraph).
+            if self._is_tab_page_descendant(obj):
+                pass
+            elif (
+                getattr(self, '_menu_bar_auto_hide', False)
+                and self._pointer_in_header_reveal_zone()
+                and obj in (self, self.centralWidget(), self.ui.main_tabs)
+            ):
+                # Auto-hide: allow configuring menu when bar is hidden (top strip only).
+                self._show_header_context_menu(event.globalPos())
+                return True
         if getattr(self, '_menu_bar_auto_hide', False):
             header_widgets = set(self._main_header_widgets())
             if obj in header_widgets:

@@ -585,8 +585,19 @@ class TektronixScopeClient:
                         pre['yzero'] = fval
                     elif key.startswith('YOFF') or key == 'YOFF':
                         pre['yoff'] = fval
+                    elif key.startswith('YUNIT') or key == 'YUNIT' or key.startswith('YUN'):
+                        # string unit may appear as YUNIT "V" — handled below
+                        pass
         except Exception:
             pre = {}
+
+        # YUNIT is a quoted string, not always in bulk float parse
+        try:
+            yu = handle.query('WFMOutpre:YUNit?').strip().strip('"').strip("'")
+            if yu:
+                pre['yunit'] = yu
+        except Exception:
+            pre.setdefault('yunit', 'V')
 
         needed = ('xincr', 'xzero', 'pt_off', 'ymult', 'yzero', 'yoff')
         if not all(k in pre for k in needed):
@@ -662,7 +673,7 @@ class TektronixScopeClient:
                     'y': y,
                     'points': n,
                     'x_unit': 's',
-                    'y_unit': 'V',
+                    'y_unit': pre.get('yunit') or 'V',
                     'preamble': pre,
                     'resource': self._resources[index],
                     'idn': self._idns[index],
@@ -689,7 +700,7 @@ class TektronixScopeClient:
                     'y': y,
                     'points': n,
                     'x_unit': 's',
-                    'y_unit': 'V',
+                    'y_unit': pre.get('yunit') or 'V',
                     'preamble': pre,
                     'resource': self._resources[index],
                     'idn': self._idns[index],

@@ -90,6 +90,12 @@ STRINGS: dict[str, tuple[str, str]] = {
     'tool.tektronix_scope.ref': ('R', 'R'),
     'tool.tektronix_scope.math': ('M', 'M'),
     'tool.tektronix_scope.cursors': ('光标', 'Cursors'),
+    'tool.tektronix_scope.cursors_tip': (
+        '使能后可拖动 X1/X2/Y1/Y2；右键两点测距（Δt / 电压或电流）',
+        'Enable to drag X1/X2/Y1/Y2; right-click twice to measure Δt / V or A',
+    ),
+    'tool.tektronix_scope.cursors_on': ('光标：开（拖动 X1/X2/Y1/Y2；右键测距）', 'Cursors ON (drag X1/X2/Y1/Y2; RMB measure)'),
+    'tool.tektronix_scope.cursors_off': ('光标：关', 'Cursors OFF'),
     'tool.tektronix_scope.intensity': ('亮度', 'Intens'),
     'tool.tektronix_scope.digital': ('D15-D0', 'D15-D0'),
     'tool.tektronix_scope.save': ('保存', 'Save'),

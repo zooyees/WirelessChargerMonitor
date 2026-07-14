@@ -171,6 +171,9 @@ class TektronixScopePanel(QWidget):
         f.menuClicked.connect(self._on_menu)
         f.menuOffClicked.connect(self.front.hide_side_menu)
         f.cursorClicked.connect(self._on_cursor)
+        f.wave_plot.measureReadoutChanged.connect(
+            lambda s: self._log(s) if s else None
+        )
         f.zoomClicked.connect(self._on_zoom)
         f.intensityClicked.connect(lambda: self._on_menu('intensity'))
         f.saveClicked.connect(lambda: self._on_hardcopy(self.front.scope_index.currentIndex()))
@@ -637,6 +640,7 @@ class TektronixScopePanel(QWidget):
             self._log(f'{ch} → {"开" if on else "关"}')
             self._show_channel_side_menu(ch)
             if on:
+                self.front.wave_plot.set_preferred_channel(ch)
                 self._on_refresh_wave()
 
         def err(_e):
@@ -674,13 +678,41 @@ class TektronixScopePanel(QWidget):
         self.front.show_side_menu(tr('tool.tektronix_scope.side_vertical', ch=ch), w)
 
     def _on_cursor(self) -> None:
-        if not self._ensure_connected():
+        """Toggle local plot cursors (X1/X2/Y1/Y2); also sync instrument when connected."""
+        on = bool(self.front.btn_cursor.isChecked())
+        # Prefer first selected channel for V/A unit matching
+        preferred = None
+        for ch, btn in self.front.channel_btns.items():
+            if btn.isChecked():
+                preferred = ch
+                break
+        self.front.wave_plot.set_preferred_channel(preferred)
+        self.front.wave_plot.set_cursors_enabled(on)
+        if on:
+            self._log(tr('tool.tektronix_scope.cursors_on'))
+        else:
+            self._log(tr('tool.tektronix_scope.cursors_off'))
+        if not self._client.connected:
             return
         idx = self._index()
-        self._run_async(
-            lambda: self._client.cursors_toggle(index=idx),
-            on_ok=lambda s: self._log(f'光标 → {s}'),
-        )
+
+        def work():
+            if on:
+                try:
+                    self._client.write('CURSor:FUNCtion WAVEform', index=idx)
+                except ScopeError:
+                    try:
+                        self._client.write('CURSor:FUNCtion HBArs', index=idx)
+                    except ScopeError:
+                        pass
+                return 'ON'
+            try:
+                self._client.write('CURSor:FUNCtion OFF', index=idx)
+            except ScopeError:
+                pass
+            return 'OFF'
+
+        self._run_async(work)
 
     def _on_zoom(self) -> None:
         if not self._ensure_connected():

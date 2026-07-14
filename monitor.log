@@ -1001,3 +1001,5 @@ pyvisa.errors.VisaIOError: VI_ERROR_INV_OBJECT (-1073807346): The given session 
 2026-07-14 00:38:52,061 [INFO] WiParse: Ports scanned: 6 device(s)
 2026-07-14 00:42:03,873 [INFO] WiParse: Database initialized: D:\windlink\windlink\WiParse\charging_data.db
 2026-07-14 00:42:04,389 [INFO] WiParse: Ports scanned: 6 device(s)
+2026-07-14 08:02:43,900 [INFO] WiParse: DBWorker stopped
+2026-07-14 08:02:43,916 [INFO] WiParse: FetchWorker stopped
