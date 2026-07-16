@@ -1350,6 +1350,7 @@ class Qi22Parser:
             0x5A: self._fsk_modecap,
             0x5F: self._fsk_plap,
             0x61: self._fsk_gmp,
+            0x88: self._fsk_plap2,
             0x8F: self._fsk_xid_ecap,
             0xA0: self._fsk_modexcap,
         }
@@ -1708,6 +1709,28 @@ class Qi22Parser:
         g_coil_r = _s16_be(p[1], p[2])
         lines = ['• mpp_tx_plap_t — Power Loss Accounting Parameters']
         lines.append(_Html.field(f'G_coil_r: <b>{g_coil_r}</b>'))
+        return _Html.join(lines)
+
+    def _fsk_plap2(self, p):
+        if len(p) < 9:
+            return f'<i>PTx PLAP_2 requires 9 bytes, got {len(p)} B</i>'
+        g_coil_rx_pla2 = _u16_be(p[1], p[2])
+        lines = ['• PTx PLAP_2 — Power Loss Accounting Parameters 2 (0x88)']
+        _Html.fbyte(0, 'reserved', p[0], lines)
+        _Html.fbyte(1, 'g_COIL,RX,PLA2 MSB', p[1], lines)
+        _Html.fbyte(2, 'g_COIL,RX,PLA2 LSB', p[2], lines)
+        lines.append(_Html.field(
+            f'g_COIL,RX,PLA2 [unsigned BE]: <b>{g_coil_rx_pla2}</b> '
+            f'(0x{g_coil_rx_pla2:04X})'
+        ))
+        lines.append(_Html.field(
+            f'Expected coefficient: <b>20000</b> — '
+            f'{"valid" if g_coil_rx_pla2 == 20000 else "unexpected value"}'
+        ))
+        lines.append(_Html.field(
+            f'B3–B8 Reserved: <span style="color:{_qi_colors()["hex"]}">'
+            f'{_hex_bytes(p[3:9])}</span>'
+        ))
         return _Html.join(lines)
 
     def _fsk_gmp(self, p):

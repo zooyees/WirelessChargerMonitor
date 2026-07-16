@@ -494,6 +494,7 @@ FSK_PACKETS: dict[int, tuple[str, str, str]] = {
     0x5A: ('MODECAP', 'Power Modes Capabilities', 'mpp'),
     0x5F: ('PLAP', 'PLA Parameters', 'mpp'),
     0x61: ('GMP', 'Gain Measurement Parameters', 'mpp'),
+    0x88: ('PLAP_2', 'Power Loss Accounting Parameters 2', 'mpp'),
     0x8F: ('XID/ECAP', 'Extended PTx ID / Extended Capabilities', 'mpp'),
     0xA0: ('MODEXCAP', 'Extended Power Modes Capabilities', 'mpp'),
 }

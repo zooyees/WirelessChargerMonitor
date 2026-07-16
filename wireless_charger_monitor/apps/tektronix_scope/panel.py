@@ -606,7 +606,7 @@ class TektronixScopePanel(QWidget):
 
     def _on_zoom_scale(self, direction: int) -> None:
         if not self._ensure_connected():
-            return
+                return
         idx = self._index()
 
         def work():
